@@ -2,11 +2,11 @@ import argparse
 import os
 import time
 
-import numpy as np
+# import numpy as np
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, \
     precision_recall_curve, auc, cohen_kappa_score
 from torch.optim import Adam
-from tqdm import tqdm
+# from tqdm import tqdm
 from models.dataset import *
 from models.medskim import *
 from utils.utils import check_path, export_config, bool_flag
@@ -77,8 +77,8 @@ def main():
         train(args)
     elif args.mode == 'pred':
         pred(args)
-    elif args.mode == 'study':
-        study(args)
+    # elif args.mode == 'study':
+    #     study(args)
     else:
         raise ValueError('Invalid mode')
 
@@ -130,12 +130,12 @@ def train(args):
     else:
         raise ValueError('Invalid disease')
     device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
-    train_dataset = MyDataset(data_path + '_training_new.pickle', data_path + '_training_txt.pickle',
-                              args.max_len, args.max_num_codes, args.max_num_blks, pad_id, blk_pad_id, device)
-    dev_dataset = MyDataset(data_path + '_validation_new.pickle', data_path + '_validation_txt.pickle', args.max_len,
-                            args.max_num_codes, args.max_num_blks, pad_id, blk_pad_id, device)
-    test_dataset = MyDataset(data_path + '_testing_new.pickle', data_path + '_testing_txt.pickle', args.max_len,
-                             args.max_num_codes, args.max_num_blks, pad_id, blk_pad_id, device)
+    train_dataset = MyDataset(data_path + '_training_new.pickle',
+                              args.max_len, args.max_num_codes, pad_id, device)
+    dev_dataset = MyDataset(data_path + '_validation_new.pickle', args.max_len,
+                            args.max_num_codes, pad_id, device)
+    test_dataset = MyDataset(data_path + '_testing_new.pickle', args.max_len,
+                             args.max_num_codes, pad_id, device)
     train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=True, collate_fn=collate_fn)
     dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
     test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
@@ -174,7 +174,7 @@ def train(args):
         model.train()
         start_time = time.time()
         for i, data in enumerate(train_dataloader):
-            labels, ehr, mask, txt, _, lengths, time_step, code_mask = data
+            ehr, time_step, labels = data
             optim.zero_grad()
             outputs, skip_rate = model(ehr, lengths, time_step, code_mask)
             loss = loss_func(outputs, labels) + args.lamda * (skip_rate - args.target_rate)**2
@@ -256,41 +256,41 @@ def pred(args):
     blk_pad_id = len(blk_emb) - 1
     if old_args.target_disease == 'Heart_failure':
         code2id = pickle.load(open('./data/hf/hf_code2idx_new.pickle', 'rb'))
-        id2code = {int(v): k for k, v in code2id.items()}
-        code2topic = pickle.load(open('./data/hf/hf_code2topic.pickle', 'rb'))
+        # id2code = {int(v): k for k, v in code2id.items()}
+        # code2topic = pickle.load(open('./data/hf/hf_code2topic.pickle', 'rb'))
         pad_id = len(code2id)
         data_path = './data/hf/hf'
     elif old_args.target_disease == 'COPD':
         code2id = pickle.load(open('./data/copd/copd_code2idx_new.pickle', 'rb'))
-        id2code = {int(v): k for k, v in code2id.items()}
-        code2topic = pickle.load(open('./data/copd/copd_code2topic.pickle', 'rb'))
+        # id2code = {int(v): k for k, v in code2id.items()}
+        # code2topic = pickle.load(open('./data/copd/copd_code2topic.pickle', 'rb'))
         pad_id = len(code2id)
         data_path = './data/copd/copd'
     elif old_args.target_disease == 'Kidney':
         code2id = pickle.load(open('./data/kidney/kidney_code2idx_new.pickle', 'rb'))
-        id2code = {int(v): k for k, v in code2id.items()}
-        code2topic = pickle.load(open('./data/kidney/kidney_code2topic.pickle', 'rb'))
+        # id2code = {int(v): k for k, v in code2id.items()}
+        # code2topic = pickle.load(open('./data/kidney/kidney_code2topic.pickle', 'rb'))
         pad_id = len(code2id)
         data_path = './data/kidney/kidney'
     elif old_args.target_disease == 'Amnesia':
         code2id = pickle.load(open('./data/amnesia/amnesia_code2idx_new.pickle', 'rb'))
-        id2code = {int(v): k for k, v in code2id.items()}
-        code2topic = pickle.load(open('./data/amnesia/amnesia_code2topic.pickle', 'rb'))
+        # id2code = {int(v): k for k, v in code2id.items()}
+        # code2topic = pickle.load(open('./data/amnesia/amnesia_code2topic.pickle', 'rb'))
         pad_id = len(code2id)
         data_path = './data/amnesia/amnesia'
     elif old_args.target_disease == 'Dementia':
         code2id = pickle.load(open('./data/dementia/dementia_code2idx_new.pickle', 'rb'))
-        id2code = {int(v): k for k, v in code2id.items()}
-        code2topic = pickle.load(open('./data/dementia/dementia_code2topic.pickle', 'rb'))
+        # id2code = {int(v): k for k, v in code2id.items()}
+        # code2topic = pickle.load(open('./data/dementia/dementia_code2topic.pickle', 'rb'))
         pad_id = len(code2id)
         data_path = './data/dementia/dementia'
     else:
         raise ValueError('Invalid disease')
-    dev_dataset = MyDataset(data_path + '_validation_new.pickle', data_path + '_validation_txt.pickle',
-                            old_args.max_len, old_args.max_num_codes, old_args.max_num_blks, pad_id, blk_pad_id, device)
-    test_dataset = MyDataset(data_path + '_testing_new.pickle', data_path + '_testing_txt.pickle', old_args.max_len,
-                             old_args.max_num_codes, old_args.max_num_blks, pad_id, blk_pad_id, device)
-    dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
+    # dev_dataset = MyDataset(data_path + '_validation_new.pickle', data_path + '_validation_txt.pickle',
+    #                         old_args.max_len, old_args.max_num_codes, old_args.max_num_blks, pad_id, blk_pad_id, device)
+    test_dataset = MyDataset(data_path + '_testing_new.pickle', old_args.max_len,
+                             old_args.max_num_codes, pad_id, device)
+    # dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
     test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
     # dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc = eval_metric(dev_dataloader, model)
     test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa = eval_metric(test_dataloader, model)
@@ -300,7 +300,7 @@ def pred(args):
         y_score = np.array([])
         skip_rates = np.array([])
         for i, data in enumerate(test_dataloader):
-            labels, ehr, mask, txt, mask_txt, lengths, time_step, code_mask = data
+            ehr, time_step, labels = data
             logits, skip_rate = model(ehr, lengths, time_step, code_mask)
             scores = torch.softmax(logits, dim=-1)
             scores = scores.data.cpu().numpy()
@@ -323,123 +323,123 @@ def pred(args):
                 fout2.write('{},{},{}\n'.format(y_pred[i], y_score[i], y_true[i]))
 
 
-def study(args):
-    model_path = os.path.join(args.save_dir, 'models.pt')
-    model, old_args = torch.load(model_path)
-    device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
-    model.to(device)
-    model.eval()
-    blk_emb = np.load(old_args.blk_emb_path)
-    blk_pad_id = len(blk_emb) - 1
-    if old_args.target_disease == 'Heart_failure':
-        code2id = pickle.load(open('./data/hf/hf_code2idx_new.pickle', 'rb'))
-        id2code = {int(v): k for k, v in code2id.items()}
-        code2topic = pickle.load(open('./data/hf/hf_code2topic.pickle', 'rb'))
-        pad_id = len(code2id)
-        data_path = './data/hf/hf'
-    elif old_args.target_disease == 'COPD':
-        code2id = pickle.load(open('./data/copd/copd_code2idx_new.pickle', 'rb'))
-        id2code = {int(v): k for k, v in code2id.items()}
-        code2topic = pickle.load(open('./data/copd/copd_code2topic.pickle', 'rb'))
-        pad_id = len(code2id)
-        data_path = './data/copd/copd'
-    elif old_args.target_disease == 'Kidney':
-        code2id = pickle.load(open('./data/kidney/kidney_code2idx_new.pickle', 'rb'))
-        id2code = {int(v): k for k, v in code2id.items()}
-        code2topic = pickle.load(open('./data/kidney/kidney_code2topic.pickle', 'rb'))
-        pad_id = len(code2id)
-        data_path = './data/kidney/kidney'
-    elif old_args.target_disease == 'Amnesia':
-        code2id = pickle.load(open('./data/amnesia/amnesia_code2idx_new.pickle', 'rb'))
-        id2code = {int(v): k for k, v in code2id.items()}
-        code2topic = pickle.load(open('./data/amnesia/amnesia_code2topic.pickle', 'rb'))
-        pad_id = len(code2id)
-        data_path = './data/amnesia/amnesia'
-    elif old_args.target_disease == 'Dementia':
-        code2id = pickle.load(open('./data/dementia/dementia_code2idx_new.pickle', 'rb'))
-        id2code = {int(v): k for k, v in code2id.items()}
-        code2topic = pickle.load(open('./data/dementia/dementia_code2topic.pickle', 'rb'))
-        pad_id = len(code2id)
-        data_path = './data/dementia/dementia'
-    else:
-        raise ValueError('Invalid disease')
-    dev_dataset = MyDataset(data_path + '_validation_new.pickle', data_path + '_validation_txt.pickle',
-                            old_args.max_len, old_args.max_num_codes, old_args.max_num_blks, pad_id, blk_pad_id, device)
-    test_dataset = MyDataset(data_path + '_testing_new.pickle', data_path + '_testing_txt.pickle', old_args.max_len,
-                             old_args.max_num_codes, old_args.max_num_blks, pad_id, blk_pad_id, device)
-    dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
-    test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
-    icd2des = {}
-    df = pd.read_excel('./data/CMS32_DESC_LONG_SHORT_DX.xlsx')
-    icds = df['DIAGNOSIS CODE']
-    desc = df['LONG DESCRIPTION']
-    for i in range(len(icds)):
-        icd = icds[i][0:3] + '.' + icds[i][3:]
-        icd2des[icd] = desc[i]
-    with torch.no_grad():
-        with open(os.path.join(args.save_dir, 'code_weight.txt'), 'w') as fout:
-            for i, data in enumerate(test_dataloader):
-                labels, ehr, mask, txt, mask_txt, lengths, time_step, code_mask = data
-                logits, v_skips, c_skips, p = model.infer(ehr, lengths, time_step)
-                code2w = {}
-                for id in range(0, model.vocab_size + 1):
-                    if id in id2code.keys():
-                        code = id2code[id]
-                        if code in icd2des.keys():
-                            des = icd2des[code]
-                        else:
-                            des = ''
-                        w = p.data.cpu().numpy()[id]
-                        # if w == 0.0:
-                        #     print(id)
-                        code2w[code] = w
-                        fout.write(str(code) + ',' + str(des) + ',' + str(w) + '\n')
-                break
-
-        with open(os.path.join(args.save_dir, 'decode_test.txt'), 'w') as fout:
-
-            for i, data in enumerate(test_dataloader):
-                labels, ehr, mask, txt, mask_txt, lengths, time_step, code_mask = data
-                logits, v_skips, c_skips, p_mask = model.infer(ehr, lengths, time_step)
-
-                predictions = logits.argmax(-1)
-                for l, pred, record, v_skip, c_skip, length in zip(labels, predictions, ehr, v_skips, c_skips, lengths):
-                    output = {}
-                    output["label"] = l.item()
-                    output["prediction"] = pred.item()
-                    record = record.data.cpu().numpy()
-                    # icd
-                    rec_li = []
-                    for visit in record:
-                        v_li = []
-                        for codeid in visit:
-                            if codeid in id2code.keys():
-                                v_li.append(id2code[codeid])
-                        if len(v_li) > 0:
-                            rec_li.append(v_li)
-                        else:
-                            break
-                    output["record_icd"] = rec_li
-                    # icd text
-                    des_li = []
-                    for vi in rec_li:
-                        v_des = []
-                        for code in vi:
-                            if code in icd2des.keys():
-                                v_des.append(icd2des[code])
-                        des_li.append(v_des)
-                    output["record_text"] = des_li
-                    length = length.data.cpu().numpy()
-                    v_skip = v_skip.data.cpu().numpy()[0: length]
-                    c_skip = c_skip.data.cpu().numpy()[0: length]
-                    if output["label"] == 1 and len(output["record_icd"]) <= 10:
-                        fout.write("label: {}".format(str(output["label"])) + '\n')
-                        fout.write("prediction: {}".format(str(output["prediction"])) + "\n")
-                        fout.write("record_icd: {}".format(str(output["record_icd"])) + '\n')
-                        fout.write("record_text: {}".format(str(output["record_text"])) + '\n')
-                        fout.write("v_skip: {}".format(str(v_skip)) + '\n')
-                        fout.write("c_skip: {}".format(str(c_skip)) + '\n')
-                        fout.write('\n')
+# def study(args):
+#     model_path = os.path.join(args.save_dir, 'models.pt')
+#     model, old_args = torch.load(model_path)
+#     device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
+#     model.to(device)
+#     model.eval()
+#     blk_emb = np.load(old_args.blk_emb_path)
+#     blk_pad_id = len(blk_emb) - 1
+#     if old_args.target_disease == 'Heart_failure':
+#         code2id = pickle.load(open('./data/hf/hf_code2idx_new.pickle', 'rb'))
+#         id2code = {int(v): k for k, v in code2id.items()}
+#         code2topic = pickle.load(open('./data/hf/hf_code2topic.pickle', 'rb'))
+#         pad_id = len(code2id)
+#         data_path = './data/hf/hf'
+#     elif old_args.target_disease == 'COPD':
+#         code2id = pickle.load(open('./data/copd/copd_code2idx_new.pickle', 'rb'))
+#         id2code = {int(v): k for k, v in code2id.items()}
+#         code2topic = pickle.load(open('./data/copd/copd_code2topic.pickle', 'rb'))
+#         pad_id = len(code2id)
+#         data_path = './data/copd/copd'
+#     elif old_args.target_disease == 'Kidney':
+#         code2id = pickle.load(open('./data/kidney/kidney_code2idx_new.pickle', 'rb'))
+#         id2code = {int(v): k for k, v in code2id.items()}
+#         code2topic = pickle.load(open('./data/kidney/kidney_code2topic.pickle', 'rb'))
+#         pad_id = len(code2id)
+#         data_path = './data/kidney/kidney'
+#     elif old_args.target_disease == 'Amnesia':
+#         code2id = pickle.load(open('./data/amnesia/amnesia_code2idx_new.pickle', 'rb'))
+#         id2code = {int(v): k for k, v in code2id.items()}
+#         code2topic = pickle.load(open('./data/amnesia/amnesia_code2topic.pickle', 'rb'))
+#         pad_id = len(code2id)
+#         data_path = './data/amnesia/amnesia'
+#     elif old_args.target_disease == 'Dementia':
+#         code2id = pickle.load(open('./data/dementia/dementia_code2idx_new.pickle', 'rb'))
+#         id2code = {int(v): k for k, v in code2id.items()}
+#         code2topic = pickle.load(open('./data/dementia/dementia_code2topic.pickle', 'rb'))
+#         pad_id = len(code2id)
+#         data_path = './data/dementia/dementia'
+#     else:
+#         raise ValueError('Invalid disease')
+#     dev_dataset = MyDataset(data_path + '_validation_new.pickle', data_path + '_validation_txt.pickle',
+#                             old_args.max_len, old_args.max_num_codes, old_args.max_num_blks, pad_id, blk_pad_id, device)
+#     test_dataset = MyDataset(data_path + '_testing_new.pickle', data_path + '_testing_txt.pickle', old_args.max_len,
+#                              old_args.max_num_codes, old_args.max_num_blks, pad_id, blk_pad_id, device)
+#     dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
+#     test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
+#     icd2des = {}
+#     df = pd.read_excel('./data/CMS32_DESC_LONG_SHORT_DX.xlsx')
+#     icds = df['DIAGNOSIS CODE']
+#     desc = df['LONG DESCRIPTION']
+#     for i in range(len(icds)):
+#         icd = icds[i][0:3] + '.' + icds[i][3:]
+#         icd2des[icd] = desc[i]
+#     with torch.no_grad():
+#         with open(os.path.join(args.save_dir, 'code_weight.txt'), 'w') as fout:
+#             for i, data in enumerate(test_dataloader):
+#                 labels, ehr, mask, txt, mask_txt, lengths, time_step, code_mask = data
+#                 logits, v_skips, c_skips, p = model.infer(ehr, lengths, time_step)
+#                 code2w = {}
+#                 for id in range(0, model.vocab_size + 1):
+#                     if id in id2code.keys():
+#                         code = id2code[id]
+#                         if code in icd2des.keys():
+#                             des = icd2des[code]
+#                         else:
+#                             des = ''
+#                         w = p.data.cpu().numpy()[id]
+#                         # if w == 0.0:
+#                         #     print(id)
+#                         code2w[code] = w
+#                         fout.write(str(code) + ',' + str(des) + ',' + str(w) + '\n')
+#                 break
+#
+#         with open(os.path.join(args.save_dir, 'decode_test.txt'), 'w') as fout:
+#
+#             for i, data in enumerate(test_dataloader):
+#                 labels, ehr, mask, txt, mask_txt, lengths, time_step, code_mask = data
+#                 logits, v_skips, c_skips, p_mask = model.infer(ehr, lengths, time_step)
+#
+#                 predictions = logits.argmax(-1)
+#                 for l, pred, record, v_skip, c_skip, length in zip(labels, predictions, ehr, v_skips, c_skips, lengths):
+#                     output = {}
+#                     output["label"] = l.item()
+#                     output["prediction"] = pred.item()
+#                     record = record.data.cpu().numpy()
+#                     # icd
+#                     rec_li = []
+#                     for visit in record:
+#                         v_li = []
+#                         for codeid in visit:
+#                             if codeid in id2code.keys():
+#                                 v_li.append(id2code[codeid])
+#                         if len(v_li) > 0:
+#                             rec_li.append(v_li)
+#                         else:
+#                             break
+#                     output["record_icd"] = rec_li
+#                     # icd text
+#                     des_li = []
+#                     for vi in rec_li:
+#                         v_des = []
+#                         for code in vi:
+#                             if code in icd2des.keys():
+#                                 v_des.append(icd2des[code])
+#                         des_li.append(v_des)
+#                     output["record_text"] = des_li
+#                     length = length.data.cpu().numpy()
+#                     v_skip = v_skip.data.cpu().numpy()[0: length]
+#                     c_skip = c_skip.data.cpu().numpy()[0: length]
+#                     if output["label"] == 1 and len(output["record_icd"]) <= 10:
+#                         fout.write("label: {}".format(str(output["label"])) + '\n')
+#                         fout.write("prediction: {}".format(str(output["prediction"])) + "\n")
+#                         fout.write("record_icd: {}".format(str(output["record_icd"])) + '\n')
+#                         fout.write("record_text: {}".format(str(output["record_text"])) + '\n')
+#                         fout.write("v_skip: {}".format(str(v_skip)) + '\n')
+#                         fout.write("c_skip: {}".format(str(c_skip)) + '\n')
+#                         fout.write('\n')
 
 
 

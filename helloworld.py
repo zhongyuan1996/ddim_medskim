@@ -28,15 +28,24 @@ print(f"b_l1 = {round(net.hidden_layer.bias.item(), 4)}")
 print(f"w_l2 = {round(net.output_layer.weight.item(), 4)}")
 print(f"b_l2 = {round(net.output_layer.bias.item(), 4)}")
 
+
+
 # run input data forward through network
+
+
+print("CUDA GPU:", torch.cuda.is_available())
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 input_data = torch.tensor([0.8])
-output = net(input_data)
+
+net.to(device)
+output = net(input_data.to(device))
 print(f"a_l2 = {round(output.item(), 4)}")
 
 # backpropagate gradient
 target = torch.tensor([1.])
 criterion = nn.MSELoss()
-loss = criterion(output, target)
+loss = criterion(output, target.to(device))
 net.zero_grad()
 loss.backward()
 
@@ -49,5 +58,5 @@ print(f"updated_b_l1 = {round(net.hidden_layer.bias.item(), 4)}")
 print(f"updated_w_l2 = {round(net.output_layer.weight.item(), 4)}")
 print(f"updated_b_l2 = {round(net.output_layer.bias.item(), 4)}")
 
-output = net(input_data)
+output = net(input_data.to(device))
 print(f"updated_a_l2 = {round(output.item(), 4)}")
