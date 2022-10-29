@@ -101,32 +101,32 @@ def train(args):
 
     blk_emb = np.load(args.blk_emb_path)
     blk_pad_id = len(blk_emb) - 1
-    icd2cui = pickle.load(open('./data/semmed/icd2cui.pickle', 'rb'))
+    # icd2cui = pickle.load(open('./data/semmed/icd2cui.pickle', 'rb'))
     if args.target_disease == 'Heart_failure':
         code2id = pickle.load(open('./data/hf/hf_code2idx_new.pickle', 'rb'))
         pad_id = len(code2id)
         data_path = './data/hf/hf'
-        emb_path = './data/processed/heart_failure.npy'
+        # emb_path = './data/processed/heart_failure.npy'
     elif args.target_disease == 'COPD':
         code2id = pickle.load(open('./data/copd/copd_code2idx_new.pickle', 'rb'))
         pad_id = len(code2id)
         data_path = './data/copd/copd'
-        emb_path = './data/processed/COPD.npy'
+        # emb_path = './data/processed/COPD.npy'
     elif args.target_disease == 'Kidney':
         code2id = pickle.load(open('./data/kidney/kidney_code2idx_new.pickle', 'rb'))
         pad_id = len(code2id)
         data_path = './data/kidney/kidney'
-        emb_path = './data/processed/kidney_disease.npy'
+        # emb_path = './data/processed/kidney_disease.npy'
     elif args.target_disease == 'Dementia':
         code2id = pickle.load(open('./data/dementia/dementia_code2idx_new.pickle', 'rb'))
         pad_id = len(code2id)
         data_path = './data/dementia/dementia'
-        emb_path = './data/processed/dementia.npy'
+        # emb_path = './data/processed/dementia.npy'
     elif args.target_disease == 'Amnesia':
         code2id = pickle.load(open('./data/amnesia/amnesia_code2idx_new.pickle', 'rb'))
         pad_id = len(code2id)
         data_path = './data/amnesia/amnesia'
-        emb_path = './data/processed/amnesia.npy'
+        # emb_path = './data/processed/amnesia.npy'
     else:
         raise ValueError('Invalid disease')
     device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")

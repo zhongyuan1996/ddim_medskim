@@ -78,6 +78,40 @@ def codeMask(input_data, max_num_pervisit, maxlen):
     return batch_mask
 
 class MyDataset(Dataset):
+    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, ehr_pad_id,
+                 device):
+        ehr, self.labels, time_step = pickle.load(open(dir_ehr, 'rb'))
+        # txt = pickle.load(open(dir_txt, 'rb'))
+        self.ehr, _, _ = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
+        # self.txt, self.mask_txt = padMatrix2(txt, max_numblk_pervisit, max_len, txt_pad_id)
+        self.time_step = padTime(time_step, max_len, 100000)
+        # self.code_mask = codeMask(ehr, max_numcode_pervisit, max_len)
+        self.device = device
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+        assert torch.LongTensor(self.mask_txt[idx]).size() == torch.LongTensor(self.txt[idx]).size()
+
+        return torch.tensor(self.ehr[idx], dtype=torch.long).to(self.device),\
+               torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device),\
+               torch.tensor(self.labels[idx], dtype=torch.long).to(self.device)
+
+
+        # return torch.tensor(self.labels[idx], dtype=torch.long).to(self.device), torch.LongTensor(self.ehr[idx]).to(
+        #     self.device), \
+        #        torch.LongTensor(self.mask_ehr[idx]).to(self.device), torch.LongTensor(self.txt[idx]).to(self.device), \
+        #        torch.LongTensor(self.mask_txt[idx]).to(self.device), torch.tensor(self.lengths[idx],
+        #                                                                           dtype=torch.long).to(self.device), \
+        #        torch.Tensor(self.time_step[idx]).to(self.device), torch.FloatTensor(self.code_mask[idx]).to(self.device)
+
+
+
+
+class _MyDataset(Dataset):
     def __init__(self, dir_ehr, dir_txt, max_len, max_numcode_pervisit, max_numblk_pervisit, ehr_pad_id, txt_pad_id,
                  device):
         ehr, self.labels, time_step = pickle.load(open(dir_ehr, 'rb'))
