@@ -351,26 +351,31 @@ class CrossAttention(nn.Module):
         self.wq = nn.Linear(dim, dim, bias=qkv_bias)
         self.wk = nn.Linear(dim, dim, bias=qkv_bias)
         self.wv = nn.Linear(dim, dim, bias=qkv_bias)
-        self.attn_drop = nn.Dropout(attn_drop)
-        self.proj = nn.Linear(dim, dim)
-        self.proj_drop = nn.Dropout(proj_drop)
+
+        self.cross_multi_attn = nn.MultiheadAttention(dim, self.num_heads)
+        # self.attn_drop = nn.Dropout(attn_drop)
+        # self.proj = nn.Linear(dim, dim)
+        # self.proj_drop = nn.Dropout(proj_drop)
 
     def forward(self, x, y):
-# TODO: check x, y input correct
 
         B, N, C = x.shape
         q = self.wq(y[:, 0:1, ...]).reshape(B, 1, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)  # B1C -> B1H(C/H) -> BH1(C/H)
         k = self.wk(x).reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)  # BNC -> BNH(C/H) -> BHN(C/H)
         v = self.wv(x).reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)  # BNC -> BNH(C/H) -> BHN(C/H)
 
-        attn = (q @ k.transpose(-2, -1)) * self.scale  # BH1(C/H) @ BH(C/H)N -> BH1N
-        attn = attn.softmax(dim=-1)
-        attn = self.attn_drop(attn)
+        output, _weights = self.cross_multi_attn(q, k, v)
 
-        x = (attn @ v).transpose(1, 2).reshape(B, 1, C)   # (BH1N @ BHN(C/H)) -> BH1(C/H) -> B1H(C/H) -> B1C
-        x = self.proj(x)
-        x = self.proj_drop(x)
-        return x
+        return output
+
+        # attn = (q @ k.transpose(-2, -1)) * self.scale  # BH1(C/H) @ BH(C/H)N -> BH1N
+        # attn = attn.softmax(dim=-1)
+        # attn = self.attn_drop(attn)
+        #
+        # x = (attn @ v).transpose(1, 2).reshape(B, 1, C)   # (BH1N @ BHN(C/H)) -> BH1(C/H) -> B1H(C/H) -> B1C
+        # x = self.proj(x)
+        # x = self.proj_drop(x)
+        # return x
 
 class CrossAttentionBlock(nn.Module):
 
@@ -385,33 +390,6 @@ class CrossAttentionBlock(nn.Module):
         x = x[:, 0:1, ...] + self.attn(self.norm1(x), self.norm1(y))
         return x
 
-# class LSTMCell(nn.Module):
-#     def __init__(self, ic, hc, forget_bias=1.0):
-#         super(LSTMCell, self).__init__()
-#         self.ic = ic
-#         self.hc = hc
-#         self.forget_bias = forget_bias
-#         self.linear = nn.Linear(ic + hc, hc * 4)
-#         self.tanh = nn.Tanh()
-#         self.sig = nn.Sigmoid()
-#
-#         for m in self.modules():
-#             if isinstance(m, nn.Linear):
-#                 xavier_normal_(m.weight)
-#                 m.bias.data.fill_(0)
-#
-#     def forward(self, x, h, c):
-#         out = self.linear(torch.cat([x, h], 1))
-#         out = out.split(self.hc, 1)
-#
-#         forget_gate = self.sig(out[0] + self.forget_bias)
-#         input_gate = self.sig(out[1])
-#         output_gate = self.sig(out[2])
-#         modulation_gate = self.tanh(out[3])
-#
-#         c = c * forget_gate + modulation_gate * input_gate
-#         h = output_gate * self.tanh(c)
-#         return h, c
 
 
 
@@ -422,6 +400,6 @@ class diffRNN(nn.Module):
         self.vocab_size  = vocab_size
         self.d_model = d_model
         self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
-        self.cross_attention = CrossAttentionBlock(d_model, d_model//8,drop=0.1,attn_drop=0.1)
-        self.lstm = nn.LSTM(d_model,d_model,num_layers=1,batch_first=True, dropout=0.1)
+        self.cross_attention = CrossAttentionBlock(d_model, d_model//8, drop=0.1, attn_drop=0.1)
+        self.lstm = nn.LSTM(d_model,d_model,num_layers=1, batch_first=True, dropout=0.1)
         # self.diffusion = DiffusionModel() TODO： implement difm
