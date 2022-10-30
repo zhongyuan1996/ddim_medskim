@@ -28,6 +28,7 @@ for a, b, c in zip(ehr, label, time_step):
     print("ehr data visit 1 length: " + str(len(a[1])))
     print("time_step visit 1 length: " + str(len(c))) # visit number from a few to 50, icd code length from a few to 20
 
+    print("unsqueeze: "  + str(c.unsqueeze(2)))
     i+=1
     if i >=1 :
         break

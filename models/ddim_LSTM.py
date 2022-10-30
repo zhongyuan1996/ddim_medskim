@@ -40,7 +40,7 @@ class Upsample(nn.Module):
         super().__init__()
         self.with_conv = with_conv
         if self.with_conv:
-            self.conv = torch.nn.Conv2d(in_channels,
+            self.conv = torch.nn.Conv1d(in_channels,
                                         in_channels,
                                         kernel_size=3,
                                         stride=1,
@@ -60,7 +60,7 @@ class Downsample(nn.Module):
         self.with_conv = with_conv
         if self.with_conv:
             # no asymmetric padding in torch conv, must do it ourselves
-            self.conv = torch.nn.Conv2d(in_channels,
+            self.conv = torch.nn.Conv1d(in_channels,
                                         in_channels,
                                         kernel_size=3,
                                         stride=2,
@@ -72,7 +72,7 @@ class Downsample(nn.Module):
             x = torch.nn.functional.pad(x, pad, mode="constant", value=0)
             x = self.conv(x)
         else:
-            x = torch.nn.functional.avg_pool2d(x, kernel_size=2, stride=2)
+            x = torch.nn.functional.avg_pool1d(x, kernel_size=2, stride=2)
         return x
 
 
@@ -86,7 +86,7 @@ class ResnetBlock(nn.Module):
         self.use_conv_shortcut = conv_shortcut
 
         self.norm1 = Normalize(in_channels)
-        self.conv1 = torch.nn.Conv2d(in_channels,
+        self.conv1 = torch.nn.Conv1d(in_channels,
                                      out_channels,
                                      kernel_size=3,
                                      stride=1,
@@ -95,20 +95,20 @@ class ResnetBlock(nn.Module):
                                          out_channels)
         self.norm2 = Normalize(out_channels)
         self.dropout = torch.nn.Dropout(dropout)
-        self.conv2 = torch.nn.Conv2d(out_channels,
+        self.conv2 = torch.nn.Conv1d(out_channels,
                                      out_channels,
                                      kernel_size=3,
                                      stride=1,
                                      padding=1)
         if self.in_channels != self.out_channels:
             if self.use_conv_shortcut:
-                self.conv_shortcut = torch.nn.Conv2d(in_channels,
+                self.conv_shortcut = torch.nn.Conv1d(in_channels,
                                                      out_channels,
                                                      kernel_size=3,
                                                      stride=1,
                                                      padding=1)
             else:
-                self.nin_shortcut = torch.nn.Conv2d(in_channels,
+                self.nin_shortcut = torch.nn.Conv1d(in_channels,
                                                     out_channels,
                                                     kernel_size=1,
                                                     stride=1,
@@ -142,22 +142,22 @@ class AttnBlock(nn.Module):
         self.in_channels = in_channels
 
         self.norm = Normalize(in_channels)
-        self.q = torch.nn.Conv2d(in_channels,
+        self.q = torch.nn.Conv1d(in_channels,
                                  in_channels,
                                  kernel_size=1,
                                  stride=1,
                                  padding=0)
-        self.k = torch.nn.Conv2d(in_channels,
+        self.k = torch.nn.Conv1d(in_channels,
                                  in_channels,
                                  kernel_size=1,
                                  stride=1,
                                  padding=0)
-        self.v = torch.nn.Conv2d(in_channels,
+        self.v = torch.nn.Conv1d(in_channels,
                                  in_channels,
                                  kernel_size=1,
                                  stride=1,
                                  padding=0)
-        self.proj_out = torch.nn.Conv2d(in_channels,
+        self.proj_out = torch.nn.Conv1d(in_channels,
                                         in_channels,
                                         kernel_size=1,
                                         stride=1,
@@ -314,7 +314,7 @@ class diffModel(nn.Module):
         #                                 padding=1)
 
     def forward(self, x, t):
-        assert x.shape[2] == x.shape[3] == self.resolution
+   #     assert x.shape[2] == x.shape[3] == self.resolution
 
         # timestep embedding
         temb = get_timestep_embedding(t, self.ch)
@@ -405,16 +405,92 @@ class CrossAttentionBlock(nn.Module):
         x = x[:, 0:1, ...] + self.attn(self.norm1(x), self.norm1(y))
         return x
 
+class classifyer(nn.Module):
+
+    def __init__(self, d_hiddens_tate):
+        super.__init__()
+        self.layer1 = nn.Linear(d_hiddens_tate, 4 * d_hiddens_tate)
+        self.layer2 = nn.Linear(4 * d_hiddens_tate, 4 * d_hiddens_tate)
+        self.out = nn.Linear(4 * d_hiddens_tate,2)
+
+        self.relu = nn.ReLU()
+        self.drop = nn.Dropout(p=0.1)
+        self.softmax = nn.Softmax()
+    def forward(self, h):
+        h = self.relu(self.layer1(h))
+        h = self.relu(self.layer2(h))
+        h = self.drop(h)
+        h = self.softmax(self.out(h))
+
+        return h
 
 
 
 class diffRNN(nn.Module):
 
-    def __init__(self, vocab_size, d_model, dropout, dropout_emb):
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb):
         super.__init__()
         self.vocab_size  = vocab_size
         self.d_model = d_model
         self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
-        self.cross_attention = CrossAttentionBlock(d_model, d_model//8, drop=0.1, attn_drop=0.1)
-        self.lstm = nn.LSTM(d_model,d_model,num_layers=1, batch_first=True, dropout=0.1)
-        # self.diffusion = DiffusionModel() TODO： implement difm
+        self.cross_attention = CrossAttentionBlock(d_model, 1, drop=0.1, attn_drop=0.1)
+        self.lstm = nn.LSTM(d_model,h_model,num_layers=1, batch_first=True, dropout=0.1)
+        self.diffusion = diffModel()
+        self.classifyer = classifyer(h_model)
+        self.embedding = nn.Embedding(vocab_size+1, d_model, padding_idx=-1)
+        self.emb_dropout = nn.Dropout()
+        self.relu = nn.ReLU()
+        self.tanh = nn.Tanh()
+        self.time_layer = nn.Linear(1, 64)
+        self.time_updim = nn.Linear(64, d_model)
+    def forward(self, input_seqs, lengths, seq_time_step):
+        #outputs, skip_rate = model(ehr, pad_id, time_step, code_mask)
+
+        # seq_time_step = seq_time_step.unsqueeze(2) / 180
+        # time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
+        # time_encoding = self.time_updim(time_feature)
+
+
+        batch_size, seq_len, num_cui_per_visit = input_seqs.size()
+
+        seq_e_i = []
+        seq_h = []
+        seq_c = []
+
+        seq_e_i_gen1 = []
+        seq_e_i_gen2 = []
+        seq_h_gen = []
+        seq_c_gen = []
+        seq_h_prob = []
+        seq_h_gen_prob = []
+        for i in range(seq_len):
+            e_i = self.embedding(input_seqs)
+            e_i = self.emb_dropout(e_i)
+            e_i = self.relu(e_i)
+#TODO: time embedding
+            seq_e_i.append(e_i)
+
+            e_i_gen1 = self.diffusion(e_i, t = np.random.randint(10,1000,size=1))
+            e_i_gen2 = self.cross_attention(e_i_gen1[i],e_i_gen2[i-1])
+
+            seq_e_i_gen1.append(e_i_gen1)
+            seq_e_i_gen2.append(e_i_gen2)
+
+            h_i, c_i = self.lstm(e_i, (seq_h[i-1],seq_c[i-1]))
+            h_i_gen, c_i_gen = self.lstm(e_i_gen2, (seq_h[i-1],seq_c[i-1]))
+
+            seq_h_prob[i] = self.classifyer(h_i)
+            seq_h_gen_prob[i] = self.classifyer(h_i_gen)
+
+        return seq_h_prob, seq_h_gen_prob
+
+
+
+
+
+
+
+
+
+
+
