@@ -11,6 +11,7 @@ from models.dataset import *
 from models.medskim import *
 from utils.utils import check_path, export_config, bool_flag
 from utils.icd_rel import *
+from utils.diffUtil import *
 
 
 def eval_metric(eval_set, model):
@@ -72,6 +73,7 @@ def main():
     parser.add_argument('--mode', default='train', choices=['train', 'pred', 'study'], help='run training or evaluation')
     parser.add_argument('--model', default='Selected', choices=['Selected'])
     parser.add_argument('--save_dir', default='./saved_models/', help='models output directory')
+    parser.add_argument("--config", type = str, required = True, help = "Path to the config file")
     args = parser.parse_args()
     if args.mode == 'train':
         train(args)
@@ -154,7 +156,10 @@ def train(args):
          'weight_decay': 0.0, 'lr': args.learning_rate}
     ]
     optim = Adam(grouped_parameters)
-    loss_func = nn.CrossEntropyLoss(reduction='mean')
+    #TODO : diff loss
+    Loss_func_diff = noise_estimation_loss
+    Loss_func_h = nn.KLDivLoss(reduction='mean')
+    loss_func_pred = nn.CrossEntropyLoss(reduction='mean')
     #scheduler = get_cosine_schedule_with_warmup(optim, args.warmup_steps, 2500)
     print('parameters:')
     for name, param in model.named_parameters():
