@@ -89,13 +89,13 @@ class diffRNN(nn.Module):
         self.d_model = d_model
         self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.cross_attention = CrossAttentionBlock(d_model, 1, drop=0.1, attn_drop=0.1)
-        self.lstm = nn.LSTM(d_model, h_model, num_layers=1, batch_first=True, dropout=0.1)
+        self.lstm = nn.LSTM(d_model, h_model, num_layers=1, batch_first=True, dropout= dropout)
 
         self.diffusion = diffModel(config)
         betas = get_beta_schedule(beta_schedule=config.diffusion.beta_schedule,
-                                       beta_start=config.diffusion.beta_start,
-                                       beta_end=config.diffusion.beta_end,
-                                       num_diffusion_timesteps=config.diffusion.num_diffusion_timesteps)
+                                  beta_start=config.diffusion.beta_start,
+                                  beta_end=config.diffusion.beta_end,
+                                  num_diffusion_timesteps=config.diffusion.num_diffusion_timesteps)
         betas = self.betas = torch.from_numpy(betas).float().to(self.device)
         self.diffusion_num_timesteps = betas.shape[0]
 
@@ -112,7 +112,7 @@ class diffRNN(nn.Module):
 
         self.classifyer = classifyer(h_model)
         self.embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
-        self.emb_dropout = nn.Dropout()
+        self.emb_dropout = nn.Dropout(dropout_emb)
         self.relu = nn.ReLU()
         self.tanh = nn.Tanh()
         self.time_layer = nn.Linear(1, 64)
@@ -125,11 +125,12 @@ class diffRNN(nn.Module):
         # time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
         # time_encoding = self.time_updim(time_feature)
 
-        batch_size, seq_len, num_cui_per_visit = input_seqs.size()
+        _, seq_len, _ = input_seqs.size()
 
         seq_e_i = []
         seq_h = []
         seq_c = []
+        seq_noise_loss = []
 
         seq_e_i_gen1 = []
         seq_e_i_gen2 = []
@@ -144,20 +145,37 @@ class diffRNN(nn.Module):
             # TODO: time embedding
             seq_e_i.append(e_i)
 
-            #TODO: change output of diffusion model from noise to prediction of embedding
-            e_i_gen1 = self.diffusion(e_i, t=np.random.randint(10, 1000, size=1))
-            e_i_gen2 = self.cross_attention(e_i_gen1[i], e_i_gen2[i - 1])
+            diffusion_time_t = np.random.randint(0, 1000, size=1)
+            predicted_noise = self.diffusion(e_i, t=diffusion_time_t)
+            normal_noise = torch.randn_like(e_i)
+            noise_loss = normal_noise - predicted_noise
+            e_i_gen1 = e_i + noise_loss
+            seq_noise_loss.append(noise_loss)
+            try:
+                e_i_gen2 = self.cross_attention(e_i_gen1[i], e_i_gen2[i - 1])
+            except:
+                e_i_gen2 = self.cross_attention(e_i_gen1[i], torch.zeros_like(e_i_gen1[i]))
 
             seq_e_i_gen1.append(e_i_gen1)
             seq_e_i_gen2.append(e_i_gen2)
 
-            h_i, c_i = self.lstm(e_i, (seq_h[i - 1], seq_c[i - 1]))
-            h_i_gen, c_i_gen = self.lstm(e_i_gen2, (seq_h[i - 1], seq_c[i - 1]))
+            try:
+                h_i, c_i = self.lstm(e_i, (seq_h[i - 1], seq_c[i - 1]))
+            except:
+                h_i, c_i = self.lstm(e_i, (torch.zeros_like(e_i), torch.zeros_like(e_i)))
+
+            seq_h.append(h_i)
+            seq_c.append(c_i)
+
+            try:
+                h_i_gen, c_i_gen = self.lstm(e_i_gen2, (seq_h_gen[i - 1], seq_c_gen[i - 1]))
+            except:
+                h_i_gen, c_i_gen = self.lstm(e_i_gen2, (torch.zeros_like(e_i_gen2), torch.zeros_like(e_i_gen2)))
+
+            seq_h_gen.append(h_i_gen)
+            seq_c_gen.append(c_i_gen)
 
             seq_h_prob[i] = self.classifyer(h_i)
             seq_h_gen_prob[i] = self.classifyer(h_i_gen)
 
-        # TODO: add prediction
-        # pred =
-
-        return seq_h_prob, seq_h_gen_prob
+        return seq_h_prob, seq_h_gen_prob, seq_noise_loss

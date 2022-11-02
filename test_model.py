@@ -12,6 +12,8 @@ from models.medskim import *
 from utils.utils import check_path, export_config, bool_flag
 from utils.icd_rel import *
 from utils.diffUtil import *
+from models.ddim_LSTM import *
+import yaml
 
 
 def eval_metric(eval_set, model):
@@ -58,7 +60,8 @@ def main():
     parser.add_argument('--max_num_blks', default=100, type=int, help='max number of blocks in each visit')
     parser.add_argument('--blk_emb_path', default='./data/processed/block_embedding.npy',
                         help='embedding path of blocks')
-    parser.add_argument('--target_disease', default='Heart_failure', choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia'])
+    parser.add_argument('--target_disease', default='Heart_failure',
+                        choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia'])
     parser.add_argument('--target_att_heads', default=4, type=int, help='target disease attention heads number')
     parser.add_argument('--mem_size', default=15, type=int, help='memory size')
     parser.add_argument('--mem_update_size', default=15, type=int, help='memory update size')
@@ -70,10 +73,12 @@ def main():
     parser.add_argument('--warmup_steps', default=200, type=int)
     parser.add_argument('--n_epochs', default=30, type=int)
     parser.add_argument('--log_interval', default=20, type=int)
-    parser.add_argument('--mode', default='train', choices=['train', 'pred', 'study'], help='run training or evaluation')
+    parser.add_argument('--mode', default='train', choices=['train', 'pred', 'study'],
+                        help='run training or evaluation')
     parser.add_argument('--model', default='Selected', choices=['Selected'])
     parser.add_argument('--save_dir', default='./saved_models/', help='models output directory')
-    parser.add_argument("--config", type = str, required = True, help = "Path to the config file")
+    parser.add_argument("--config", type=str, required=True, help="Path to the config file")
+    parser.add_argument("h_model", type=int, required=True, help="dimension of hidden state in LSTM")
     args = parser.parse_args()
     if args.mode == 'train':
         train(args)
@@ -142,10 +147,16 @@ def train(args):
     dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
     test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
 
-    if args.model == 'Selected':
-        model = Selected(pad_id, args.d_model, args.dropout, args.dropout_emb)
-    else:
-        raise ValueError('Invalid model')
+    with open(os.path.join("configs", args.config), "r") as f:
+        config = yaml.safe_load(f)
+
+    model = diffRNN(config, vocab_size=pad_id, d_model=args.d_model, h_model=args.h_model,
+                    dropout=args.dropout, dropout_emb=args.dropout_emb)
+
+    # if args.model == 'Selected':
+    #     model = Selected(pad_id, args.d_model, args.dropout, args.dropout_emb)
+    # else:
+    #     raise ValueError('Invalid model')
     model.to(device)
 
     no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
@@ -156,11 +167,11 @@ def train(args):
          'weight_decay': 0.0, 'lr': args.learning_rate}
     ]
     optim = Adam(grouped_parameters)
-    #TODO : diff loss
-    Loss_func_diff = noise_estimation_loss
+    # TODO : diff loss
+    Loss_func_diff = diff_loss()
     Loss_func_h = nn.KLDivLoss(reduction='mean')
     loss_func_pred = nn.CrossEntropyLoss(reduction='mean')
-    #scheduler = get_cosine_schedule_with_warmup(optim, args.warmup_steps, 2500)
+    # scheduler = get_cosine_schedule_with_warmup(optim, args.warmup_steps, 2500)
     print('parameters:')
     for name, param in model.named_parameters():
         if param.requires_grad:
@@ -182,13 +193,13 @@ def train(args):
             ehr, time_step, labels = data
             optim.zero_grad()
             outputs, skip_rate = model(ehr, lengths, time_step, code_mask)
-            loss = loss_func(outputs, labels) + args.lamda * (skip_rate - args.target_rate)**2
+            loss = Loss_func_diff + Loss_func_h +loss_func_pred
             loss.backward()
             total_loss += (loss.item() / labels.size(0)) * args.batch_size
             if args.max_grad_norm > 0:
                 nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
             optim.step()
-            #scheduler.step()
+            # scheduler.step()
 
             if (global_step + 1) % args.log_interval == 0:
                 total_loss /= args.log_interval
@@ -201,7 +212,8 @@ def train(args):
             global_step += 1
 
         model.eval()
-        train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa = eval_metric(train_dataloader, model)
+        train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa = eval_metric(train_dataloader,
+                                                                                                 model)
         dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa = eval_metric(dev_dataloader, model)
         test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa = eval_metric(test_dataloader, model)
         print('-' * 71)
@@ -229,9 +241,9 @@ def train(args):
                                                                                              d_roc_auc,
                                                                                              t_roc_auc))
         print('| step {:5} | train_pr {:7.4f} | dev_pr {:7.4f} | test_pr {:7.4f} '.format(global_step,
-                                                                                             tr_pr_auc,
-                                                                                             d_pr_auc,
-                                                                                             t_pr_auc))
+                                                                                          tr_pr_auc,
+                                                                                          d_pr_auc,
+                                                                                          t_pr_auc))
         print('-' * 71)
         if d_f1 >= best_dev_auc:
             best_dev_auc = d_f1
@@ -321,7 +333,8 @@ def pred(args):
         with open(log_path, 'w') as fout:
             fout.write('test_auc,test_f1,test_pre,test_recall,test_pr_auc,test_kappa,skip_rate\n')
             fout.write(
-                '{},{},{},{},{},{},{}\n'.format(t_roc_auc, t_f1, t_precision, t_recall, t_pr_auc, t_kappa, np.mean(skip_rates)))
+                '{},{},{},{},{},{},{}\n'.format(t_roc_auc, t_f1, t_precision, t_recall, t_pr_auc, t_kappa,
+                                                np.mean(skip_rates)))
         with open(os.path.join(args.save_dir, 'prediction.csv'), 'w') as fout2:
             fout2.write('prediciton,score,label\n')
             for i in range(len(y_true)):
@@ -445,8 +458,6 @@ def pred(args):
 #                         fout.write("v_skip: {}".format(str(v_skip)) + '\n')
 #                         fout.write("c_skip: {}".format(str(c_skip)) + '\n')
 #                         fout.write('\n')
-
-
 
 
 if __name__ == '__main__':
