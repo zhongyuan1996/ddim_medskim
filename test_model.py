@@ -10,7 +10,7 @@ from torch.optim import Adam
 from models.dataset import *
 from models.medskim import *
 from utils.utils import check_path, export_config, bool_flag
-from utils.icd_rel import *
+# from utils.icd_rel import *
 from utils.diffUtil import *
 from models.ddim_LSTM import *
 import yaml
@@ -77,13 +77,13 @@ def main():
                         help='run training or evaluation')
     parser.add_argument('--model', default='Selected', choices=['Selected'])
     parser.add_argument('--save_dir', default='./saved_models/', help='models output directory')
-    parser.add_argument("--config", type=str, required=True, help="Path to the config file")
-    parser.add_argument("h_model", type=int, required=True, help="dimension of hidden state in LSTM")
+    parser.add_argument("--config", type=str, default='configs/ehr.yml', help="Path to the config file")
+    parser.add_argument("--h_model", type=int, default=256, help="dimension of hidden state in LSTM")
     args = parser.parse_args()
     if args.mode == 'train':
         train(args)
-    elif args.mode == 'pred':
-        pred(args)
+    # elif args.mode == 'pred':
+    #     pred(args)
     # elif args.mode == 'study':
     #     study(args)
     else:
@@ -106,8 +106,8 @@ def train(args):
     with open(log_path, 'w') as fout:
         fout.write('step,train_auc,dev_auc,test_auc\n')
 
-    blk_emb = np.load(args.blk_emb_path)
-    blk_pad_id = len(blk_emb) - 1
+    # blk_emb = np.load(args.blk_emb_path)
+    # blk_pad_id = len(blk_emb) - 1
     # icd2cui = pickle.load(open('./data/semmed/icd2cui.pickle', 'rb'))
     if args.target_disease == 'Heart_failure':
         code2id = pickle.load(open('./data/hf/hf_code2idx_new.pickle', 'rb'))
@@ -167,7 +167,6 @@ def train(args):
          'weight_decay': 0.0, 'lr': args.learning_rate}
     ]
     optim = Adam(grouped_parameters)
-    # TODO : diff loss
     Loss_func_diff = diff_loss()
     Loss_func_h = nn.KLDivLoss(reduction='mean')
     loss_func_pred = nn.CrossEntropyLoss(reduction='mean')
@@ -191,9 +190,13 @@ def train(args):
         start_time = time.time()
         for i, data in enumerate(train_dataloader):
             ehr, time_step, labels = data
+            if labels == 1:
+                label = [0,1]
+            else:
+                label = [1,0]
             optim.zero_grad()
-            outputs, skip_rate = model(ehr, lengths, time_step, code_mask)
-            loss = Loss_func_diff + Loss_func_h +loss_func_pred
+            seq_h_prob, seq_h_gen_prob, seq_noise_loss = model(ehr, time_step)
+            loss = Loss_func_diff(seq_noise_loss) + Loss_func_h(seq_h_gen_prob,seq_h_prob) + 0.8 * loss_func_pred(seq_h_gen_prob[-1], label) + loss_func_pred(seq_h_prob[-1], label)
             loss.backward()
             total_loss += (loss.item() / labels.size(0)) * args.batch_size
             if args.max_grad_norm > 0:
@@ -263,82 +266,82 @@ def train(args):
     print()
 
 
-def pred(args):
-    model_path = os.path.join(args.save_dir, 'models.pt')
-    model, old_args = torch.load(model_path)
-    device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
-    model.to(device)
-    model.eval()
-    blk_emb = np.load(old_args.blk_emb_path)
-    blk_pad_id = len(blk_emb) - 1
-    if old_args.target_disease == 'Heart_failure':
-        code2id = pickle.load(open('./data/hf/hf_code2idx_new.pickle', 'rb'))
-        # id2code = {int(v): k for k, v in code2id.items()}
-        # code2topic = pickle.load(open('./data/hf/hf_code2topic.pickle', 'rb'))
-        pad_id = len(code2id)
-        data_path = './data/hf/hf'
-    elif old_args.target_disease == 'COPD':
-        code2id = pickle.load(open('./data/copd/copd_code2idx_new.pickle', 'rb'))
-        # id2code = {int(v): k for k, v in code2id.items()}
-        # code2topic = pickle.load(open('./data/copd/copd_code2topic.pickle', 'rb'))
-        pad_id = len(code2id)
-        data_path = './data/copd/copd'
-    elif old_args.target_disease == 'Kidney':
-        code2id = pickle.load(open('./data/kidney/kidney_code2idx_new.pickle', 'rb'))
-        # id2code = {int(v): k for k, v in code2id.items()}
-        # code2topic = pickle.load(open('./data/kidney/kidney_code2topic.pickle', 'rb'))
-        pad_id = len(code2id)
-        data_path = './data/kidney/kidney'
-    elif old_args.target_disease == 'Amnesia':
-        code2id = pickle.load(open('./data/amnesia/amnesia_code2idx_new.pickle', 'rb'))
-        # id2code = {int(v): k for k, v in code2id.items()}
-        # code2topic = pickle.load(open('./data/amnesia/amnesia_code2topic.pickle', 'rb'))
-        pad_id = len(code2id)
-        data_path = './data/amnesia/amnesia'
-    elif old_args.target_disease == 'Dementia':
-        code2id = pickle.load(open('./data/dementia/dementia_code2idx_new.pickle', 'rb'))
-        # id2code = {int(v): k for k, v in code2id.items()}
-        # code2topic = pickle.load(open('./data/dementia/dementia_code2topic.pickle', 'rb'))
-        pad_id = len(code2id)
-        data_path = './data/dementia/dementia'
-    else:
-        raise ValueError('Invalid disease')
-    # dev_dataset = MyDataset(data_path + '_validation_new.pickle', data_path + '_validation_txt.pickle',
-    #                         old_args.max_len, old_args.max_num_codes, old_args.max_num_blks, pad_id, blk_pad_id, device)
-    test_dataset = MyDataset(data_path + '_testing_new.pickle', old_args.max_len,
-                             old_args.max_num_codes, pad_id, device)
-    # dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
-    test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
-    # dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc = eval_metric(dev_dataloader, model)
-    test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa = eval_metric(test_dataloader, model)
-    with torch.no_grad():
-        y_true = np.array([])
-        y_pred = np.array([])
-        y_score = np.array([])
-        skip_rates = np.array([])
-        for i, data in enumerate(test_dataloader):
-            ehr, time_step, labels = data
-            logits, skip_rate = model(ehr, lengths, time_step, code_mask)
-            scores = torch.softmax(logits, dim=-1)
-            scores = scores.data.cpu().numpy()
-            labels = labels.data.cpu().numpy()
-            skip_rate = skip_rate.data.cpu().numpy()
-            score = scores[:, 1]
-            pred = scores.argmax(1)
-            y_true = np.concatenate((y_true, labels))
-            y_pred = np.concatenate((y_pred, pred))
-            y_score = np.concatenate((y_score, score))
-            skip_rates = np.concatenate((skip_rates, [skip_rate]))
-        log_path = os.path.join(args.save_dir, 'result.csv')
-        with open(log_path, 'w') as fout:
-            fout.write('test_auc,test_f1,test_pre,test_recall,test_pr_auc,test_kappa,skip_rate\n')
-            fout.write(
-                '{},{},{},{},{},{},{}\n'.format(t_roc_auc, t_f1, t_precision, t_recall, t_pr_auc, t_kappa,
-                                                np.mean(skip_rates)))
-        with open(os.path.join(args.save_dir, 'prediction.csv'), 'w') as fout2:
-            fout2.write('prediciton,score,label\n')
-            for i in range(len(y_true)):
-                fout2.write('{},{},{}\n'.format(y_pred[i], y_score[i], y_true[i]))
+# def pred(args):
+#     model_path = os.path.join(args.save_dir, 'models.pt')
+#     model, old_args = torch.load(model_path)
+#     device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
+#     model.to(device)
+#     model.eval()
+#     blk_emb = np.load(old_args.blk_emb_path)
+#     blk_pad_id = len(blk_emb) - 1
+#     if old_args.target_disease == 'Heart_failure':
+#         code2id = pickle.load(open('./data/hf/hf_code2idx_new.pickle', 'rb'))
+#         # id2code = {int(v): k for k, v in code2id.items()}
+#         # code2topic = pickle.load(open('./data/hf/hf_code2topic.pickle', 'rb'))
+#         pad_id = len(code2id)
+#         data_path = './data/hf/hf'
+#     elif old_args.target_disease == 'COPD':
+#         code2id = pickle.load(open('./data/copd/copd_code2idx_new.pickle', 'rb'))
+#         # id2code = {int(v): k for k, v in code2id.items()}
+#         # code2topic = pickle.load(open('./data/copd/copd_code2topic.pickle', 'rb'))
+#         pad_id = len(code2id)
+#         data_path = './data/copd/copd'
+#     elif old_args.target_disease == 'Kidney':
+#         code2id = pickle.load(open('./data/kidney/kidney_code2idx_new.pickle', 'rb'))
+#         # id2code = {int(v): k for k, v in code2id.items()}
+#         # code2topic = pickle.load(open('./data/kidney/kidney_code2topic.pickle', 'rb'))
+#         pad_id = len(code2id)
+#         data_path = './data/kidney/kidney'
+#     elif old_args.target_disease == 'Amnesia':
+#         code2id = pickle.load(open('./data/amnesia/amnesia_code2idx_new.pickle', 'rb'))
+#         # id2code = {int(v): k for k, v in code2id.items()}
+#         # code2topic = pickle.load(open('./data/amnesia/amnesia_code2topic.pickle', 'rb'))
+#         pad_id = len(code2id)
+#         data_path = './data/amnesia/amnesia'
+#     elif old_args.target_disease == 'Dementia':
+#         code2id = pickle.load(open('./data/dementia/dementia_code2idx_new.pickle', 'rb'))
+#         # id2code = {int(v): k for k, v in code2id.items()}
+#         # code2topic = pickle.load(open('./data/dementia/dementia_code2topic.pickle', 'rb'))
+#         pad_id = len(code2id)
+#         data_path = './data/dementia/dementia'
+#     else:
+#         raise ValueError('Invalid disease')
+#     # dev_dataset = MyDataset(data_path + '_validation_new.pickle', data_path + '_validation_txt.pickle',
+#     #                         old_args.max_len, old_args.max_num_codes, old_args.max_num_blks, pad_id, blk_pad_id, device)
+#     test_dataset = MyDataset(data_path + '_testing_new.pickle', old_args.max_len,
+#                              old_args.max_num_codes, pad_id, device)
+#     # dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
+#     test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
+#     # dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc = eval_metric(dev_dataloader, model)
+#     test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa = eval_metric(test_dataloader, model)
+#     with torch.no_grad():
+#         y_true = np.array([])
+#         y_pred = np.array([])
+#         y_score = np.array([])
+#         skip_rates = np.array([])
+#         for i, data in enumerate(test_dataloader):
+#             ehr, time_step, labels = data
+#             logits, skip_rate = model(ehr, lengths, time_step, code_mask)
+#             scores = torch.softmax(logits, dim=-1)
+#             scores = scores.data.cpu().numpy()
+#             labels = labels.data.cpu().numpy()
+#             skip_rate = skip_rate.data.cpu().numpy()
+#             score = scores[:, 1]
+#             pred = scores.argmax(1)
+#             y_true = np.concatenate((y_true, labels))
+#             y_pred = np.concatenate((y_pred, pred))
+#             y_score = np.concatenate((y_score, score))
+#             skip_rates = np.concatenate((skip_rates, [skip_rate]))
+#         log_path = os.path.join(args.save_dir, 'result.csv')
+#         with open(log_path, 'w') as fout:
+#             fout.write('test_auc,test_f1,test_pre,test_recall,test_pr_auc,test_kappa,skip_rate\n')
+#             fout.write(
+#                 '{},{},{},{},{},{},{}\n'.format(t_roc_auc, t_f1, t_precision, t_recall, t_pr_auc, t_kappa,
+#                                                 np.mean(skip_rates)))
+#         with open(os.path.join(args.save_dir, 'prediction.csv'), 'w') as fout2:
+#             fout2.write('prediciton,score,label\n')
+#             for i in range(len(y_true)):
+#                 fout2.write('{},{},{}\n'.format(y_pred[i], y_score[i], y_true[i]))
 
 
 # def study(args):

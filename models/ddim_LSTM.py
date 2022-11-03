@@ -118,7 +118,7 @@ class diffRNN(nn.Module):
         self.time_layer = nn.Linear(1, 64)
         self.time_updim = nn.Linear(64, d_model)
 
-    def forward(self, input_seqs, lengths, seq_time_step):
+    def forward(self, input_seqs, seq_time_step):
         # outputs, skip_rate = model(ehr, pad_id, time_step, code_mask)
 
         # seq_time_step = seq_time_step.unsqueeze(2) / 180

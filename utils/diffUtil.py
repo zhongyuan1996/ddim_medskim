@@ -85,9 +85,9 @@ def noise_estimation_loss(model,
     x = x0 * a.sqrt() + e * (1.0 - a).sqrt()
     output = model(x, t.float())
     if keepdim:
-        return (e - output).square().sum(dim=(1, 2, 3))
+        return (e - output).square().sum(dim=(1, 2))
     else:
-        return (e - output).square().sum(dim=(1, 2, 3)).mean(dim=0)
+        return (e - output).square().sum(dim=(1, 2)).mean(dim=0)
 
 def diff_loss(seq_loss: torch.Tensor):
-    return seq_loss.square().sum(dim=(1, 2, 3)).mean(dim=0)
+    return seq_loss.square().sum(dim=(1, 2)).mean(dim=0)
