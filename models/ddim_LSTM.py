@@ -63,7 +63,7 @@ class CrossAttentionBlock(nn.Module):
 class classifyer(nn.Module):
 
     def __init__(self, d_hiddens_tate):
-        super.__init__()
+        super().__init__()
         self.layer1 = nn.Linear(d_hiddens_tate, 4 * d_hiddens_tate)
         self.layer2 = nn.Linear(4 * d_hiddens_tate, 4 * d_hiddens_tate)
         self.out = nn.Linear(4 * d_hiddens_tate, 2)
@@ -83,19 +83,22 @@ class classifyer(nn.Module):
 
 class diffRNN(nn.Module):
 
-    def __init__(self, config, vocab_size, d_model, h_model, dropout, dropout_emb):
-        super.__init__()
+    def __init__(self, config, vocab_size, d_model, h_model, dropout, dropout_emb, device):
+        super().__init__()
+        self.config = config
         self.vocab_size = vocab_size
         self.d_model = d_model
+        self.device = device
+        self.model_var_type = self.config.model.var_type
         self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.cross_attention = CrossAttentionBlock(d_model, 1, drop=0.1, attn_drop=0.1)
-        self.lstm = nn.LSTM(d_model, h_model, num_layers=1, batch_first=True, dropout= dropout)
+        self.lstm = nn.LSTM(d_model, h_model, num_layers=1, batch_first=True, dropout=dropout)
 
-        self.diffusion = diffModel(config)
-        betas = get_beta_schedule(beta_schedule=config.diffusion.beta_schedule,
-                                  beta_start=config.diffusion.beta_start,
-                                  beta_end=config.diffusion.beta_end,
-                                  num_diffusion_timesteps=config.diffusion.num_diffusion_timesteps)
+        self.diffusion = diffModel(self.config)
+        betas = get_beta_schedule(beta_schedule=self.config.diffusion.beta_schedule,
+                                  beta_start=self.config.diffusion.beta_start,
+                                  beta_end=self.config.diffusion.beta_end,
+                                  num_diffusion_timesteps=self.config.diffusion.num_diffusion_timesteps)
         betas = self.betas = torch.from_numpy(betas).float().to(self.device)
         self.diffusion_num_timesteps = betas.shape[0]
 
@@ -125,12 +128,14 @@ class diffRNN(nn.Module):
         # time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
         # time_encoding = self.time_updim(time_feature)
 
-        _, seq_len, _ = input_seqs.size()
 
+        batch_size, visit_size, icd_code_size = input_seqs.size()
+        #TODO seq_e_i no need to exist, input data is batch of [64,50,20]
         seq_e_i = []
         seq_h = []
         seq_c = []
-        seq_noise_loss = []
+        seq_normal_noise = []
+        seq_predicted_loss = []
 
         seq_e_i_gen1 = []
         seq_e_i_gen2 = []
@@ -138,19 +143,28 @@ class diffRNN(nn.Module):
         seq_c_gen = []
         seq_h_prob = []
         seq_h_gen_prob = []
-        for i in range(seq_len):
-            e_i = self.embedding(input_seqs)
-            e_i = self.emb_dropout(e_i)
-            e_i = self.relu(e_i)
-            # TODO: time embedding
-            seq_e_i.append(e_i)
 
-            diffusion_time_t = np.random.randint(0, 1000, size=1)
-            predicted_noise = self.diffusion(e_i, t=diffusion_time_t)
-            normal_noise = torch.randn_like(e_i)
-            noise_loss = normal_noise - predicted_noise
-            e_i_gen1 = e_i + noise_loss
-            seq_noise_loss.append(noise_loss)
+
+        #TODO: time embedding
+        #for each visit the data is in the form of 20 * 256
+        #TODO: d_model was set to 20 to match the dimension of ICD code, working to change height and width of diffusion model
+        e_i = self.embedding(input_seqs)
+        e_i = self.emb_dropout(e_i)
+        e_i = self.relu(e_i)
+        diffusion_time_t = torch.randint(
+            low=0, high=self.config.diffusion.num_diffusion_timesteps, size=[e_i.shape[0], ]).to(self.device)
+        #TODO: check upsample
+        predicted_noise = self.diffusion(e_i, t=diffusion_time_t)
+        normal_noise = torch.randn_like(e_i)
+        noise_loss = normal_noise - predicted_noise
+        e_i_gen1 = e_i + noise_loss
+
+        for i in range(visit_size):
+
+            # seq_normal_noise.append(normal_noise)
+            # seq_predicted_loss.append(predicted_noise)
+
+            #TODO: dimension =2,3
             try:
                 e_i_gen2 = self.cross_attention(e_i_gen1[i], e_i_gen2[i - 1])
             except:
@@ -178,4 +192,4 @@ class diffRNN(nn.Module):
             seq_h_prob[i] = self.classifyer(h_i)
             seq_h_gen_prob[i] = self.classifyer(h_i_gen)
 
-        return seq_h_prob, seq_h_gen_prob, seq_noise_loss
+        return seq_h_prob, seq_h_gen_prob, seq_normal_noise, seq_predicted_loss

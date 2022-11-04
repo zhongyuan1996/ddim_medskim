@@ -15,7 +15,15 @@ from utils.diffUtil import *
 from models.ddim_LSTM import *
 import yaml
 
-
+def dict2namespace(config):
+    namespace = argparse.Namespace()
+    for key, value in config.items():
+        if isinstance(value, dict):
+            new_value = dict2namespace(value)
+        else:
+            new_value = value
+        setattr(namespace, key, new_value)
+    return namespace
 def eval_metric(eval_set, model):
     model.eval()
     with torch.no_grad():
@@ -50,7 +58,7 @@ def main():
     parser.add_argument('--seed', default=0, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
-    parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
+    parser.add_argument('--d_model', default=20, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
     parser.add_argument('--dropout_emb', default=0.1, type=float, help='dropout rate of embedding layers')
     parser.add_argument('--num_layers', default=1, type=int, help='number of transformer layers of EHR encoder')
@@ -77,7 +85,7 @@ def main():
                         help='run training or evaluation')
     parser.add_argument('--model', default='Selected', choices=['Selected'])
     parser.add_argument('--save_dir', default='./saved_models/', help='models output directory')
-    parser.add_argument("--config", type=str, default='configs/ehr.yml', help="Path to the config file")
+    parser.add_argument("--config", type=str, default='ehr.yml', help="Path to the config file")
     parser.add_argument("--h_model", type=int, default=256, help="dimension of hidden state in LSTM")
     args = parser.parse_args()
     if args.mode == 'train':
@@ -147,11 +155,13 @@ def train(args):
     dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
     test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
 
-    with open(os.path.join("configs", args.config), "r") as f:
+    with open(os.path.join("configs/", args.config), "r") as f:
+
         config = yaml.safe_load(f)
+    config = dict2namespace(config)
 
     model = diffRNN(config, vocab_size=pad_id, d_model=args.d_model, h_model=args.h_model,
-                    dropout=args.dropout, dropout_emb=args.dropout_emb)
+                    dropout=args.dropout, dropout_emb=args.dropout_emb, device = device)
 
     # if args.model == 'Selected':
     #     model = Selected(pad_id, args.d_model, args.dropout, args.dropout_emb)
@@ -167,7 +177,7 @@ def train(args):
          'weight_decay': 0.0, 'lr': args.learning_rate}
     ]
     optim = Adam(grouped_parameters)
-    Loss_func_diff = diff_loss()
+    Loss_func_diff = nn.MSELoss(reduction='mean')
     Loss_func_h = nn.KLDivLoss(reduction='mean')
     loss_func_pred = nn.CrossEntropyLoss(reduction='mean')
     # scheduler = get_cosine_schedule_with_warmup(optim, args.warmup_steps, 2500)
@@ -188,15 +198,19 @@ def train(args):
         print('epoch: {:5} '.format(epoch_id))
         model.train()
         start_time = time.time()
+
         for i, data in enumerate(train_dataloader):
+
             ehr, time_step, labels = data
-            if labels == 1:
-                label = [0,1]
-            else:
-                label = [1,0]
+
+            # print('###################################################')
+            # print(time_step)
+            # print('###################################################')
+            # print(labels)
+
             optim.zero_grad()
-            seq_h_prob, seq_h_gen_prob, seq_noise_loss = model(ehr, time_step)
-            loss = Loss_func_diff(seq_noise_loss) + Loss_func_h(seq_h_gen_prob,seq_h_prob) + 0.8 * loss_func_pred(seq_h_gen_prob[-1], label) + loss_func_pred(seq_h_prob[-1], label)
+            seq_h_prob, seq_h_gen_prob, seq_normal_noise, seq_predicted_loss = model(ehr, time_step)
+            loss = Loss_func_diff(seq_predicted_loss, seq_normal_noise) + Loss_func_h(seq_h_gen_prob,seq_h_prob) + 0.8 * loss_func_pred(seq_h_gen_prob[-1], label) + loss_func_pred(seq_h_prob[-1], label)
             loss.backward()
             total_loss += (loss.item() / labels.size(0)) * args.batch_size
             if args.max_grad_norm > 0:
