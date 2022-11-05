@@ -328,7 +328,8 @@ class diffModel(nn.Module):
         # upsampling
         for i_level in reversed(range(self.num_resolutions)):
             for i_block in range(self.num_res_blocks + 1):
-
+                print('i_level:' + str(i_level))
+                print('i_block:' + str(i_block))
                 h = self.up[i_level].block[i_block](
                     torch.cat([h, hs.pop()], dim=1), temb)
                 if len(self.up[i_level].attn) > 0:
@@ -341,3 +342,5 @@ class diffModel(nn.Module):
         h = nonlinearity(h)
         h = self.conv_out(h)
         return h
+
+

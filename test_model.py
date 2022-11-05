@@ -24,6 +24,32 @@ def dict2namespace(config):
             new_value = value
         setattr(namespace, key, new_value)
     return namespace
+# def eval_metric(eval_set, model):
+#     model.eval()
+#     with torch.no_grad():
+#         y_true = np.array([])
+#         y_pred = np.array([])
+#         y_score = np.array([])
+#         for i, data in enumerate(eval_set):
+#             labels, ehr, mask, txt, _, lengths, time_step, code_mask = data
+#             logits, _ = model(ehr, lengths, time_step, code_mask)
+#             scores = torch.softmax(logits, dim=-1)
+#             scores = scores.data.cpu().numpy()
+#             labels = labels.data.cpu().numpy()
+#             score = scores[:, 1]
+#             pred = scores.argmax(1)
+#             y_true = np.concatenate((y_true, labels))
+#             y_pred = np.concatenate((y_pred, pred))
+#             y_score = np.concatenate((y_score, score))
+#         accuary = accuracy_score(y_true, y_pred)
+#         precision = precision_score(y_true, y_pred)
+#         recall = recall_score(y_true, y_pred)
+#         f1 = f1_score(y_true, y_pred)
+#         roc_auc = roc_auc_score(y_true, y_score)
+#         lr_precision, lr_recall, _ = precision_recall_curve(y_true, y_score)
+#         pr_auc = auc(lr_recall, lr_precision)
+#         kappa = cohen_kappa_score(y_true, y_pred)
+#     return accuary, precision, recall, f1, roc_auc, pr_auc, kappa
 def eval_metric(eval_set, model):
     model.eval()
     with torch.no_grad():
@@ -31,12 +57,14 @@ def eval_metric(eval_set, model):
         y_pred = np.array([])
         y_score = np.array([])
         for i, data in enumerate(eval_set):
-            labels, ehr, mask, txt, _, lengths, time_step, code_mask = data
-            logits, _ = model(ehr, lengths, time_step, code_mask)
-            scores = torch.softmax(logits, dim=-1)
+            ehr, time_step, labels = data
+            _,_,final_prediction,_,_,_ = model(ehr, time_step)
+            scores = final_prediction
             scores = scores.data.cpu().numpy()
             labels = labels.data.cpu().numpy()
             score = scores[:, 1]
+            print(score)
+            exit()
             pred = scores.argmax(1)
             y_true = np.concatenate((y_true, labels))
             y_pred = np.concatenate((y_pred, pred))
@@ -51,14 +79,13 @@ def eval_metric(eval_set, model):
         kappa = cohen_kappa_score(y_true, y_pred)
     return accuary, precision, recall, f1, roc_auc, pr_auc, kappa
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
     parser.add_argument('--seed', default=0, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
-    parser.add_argument('--d_model', default=20, type=int, help='dimension of hidden layers')
+    parser.add_argument('--d_model', default=64, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
     parser.add_argument('--dropout_emb', default=0.1, type=float, help='dropout rate of embedding layers')
     parser.add_argument('--num_layers', default=1, type=int, help='number of transformer layers of EHR encoder')
@@ -179,7 +206,7 @@ def train(args):
     optim = Adam(grouped_parameters)
     Loss_func_diff = nn.MSELoss(reduction='mean')
     Loss_func_h = nn.KLDivLoss(reduction='mean')
-    loss_func_pred = nn.CrossEntropyLoss(reduction='mean')
+    loss_func_pred = nn.BCELoss(reduction='mean')
     # scheduler = get_cosine_schedule_with_warmup(optim, args.warmup_steps, 2500)
     print('parameters:')
     for name, param in model.named_parameters():
@@ -203,14 +230,10 @@ def train(args):
 
             ehr, time_step, labels = data
 
-            # print('###################################################')
-            # print(time_step)
-            # print('###################################################')
-            # print(labels)
-
             optim.zero_grad()
-            seq_h_prob, seq_h_gen_prob, seq_normal_noise, seq_predicted_loss = model(ehr, time_step)
-            loss = Loss_func_diff(seq_predicted_loss, seq_normal_noise) + Loss_func_h(seq_h_gen_prob,seq_h_prob) + 0.8 * loss_func_pred(seq_h_gen_prob[-1], label) + loss_func_pred(seq_h_prob[-1], label)
+            h_res, h_gen_v2, pred, pred_v2, noise, diff_noise = model(ehr, time_step)
+
+            loss = Loss_func_diff(diff_noise, noise) + Loss_func_h(h_res,h_gen_v2) + 0.8 * loss_func_pred(pred_v2, labels) + loss_func_pred(pred, labels)
             loss.backward()
             total_loss += (loss.item() / labels.size(0)) * args.batch_size
             if args.max_grad_norm > 0:
