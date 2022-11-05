@@ -62,13 +62,19 @@ def eval_metric(eval_set, model):
             scores = final_prediction
             scores = scores.data.cpu().numpy()
             labels = labels.data.cpu().numpy()
+            labels = [1 if label[0] == 1 else 0 for label in labels]
+            # print('scores######################################')
+            # print(scores)
             score = scores[:, 1]
-            print(score)
-            exit()
+            # print('score######################################')
+            # print(score)
             pred = scores.argmax(1)
+            # print('pred######################################')
+            # print(pred)
             y_true = np.concatenate((y_true, labels))
             y_pred = np.concatenate((y_pred, pred))
             y_score = np.concatenate((y_score, score))
+        # y_true = y_true[1:,]
         accuary = accuracy_score(y_true, y_pred)
         precision = precision_score(y_true, y_pred)
         recall = recall_score(y_true, y_pred)
@@ -83,7 +89,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
     parser.add_argument('--seed', default=0, type=int, help='seed')
-    parser.add_argument('-bs', '--batch_size', default=64, type=int)
+    parser.add_argument('-bs', '--batch_size', default=32, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
     parser.add_argument('--d_model', default=64, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
@@ -145,7 +151,7 @@ def train(args):
     # blk_pad_id = len(blk_emb) - 1
     # icd2cui = pickle.load(open('./data/semmed/icd2cui.pickle', 'rb'))
     if args.target_disease == 'Heart_failure':
-        code2id = pickle.load(open('./data/hf/hf_code2idx_new.pickle', 'rb'))
+        code2id = pickle.load(open('data/hf/hf_code2idx_new.pickle', 'rb'))
         pad_id = len(code2id)
         data_path = './data/hf/hf'
         # emb_path = './data/processed/heart_failure.npy'
