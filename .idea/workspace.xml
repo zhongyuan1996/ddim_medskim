@@ -4,18 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="more debug">
-      <change beforePath="$PROJECT_DIR$/.idea/ddim_medskim.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/ddim_medskim.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_2022_11_3_10_39__Changes_.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_2022_11_3_10_39__Changes_.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/hf/hf_code2idx_new.pickle" beforeDir="false" afterPath="$PROJECT_DIR$/data/hf/hf_code2idx_new.pickle" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/helloworld.py" beforeDir="false" afterPath="$PROJECT_DIR$/helloworld.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/dataset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/saved_models/config.json" beforeDir="false" afterPath="$PROJECT_DIR$/saved_models/config.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/saved_models/log.csv" beforeDir="false" afterPath="$PROJECT_DIR$/saved_models/log.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_model.py" afterDir="false" />
-    </list>
+    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="runnable" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -195,7 +184,7 @@
       <workItem from="1667530174449" duration="584000" />
       <workItem from="1667568818792" duration="17763000" />
       <workItem from="1667655510989" duration="11047000" />
-      <workItem from="1667683876620" duration="5356000" />
+      <workItem from="1667683876620" duration="5664000" />
     </task>
     <task id="LOCAL-00001" summary="implementing diffusion model">
       <created>1667068514499</created>
@@ -218,7 +207,21 @@
       <option name="project" value="LOCAL" />
       <updated>1667528745021</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="runnable">
+      <created>1667692539807</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1667692539807</updated>
+    </task>
+    <task id="LOCAL-00005" summary="runnable">
+      <created>1667692547041</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1667692547041</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -246,7 +249,8 @@
     <MESSAGE value="implementing diffusion model" />
     <MESSAGE value="implemented diffusion model" />
     <MESSAGE value="more debug" />
-    <option name="LAST_COMMIT_MESSAGE" value="more debug" />
+    <MESSAGE value="runnable" />
+    <option name="LAST_COMMIT_MESSAGE" value="runnable" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/ddim_medskim$diffusion.coverage" NAME="diffusion Coverage Results" MODIFIED="1667527004134" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
