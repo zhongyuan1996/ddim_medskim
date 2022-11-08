@@ -6,67 +6,6 @@ from models.diffusion import diffModel
 from utils.diffUtil import get_beta_schedule
 from models.unet import *
 
-
-class CrossAttention(nn.Module):
-    def __init__(self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0.):
-        super().__init__()
-        self.num_heads = num_heads
-        head_dim = dim // num_heads
-        # NOTE scale factor was wrong in my original version, can set manually to be compat with prev weights
-        self.scale = qk_scale or head_dim ** -0.5
-
-        self.wq = nn.Linear(dim, dim, bias=qkv_bias)
-        self.wk = nn.Linear(dim, dim, bias=qkv_bias)
-        self.wv = nn.Linear(dim, dim, bias=qkv_bias)
-
-        self.cross_multi_attn = nn.MultiheadAttention(dim, self.num_heads)
-        # self.attn_drop = nn.Dropout(attn_drop)
-        # self.proj = nn.Linear(dim, dim)
-        # self.proj_drop = nn.Dropout(proj_drop)
-
-    def forward(self, x, y):
-        B, N, C = x.shape
-
-        q = self.wq(y[:, 0:1, ...]).permute(1, 0,
-                                            2)  # .reshape(B, 1, self.num_heads, C // self.num_heads).permute(1,0,2)  # B1C -> B1H(C/H) -> BH1(C/H)
-        k = self.wk(x).permute(1, 0,
-                               2)  # .reshape(B, N, self.num_heads, C // self.num_heads). #.permute(0, 2, 1,3)  # BNC -> BNH(C/H) -> BHN(C/H)
-        v = self.wv(x).permute(1, 0,
-                               2)  # .reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1,3)  # BNC -> BNH(C/H) -> BHN(C/H)
-        # print(q.shape)
-        # print(k.shape)
-        # print(v.shape)
-
-        output, _weights = self.cross_multi_attn(q, k, v)
-
-        return output
-
-        # attn = (q @ k.transpose(-2, -1)) * self.scale  # BH1(C/H) @ BH(C/H)N -> BH1N
-        # attn = attn.softmax(dim=-1)
-        # attn = self.attn_drop(attn)
-        #
-        # x = (attn @ v).transpose(1, 2).reshape(B, 1, C)   # (BH1N @ BHN(C/H)) -> BH1(C/H) -> B1H(C/H) -> B1C
-        # x = self.proj(x)
-        # x = self.proj_drop(x)
-        # return x
-
-
-class CrossAttentionBlock(nn.Module):
-
-    def __init__(self, dim, num_heads, qkv_bias=False, qk_scale=None, drop=0., attn_drop=0.,
-                 norm_layer=nn.LayerNorm):
-        super().__init__()
-        self.norm1 = norm_layer(dim)
-        self.attn = CrossAttention(
-            dim, num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop)
-
-    def forward(self, x, y):
-        print('x:', str(x.shape))
-        print('y:', str(y.shape))
-        x = x[:, 0:1, ...] + self.attn(self.norm1(x), self.norm1(y))
-        return x
-
-
 class classifyer(nn.Module):
 
     def __init__(self, d_hiddens_tate):
@@ -143,26 +82,39 @@ class diffRNN(nn.Module):
 
         batch_size, visit_size, icd_code_size = input_seqs.size()
 
-        # TODO: time embedding
+        seq_time_step = seq_time_step.unsqueeze(2) / 180
+        time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
+        time_encoding = self.time_updim(time_feature)
+
+
         # for each visit the data is in the form of 20 * 256
         visit_embedding = self.initial_embedding(input_seqs)
         visit_embedding = self.emb_dropout(visit_embedding)
         visit_embedding = self.relu(visit_embedding)
-        # e_i.shape = [64, 50, 20, 64]
+        # visit_embedding.shape = [64, 50, 20, 64]
         # print(visit_embedding.shape[0])
+        visit_embedding = visit_embedding.sum(-2) + time_encoding
 
         diffusion_time_t = torch.randint(
             low=0, high=self.config.diffusion.num_diffusion_timesteps, size=[visit_embedding.shape[0], ]).to(
             self.device)
+        #TODO: Fix
+        # a = (1 - b).cumprod(dim=0).index_select(0, t).view(-1, 1, 1, 1)
+        # x = x0 * a.sqrt() + e * (1.0 - a).sqrt()
+        # output = model(x, t.float())
 
-        predicted_noise = self.diffusion(visit_embedding, timesteps=diffusion_time_t)
+        alpha = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t).view(-1, 1, 1)
         normal_noise = torch.randn_like(visit_embedding)
-        noise_loss = normal_noise - predicted_noise
+        # a = visit_embedding * alpha.sqrt()
+        # b = normal_noise * (1.0 - alpha).sqrt()
+        visit_embedding_with_noise = visit_embedding * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
 
+        predicted_noise = self.diffusion(visit_embedding_with_noise, timesteps=diffusion_time_t)
 
+        noise_loss = visit_embedding_with_noise - predicted_noise
 
         visit_embedding_generated1 = visit_embedding + noise_loss
-        visit_embedding_generated2 = torch.zeros_like(visit_embedding_generated1)
+        visit_embedding_generated2 = torch.zeros_like(visit_embedding_generated1).fill_(self.vocab_size)
 
         hidden_state_all_visit = torch.zeros(batch_size, visit_size, self.h_model).to(self.device)
         hidden_state_all_visit_generated = torch.zeros(batch_size, visit_size, self.h_model).to(self.device)
@@ -174,19 +126,19 @@ class diffRNN(nn.Module):
         for i in range(visit_size):
 
             try:
-                visit_embedding_generated2[:, i, :, :], _ = self.cross_attention(
-                    visit_embedding_generated2[:, i - 1, :, :].clone(), visit_embedding_generated1[:, i, :, :].clone(),
-                    visit_embedding_generated1[:, i, :, :].clone())
+                visit_embedding_generated2[:, i, :], _ = self.cross_attention(
+                    visit_embedding_generated2[:, i - 1, :].clone(), visit_embedding_generated1[:, i, :].clone(),
+                    visit_embedding_generated1[:, i, :].clone())
 
             except:
-                visit_embedding_generated2[:, i, :, :], _ = self.cross_attention(
-                    torch.zeros_like(visit_embedding_generated1[:, i, :, :].clone()), visit_embedding_generated1[:, i, :, :].clone(),
-                    visit_embedding_generated1[:, i, :, :].clone())
+                visit_embedding_generated2[:, i, :], _ = self.cross_attention(
+                    torch.zeros_like(visit_embedding_generated1[:, i, :].clone()), visit_embedding_generated1[:, i, :].clone(),
+                    visit_embedding_generated1[:, i, :].clone())
 
             try:
-                _, (seq_h, seq_c) = self.lstm(visit_embedding[:, i, :, :].clone(), seq_h.clone(), seq_c.clone())
+                _, (seq_h, seq_c) = self.lstm(visit_embedding[:, i, :].clone(), (seq_h.clone(), seq_c.clone()))
             except:
-                _, (seq_h, seq_c) = self.lstm(visit_embedding[:, i, :, :].clone())
+                _, (seq_h, seq_c) = self.lstm(visit_embedding[:, i, :].clone())
 
             seq_h = torch.squeeze(seq_h)
             # seq_c = torch.squeeze(seq_c)
@@ -194,9 +146,9 @@ class diffRNN(nn.Module):
             hidden_state_all_visit[:, i, :] = seq_h
 
             try:
-                _, (seq_h_gen, seq_c_gen) = self.lstm(visit_embedding_generated2[:, i, :, :].clone(), seq_h_gen.clone(), seq_c_gen.clone())
+                _, (seq_h_gen, seq_c_gen) = self.lstm(visit_embedding_generated2[:, i, :].clone(), (seq_h_gen.clone(), seq_c_gen.clone()))
             except:
-                _, (seq_h_gen, seq_c_gen) = self.lstm(visit_embedding_generated2[:, i, :, :].clone())
+                _, (seq_h_gen, seq_c_gen) = self.lstm(visit_embedding_generated2[:, i, :].clone())
             # torch.Size([64, 256])
             seq_h_gen = torch.squeeze(seq_h_gen)
             # seq_c_gen = torch.squeeze(seq_c_gen)

@@ -88,10 +88,10 @@ def eval_metric(eval_set, model):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
-    parser.add_argument('--seed', default=0, type=int, help='seed')
-    parser.add_argument('-bs', '--batch_size', default=32, type=int)
+    parser.add_argument('--seed', default=1234, type=int, help='seed')
+    parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
-    parser.add_argument('--d_model', default=64, type=int, help='dimension of hidden layers')
+    parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
     parser.add_argument('--dropout_emb', default=0.1, type=float, help='dropout rate of embedding layers')
     parser.add_argument('--num_layers', default=1, type=int, help='number of transformer layers of EHR encoder')
@@ -238,7 +238,13 @@ def train(args):
 
             optim.zero_grad()
             h_res, h_gen_v2, pred, pred_v2, noise, diff_noise = model(ehr, time_step)
+            # print('##########################################################')
+            # a = Loss_func_diff(diff_noise, noise)
+            # b = Loss_func_h(h_res,h_gen_v2)
+            # c = 0.8 * loss_func_pred(pred_v2, labels)
+            # d = loss_func_pred(pred, labels)
 
+            #loss = 0.8 * loss_func_pred(pred_v2, labels) + loss_func_pred(pred, labels)
             loss = Loss_func_diff(diff_noise, noise) + Loss_func_h(h_res,h_gen_v2) + 0.8 * loss_func_pred(pred_v2, labels) + loss_func_pred(pred, labels)
             loss.backward()
             total_loss += (loss.item() / labels.size(0)) * args.batch_size

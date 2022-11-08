@@ -308,7 +308,7 @@ class UNetModel(nn.Module):
         dropout=0,
         channel_mult=(1, 2, 4, 8),
         conv_resample=True,
-        dims=2,
+        dims=1,
         num_classes=None,
         use_checkpoint=False,
         num_heads=1,
@@ -447,7 +447,8 @@ class UNetModel(nn.Module):
         self.out = nn.Sequential(
             normalization(ch),
             SiLU(),
-            zero_module(conv_nd(dims, model_channels, out_channels, 3, padding=1)),
+            conv_nd(dims, model_channels, out_channels, 3, padding=1),
+            # zero_module(conv_nd(dims, model_channels, out_channels, 3, padding=1)),
         )
 
     def get_embeds(self, input_ids):
