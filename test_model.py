@@ -59,6 +59,7 @@ def eval_metric(eval_set, model):
         for i, data in enumerate(eval_set):
             ehr, time_step, labels = data
             _,_,final_prediction,_,_,_ = model(ehr, time_step)
+            preds = [1 if pred[0]>=0.5 else 0 for pred in final_prediction]
             scores = final_prediction
             scores = scores.data.cpu().numpy()
             labels = labels.data.cpu().numpy()
@@ -72,7 +73,7 @@ def eval_metric(eval_set, model):
             # print('pred######################################')
             # print(pred)
             y_true = np.concatenate((y_true, labels))
-            y_pred = np.concatenate((y_pred, pred))
+            y_pred = np.concatenate((y_pred, preds))
             y_score = np.concatenate((y_score, score))
         # y_true = y_true[1:,]
         accuary = accuracy_score(y_true, y_pred)
