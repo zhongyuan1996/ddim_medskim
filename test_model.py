@@ -13,6 +13,7 @@ from utils.utils import check_path, export_config, bool_flag
 # from utils.icd_rel import *
 from utils.diffUtil import *
 from models.ddim_LSTM import *
+from models.testModel import *
 import yaml
 
 def dict2namespace(config):
@@ -107,7 +108,7 @@ def main():
     parser.add_argument('--target_att_heads', default=4, type=int, help='target disease attention heads number')
     parser.add_argument('--mem_size', default=15, type=int, help='memory size')
     parser.add_argument('--mem_update_size', default=15, type=int, help='memory update size')
-    parser.add_argument('-lr', '--learning_rate', default=0.0001, type=float, help='learning rate')
+    parser.add_argument('-lr', '--learning_rate', default=0.00001, type=float, help='learning rate')
     parser.add_argument('--weight_decay', default=0.001, type=float)
     parser.add_argument('--target_rate', default=0.3, type=float)
     parser.add_argument('--lamda', default=0.1, type=float)
@@ -121,6 +122,10 @@ def main():
     parser.add_argument('--save_dir', default='./saved_models/', help='models output directory')
     parser.add_argument("--config", type=str, default='ehr.yml', help="Path to the config file")
     parser.add_argument("--h_model", type=int, default=256, help="dimension of hidden state in LSTM")
+    parser.add_argument("--lambda_DF_loss", type=float, default=0.01, help="scale of diffusion model loss")
+    parser.add_argument("--lambda_CE_gen_loss", type=float, default=0.5, help="scale of generated sample loss")
+    parser.add_argument("--lambda_KL_loss", type=float, default=0.01, help="scale of hidden state KL loss")
+
     args = parser.parse_args()
     if args.mode == 'train':
         train(args)
@@ -143,10 +148,13 @@ def train(args):
     config_path = os.path.join(args.save_dir, 'config.json')
     model_path = os.path.join(args.save_dir, 'models.pt')
     log_path = os.path.join(args.save_dir, 'log.csv')
+    log_loss_path = os.path.join(args.save_dir, 'log_loss.csv')
     export_config(args, config_path)
     check_path(model_path)
     with open(log_path, 'w') as fout:
         fout.write('step,train_auc,dev_auc,test_auc\n')
+    with open(log_loss_path, 'w') as lossout:
+        lossout.write('step,DF_loss,CE_loss,CE_gen_loss,KL_loss\n')
 
     # blk_emb = np.load(args.blk_emb_path)
     # blk_pad_id = len(blk_emb) - 1
@@ -196,6 +204,8 @@ def train(args):
 
     model = diffRNN(config, vocab_size=pad_id, d_model=args.d_model, h_model=args.h_model,
                     dropout=args.dropout, dropout_emb=args.dropout_emb, device = device)
+    # model = testSimpleRNN(config, vocab_size=pad_id, d_model=args.d_model, h_model=args.h_model,
+    #                 dropout=args.dropout, dropout_emb=args.dropout_emb, device = device)
 
     # if args.model == 'Selected':
     #     model = Selected(pad_id, args.d_model, args.dropout, args.dropout_emb)
@@ -212,8 +222,8 @@ def train(args):
     ]
     optim = Adam(grouped_parameters)
     Loss_func_diff = nn.MSELoss(reduction='mean')
-    Loss_func_h = nn.KLDivLoss(reduction='mean')
-    loss_func_pred = nn.BCELoss(reduction='mean')
+    Loss_func_h = nn.KLDivLoss(reduction='batchmean')
+    loss_func_pred = nn.CrossEntropyLoss(reduction='mean')
     # scheduler = get_cosine_schedule_with_warmup(optim, args.warmup_steps, 2500)
     print('parameters:')
     for name, param in model.named_parameters():
@@ -227,6 +237,7 @@ def train(args):
     print('-' * 71)
     global_step, best_dev_epoch = 0, 0
     best_dev_auc, final_test_auc, total_loss = 0.0, 0.0, 0.0
+    total_DF_loss, total_CE_loss, total_CE_gen_loss, total_KL_loss = 0.0, 0.0, 0.0, 0.0
     model.train()
     for epoch_id in range(args.n_epochs):
         print('epoch: {:5} '.format(epoch_id))
@@ -239,16 +250,19 @@ def train(args):
 
             optim.zero_grad()
             h_res, h_gen_v2, pred, pred_v2, noise, diff_noise = model(ehr, time_step)
-            # print('##########################################################')
-            # a = Loss_func_diff(diff_noise, noise)
-            # b = Loss_func_h(h_res,h_gen_v2)
-            # c = 0.8 * loss_func_pred(pred_v2, labels)
-            # d = loss_func_pred(pred, labels)
 
-            #loss = 0.8 * loss_func_pred(pred_v2, labels) + loss_func_pred(pred, labels)
-            loss = Loss_func_diff(diff_noise, noise) + Loss_func_h(h_res,h_gen_v2) + 0.8 * loss_func_pred(pred_v2, labels) + loss_func_pred(pred, labels)
+            DF_loss = Loss_func_diff(diff_noise, noise) * args.lambda_DF_loss
+            KL_loss = Loss_func_h(h_res.log(), h_gen_v2) * args.lambda_KL_loss
+            CE_loss = loss_func_pred(pred, labels)
+            CE_gen_loss = loss_func_pred(pred_v2, labels) * args.lambda_CE_gen_loss
+            loss = DF_loss + KL_loss + CE_loss + CE_gen_loss
+            # loss = CE_loss
             loss.backward()
             total_loss += (loss.item() / labels.size(0)) * args.batch_size
+            total_DF_loss += (DF_loss.item() / labels.size(0)) * args.batch_size
+            total_CE_loss += (CE_loss.item() / labels.size(0)) * args.batch_size
+            total_CE_gen_loss += (CE_gen_loss.item() / labels.size(0)) * args.batch_size
+            total_KL_loss += (KL_loss.item() / labels.size(0)) * args.batch_size
             if args.max_grad_norm > 0:
                 nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
             optim.step()
@@ -256,11 +270,22 @@ def train(args):
 
             if (global_step + 1) % args.log_interval == 0:
                 total_loss /= args.log_interval
+                total_DF_loss /= args.log_interval
+                total_CE_loss /= args.log_interval
+                total_CE_gen_loss /= args.log_interval
+                total_KL_loss /= args.log_interval
+
                 ms_per_batch = 1000 * (time.time() - start_time) / args.log_interval
                 print('| step {:5} | loss {:7.4f} | ms/batch {:7.2f} |'.format(global_step,
                                                                                total_loss,
                                                                                ms_per_batch))
+                print('| DF_loss {:7.4f} | CE_loss {:7.4f} | CE_gen_loss {:7.4f} | KL_loss {:7.4f} |'.format(total_DF_loss,
+                                                                               total_CE_loss,total_CE_gen_loss,total_KL_loss))
+                with open(log_loss_path, 'a') as lossout:
+                    lossout.write('{},{},{},{},{}\n'.format(global_step, total_DF_loss, total_CE_loss, total_CE_gen_loss, total_KL_loss))
+
                 total_loss = 0.0
+                total_DF_loss, total_CE_loss, total_CE_gen_loss, total_KL_loss = 0.0, 0.0, 0.0, 0.0
                 start_time = time.time()
             global_step += 1
 
