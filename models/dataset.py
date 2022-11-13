@@ -81,7 +81,7 @@ class MyDataset(Dataset):
     def __init__(self, dir_ehr, max_len, max_numcode_pervisit, ehr_pad_id,
                  device):
         ehr, labels, time_step = pickle.load(open(dir_ehr, 'rb'))
-        self.labels = [[1,0] if label == 1 else [0,1] for label in labels]
+        self.labels = [[0,1] if label == 1 else [1,0] for label in labels]
 
         self.ehr, _, _ = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
         self.time_step = padTime(time_step, max_len, 100000)

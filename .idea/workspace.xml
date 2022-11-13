@@ -4,17 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="no bug">
-      <change afterPath="$PROJECT_DIR$/models/testModel.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_2022_11_3_10_39_[Changes]/hf_testing_new.pickle" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_2022_11_3_10_39_[Changes]/hf_training_new.pickle" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_2022_11_3_10_39_[Changes]/hf_validation_new.pickle" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_2022_11_3_10_39_[Changes]/shelved.patch" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_2022_11_3_10_39__Changes_.xml" beforeDir="false" />
+    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="both diff and lstm good">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/ddim_LSTM.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/ddim_LSTM.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/saved_models/config.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/saved_models/log.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/dataset.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/test_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_model.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -201,7 +193,9 @@
       <workItem from="1667921788829" duration="9612000" />
       <workItem from="1668106370352" duration="5449000" />
       <workItem from="1668128213219" duration="4929000" />
-      <workItem from="1668178011315" duration="12464000" />
+      <workItem from="1668178011315" duration="13347000" />
+      <workItem from="1668313081662" duration="2727000" />
+      <workItem from="1668352832468" duration="2003000" />
     </task>
     <task id="LOCAL-00001" summary="implementing diffusion model">
       <created>1667068514499</created>
@@ -245,7 +239,14 @@
       <option name="project" value="LOCAL" />
       <updated>1667936959507</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="both diff and lstm good">
+      <created>1668215253734</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1668215253734</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -276,7 +277,8 @@
     <MESSAGE value="runnable" />
     <MESSAGE value="fixed diff" />
     <MESSAGE value="no bug" />
-    <option name="LAST_COMMIT_MESSAGE" value="no bug" />
+    <MESSAGE value="both diff and lstm good" />
+    <option name="LAST_COMMIT_MESSAGE" value="both diff and lstm good" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -324,7 +326,7 @@
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/ddim_medskim$diffusion.coverage" NAME="diffusion Coverage Results" MODIFIED="1667527004134" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
     <SUITE FILE_PATH="coverage/ddim_medskim$diffUtil.coverage" NAME="diffUtil Coverage Results" MODIFIED="1667527925286" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/utils" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$test_model.coverage" NAME="test_model Coverage Results" MODIFIED="1668197896736" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$test_model.coverage" NAME="test_model Coverage Results" MODIFIED="1668352863587" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$ddim_LSTM.coverage" NAME="ddim_LSTM Coverage Results" MODIFIED="1668197039997" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
     <SUITE FILE_PATH="coverage/ddim_medskim$medskim.coverage" NAME="medskim Coverage Results" MODIFIED="1667740649814" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
     <SUITE FILE_PATH="coverage/ddim_medskim$helloworld.coverage" NAME="helloworld Coverage Results" MODIFIED="1667052055792" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

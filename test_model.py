@@ -60,23 +60,15 @@ def eval_metric(eval_set, model):
         for i, data in enumerate(eval_set):
             ehr, time_step, labels = data
             _,_,final_prediction,_,_,_ = model(ehr, time_step)
-            preds = [1 if pred[0]>=0.5 else 0 for pred in final_prediction]
             scores = final_prediction
             scores = scores.data.cpu().numpy()
             labels = labels.data.cpu().numpy()
-            labels = [1 if label[0] == 1 else 0 for label in labels]
-            # print('scores######################################')
-            # print(scores)
+            labels = labels.argmax(1)
             score = scores[:, 1]
-            # print('score######################################')
-            # print(score)
             pred = scores.argmax(1)
-            # print('pred######################################')
-            # print(pred)
             y_true = np.concatenate((y_true, labels))
-            y_pred = np.concatenate((y_pred, preds))
+            y_pred = np.concatenate((y_pred, pred))
             y_score = np.concatenate((y_score, score))
-        # y_true = y_true[1:,]
         accuary = accuracy_score(y_true, y_pred)
         precision = precision_score(y_true, y_pred)
         recall = recall_score(y_true, y_pred)
@@ -202,10 +194,10 @@ def train(args):
         config = yaml.safe_load(f)
     config = dict2namespace(config)
 
-    model = diffRNN(config, vocab_size=pad_id, d_model=args.d_model, h_model=args.h_model,
-                    dropout=args.dropout, dropout_emb=args.dropout_emb, device = device)
     # model = testSimpleRNN(config, vocab_size=pad_id, d_model=args.d_model, h_model=args.h_model,
     #                 dropout=args.dropout, dropout_emb=args.dropout_emb, device = device)
+    model = testSimpleRNN(config, vocab_size=pad_id, d_model=args.d_model, h_model=args.h_model,
+                    dropout=args.dropout, dropout_emb=args.dropout_emb, device = device)
 
     # if args.model == 'Selected':
     #     model = Selected(pad_id, args.d_model, args.dropout, args.dropout_emb)
@@ -322,6 +314,10 @@ def train(args):
                                                                                           tr_pr_auc,
                                                                                           d_pr_auc,
                                                                                           t_pr_auc))
+        print('| step {:5} | train_kappa {:7.4f} | dev_kappa {:7.4f} | test_kappa {:7.4f} '.format(global_step,
+                                                                                          tr_kappa,
+                                                                                          d_kappa,
+                                                                                          t_kappa))
         print('-' * 71)
         if d_f1 >= best_dev_auc:
             best_dev_auc = d_f1
