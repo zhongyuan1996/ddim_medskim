@@ -4,9 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="both diff and lstm good">
+    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="eval fixed">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/dataset.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/test_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_model.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -195,7 +194,8 @@
       <workItem from="1668128213219" duration="4929000" />
       <workItem from="1668178011315" duration="13347000" />
       <workItem from="1668313081662" duration="2727000" />
-      <workItem from="1668352832468" duration="2003000" />
+      <workItem from="1668352832468" duration="2021000" />
+      <workItem from="1668455346367" duration="991000" />
     </task>
     <task id="LOCAL-00001" summary="implementing diffusion model">
       <created>1667068514499</created>
@@ -246,7 +246,14 @@
       <option name="project" value="LOCAL" />
       <updated>1668215253734</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="eval fixed">
+      <created>1668355127644</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1668355127644</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -278,7 +285,8 @@
     <MESSAGE value="fixed diff" />
     <MESSAGE value="no bug" />
     <MESSAGE value="both diff and lstm good" />
-    <option name="LAST_COMMIT_MESSAGE" value="both diff and lstm good" />
+    <MESSAGE value="eval fixed" />
+    <option name="LAST_COMMIT_MESSAGE" value="eval fixed" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

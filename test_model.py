@@ -141,12 +141,16 @@ def train(args):
     model_path = os.path.join(args.save_dir, 'models.pt')
     log_path = os.path.join(args.save_dir, 'log.csv')
     log_loss_path = os.path.join(args.save_dir, 'log_loss.csv')
+    stats_path = os.path.join(args.save_dir, 'stats.csv')
     export_config(args, config_path)
     check_path(model_path)
     with open(log_path, 'w') as fout:
         fout.write('step,train_auc,dev_auc,test_auc\n')
     with open(log_loss_path, 'w') as lossout:
         lossout.write('step,DF_loss,CE_loss,CE_gen_loss,KL_loss\n')
+    with open(stats_path, 'w') as statout:
+        statout.write('train_acc,dev_acc,test_acc,train_precision,dev_precision,test_precision,train_recall,dev_recall,test_recall,train_f1,dev_f1,test_f1,train_auc,dev_auc,test_auc,train_pr,dev_pr,test_pr,train_kappa,dev_kappa,test_kappa\n')
+
 
     # blk_emb = np.load(args.blk_emb_path)
     # blk_pad_id = len(blk_emb) - 1
@@ -196,7 +200,7 @@ def train(args):
 
     # model = testSimpleRNN(config, vocab_size=pad_id, d_model=args.d_model, h_model=args.h_model,
     #                 dropout=args.dropout, dropout_emb=args.dropout_emb, device = device)
-    model = testSimpleRNN(config, vocab_size=pad_id, d_model=args.d_model, h_model=args.h_model,
+    model = diffRNN(config, vocab_size=pad_id, d_model=args.d_model, h_model=args.h_model,
                     dropout=args.dropout, dropout_emb=args.dropout_emb, device = device)
 
     # if args.model == 'Selected':
@@ -319,6 +323,8 @@ def train(args):
                                                                                           d_kappa,
                                                                                           t_kappa))
         print('-' * 71)
+        with open(stats_path, 'a') as statout:
+            statout.write('{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n'.format(train_acc,dev_acc,test_acc,tr_precision,d_precision,t_precision,tr_recall,d_recall,t_recall,tr_f1,d_f1,t_f1,tr_roc_auc,d_roc_auc,t_roc_auc,tr_pr_auc,d_pr_auc,t_pr_auc,tr_kappa,d_kappa,t_kappa))
         if d_f1 >= best_dev_auc:
             best_dev_auc = d_f1
             final_test_auc = t_f1
@@ -327,8 +333,8 @@ def train(args):
             with open(log_path, 'a') as fout:
                 fout.write('{},{},{},{}\n'.format(global_step, tr_pr_auc, d_pr_auc, t_pr_auc))
             print(f'model saved to {model_path}')
-        if epoch_id - best_dev_epoch >= args.max_epochs_before_stop:
-            break
+        # if epoch_id - best_dev_epoch >= args.max_epochs_before_stop:
+        #     break
 
     print()
     print('training ends in {} steps'.format(global_step))
