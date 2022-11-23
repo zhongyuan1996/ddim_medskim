@@ -24,14 +24,14 @@ class classifyer(nn.Module):
         h = self.relu(self.layer1(h))
         h = self.relu(self.layer2(h))
         h = self.out(self.drop(h))
-        if self.temperature == 'none':
-            h = self.softmax(h)
-        elif self.temperature == 'temperature':
-
-            h = self.softmax(h/self.tau)
-
-        elif self.temperature == 'gumbel':
-            h = nn.functional.gumbel_softmax(h, tau=self.tau)
+        # if self.temperature == 'none':
+        #     h = self.softmax(h)
+        # elif self.temperature == 'temperature':
+        #
+        #     h = self.softmax(h/self.tau)
+        #
+        # elif self.temperature == 'gumbel':
+        #     h = nn.functional.gumbel_softmax(h, tau=self.tau)
 
         return h
 

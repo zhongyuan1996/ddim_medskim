@@ -60,7 +60,7 @@ def eval_metric(eval_set, model):
         for i, data in enumerate(eval_set):
             ehr, time_step, labels = data
             _,_,final_prediction,_,_,_ = model(ehr, time_step)
-            scores = final_prediction
+            scores = torch.softmax(final_prediction, dim=-1)
             scores = scores.data.cpu().numpy()
             labels = labels.data.cpu().numpy()
             labels = labels.argmax(1)
