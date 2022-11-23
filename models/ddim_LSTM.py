@@ -8,7 +8,7 @@ from models.unet import *
 torch.autograd.set_detect_anomaly(True)
 class classifyer(nn.Module):
 
-    def __init__(self, d_hiddens_tate):
+    def __init__(self, d_hiddens_tate, temperature='none', tau=1.0):
         super().__init__()
         self.layer1 = nn.Linear(d_hiddens_tate, 4 * d_hiddens_tate)
         self.layer2 = nn.Linear(4 * d_hiddens_tate, 2 * d_hiddens_tate)
@@ -16,20 +16,29 @@ class classifyer(nn.Module):
 
         self.relu = nn.ReLU()
         self.drop = nn.Dropout(p=0.1)
+        self.tau = tau
         self.softmax = nn.Softmax(dim=-1)
+        self.temperature = temperature
 
     def forward(self, h):
         h = self.relu(self.layer1(h))
         h = self.relu(self.layer2(h))
         h = self.out(self.drop(h))
-        h = self.softmax(h)
+        if self.temperature == 'none':
+            h = self.softmax(h)
+        elif self.temperature == 'temperature':
+
+            h = self.softmax(h/self.tau)
+
+        elif self.temperature == 'gumbel':
+            h = nn.functional.gumbel_softmax(h, tau=self.tau)
 
         return h
 
 
 class diffRNN(nn.Module):
 
-    def __init__(self, config, vocab_size, d_model, h_model, dropout, dropout_emb, device):
+    def __init__(self, config, vocab_size, d_model, h_model, dropout, dropout_emb, device, temperature = 'none', tau = 1.0):
         super().__init__()
         self.config = config
         self.vocab_size = vocab_size
@@ -63,8 +72,9 @@ class diffRNN(nn.Module):
         # )
         if self.model_var_type == "fixedlarge":
             self.logvar = betas.log()
-
-        self.classifyer = classifyer(h_model)
+        self.temperature = temperature
+        self.tau = tau
+        self.classifyer = classifyer(h_model, temperature=self.temperature, tau = self.tau)
         self.embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.target_embedding = nn.Embedding(1, d_model)
         self.emb_dropout = nn.Dropout(dropout_emb)
@@ -72,6 +82,7 @@ class diffRNN(nn.Module):
         self.tanh = nn.Tanh()
         self.time_layer = nn.Linear(1, 64)
         self.time_updim = nn.Linear(64, d_model)
+
 
     def forward(self, input_seqs, seq_time_step):
 

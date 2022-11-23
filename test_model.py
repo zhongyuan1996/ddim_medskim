@@ -83,7 +83,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
     parser.add_argument('--seed', default=1234, type=int, help='seed')
-    parser.add_argument('-bs', '--batch_size', default=64, type=int)
+    parser.add_argument('-bs', '--batch_size', default=32, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
@@ -100,13 +100,13 @@ def main():
     parser.add_argument('--target_att_heads', default=4, type=int, help='target disease attention heads number')
     parser.add_argument('--mem_size', default=15, type=int, help='memory size')
     parser.add_argument('--mem_update_size', default=15, type=int, help='memory update size')
-    parser.add_argument('-lr', '--learning_rate', default=0.00001, type=float, help='learning rate')
+    parser.add_argument('-lr', '--learning_rate', default=1e-5, type=float, help='learning rate')
     parser.add_argument('--weight_decay', default=0.001, type=float)
     parser.add_argument('--target_rate', default=0.3, type=float)
     parser.add_argument('--lamda', default=0.1, type=float)
     parser.add_argument('--max_grad_norm', default=1.0, type=float, help='max grad norm (0 to disable)')
     parser.add_argument('--warmup_steps', default=200, type=int)
-    parser.add_argument('--n_epochs', default=30, type=int)
+    parser.add_argument('--n_epochs', default=200, type=int)
     parser.add_argument('--log_interval', default=20, type=int)
     parser.add_argument('--mode', default='train', choices=['train', 'pred', 'study'],
                         help='run training or evaluation')
@@ -114,9 +114,11 @@ def main():
     parser.add_argument('--save_dir', default='./saved_models/', help='models output directory')
     parser.add_argument("--config", type=str, default='ehr.yml', help="Path to the config file")
     parser.add_argument("--h_model", type=int, default=256, help="dimension of hidden state in LSTM")
-    parser.add_argument("--lambda_DF_loss", type=float, default=0.01, help="scale of diffusion model loss")
+    parser.add_argument("--lambda_DF_loss", type=float, default=0.1, help="scale of diffusion model loss")
     parser.add_argument("--lambda_CE_gen_loss", type=float, default=0.5, help="scale of generated sample loss")
     parser.add_argument("--lambda_KL_loss", type=float, default=0.01, help="scale of hidden state KL loss")
+    parser.add_argument("--temperature", type=str, default='temperature', help="temperature control of classifier softmax")
+    parser.add_argument("--tau", type=float, default=0.05, help="parameter tau of temperature control")
 
     args = parser.parse_args()
     if args.mode == 'train':
@@ -201,7 +203,7 @@ def train(args):
     # model = testSimpleRNN(config, vocab_size=pad_id, d_model=args.d_model, h_model=args.h_model,
     #                 dropout=args.dropout, dropout_emb=args.dropout_emb, device = device)
     model = diffRNN(config, vocab_size=pad_id, d_model=args.d_model, h_model=args.h_model,
-                    dropout=args.dropout, dropout_emb=args.dropout_emb, device = device)
+                    dropout=args.dropout, dropout_emb=args.dropout_emb, device = device, temperature=args.temperature, tau=args.tau)
 
     # if args.model == 'Selected':
     #     model = Selected(pad_id, args.d_model, args.dropout, args.dropout_emb)
@@ -218,7 +220,7 @@ def train(args):
     ]
     optim = Adam(grouped_parameters)
     Loss_func_diff = nn.MSELoss(reduction='mean')
-    Loss_func_h = nn.KLDivLoss(reduction='batchmean')
+    # Loss_func_h = nn.KLDivLoss(reduction='batchmean')
     loss_func_pred = nn.CrossEntropyLoss(reduction='mean')
     # scheduler = get_cosine_schedule_with_warmup(optim, args.warmup_steps, 2500)
     print('parameters:')
@@ -248,17 +250,17 @@ def train(args):
             h_res, h_gen_v2, pred, pred_v2, noise, diff_noise = model(ehr, time_step)
 
             DF_loss = Loss_func_diff(diff_noise, noise) * args.lambda_DF_loss
-            KL_loss = Loss_func_h(h_res.log(), h_gen_v2) * args.lambda_KL_loss
+            # KL_loss = Loss_func_h(h_res.log(), h_gen_v2) * args.lambda_KL_loss
             CE_loss = loss_func_pred(pred, labels)
             CE_gen_loss = loss_func_pred(pred_v2, labels) * args.lambda_CE_gen_loss
-            loss = DF_loss + KL_loss + CE_loss + CE_gen_loss
+            loss = DF_loss + CE_loss + CE_gen_loss
             # loss = CE_loss
             loss.backward()
             total_loss += (loss.item() / labels.size(0)) * args.batch_size
             total_DF_loss += (DF_loss.item() / labels.size(0)) * args.batch_size
             total_CE_loss += (CE_loss.item() / labels.size(0)) * args.batch_size
             total_CE_gen_loss += (CE_gen_loss.item() / labels.size(0)) * args.batch_size
-            total_KL_loss += (KL_loss.item() / labels.size(0)) * args.batch_size
+            # total_KL_loss += (KL_loss.item() / labels.size(0)) * args.batch_size
             if args.max_grad_norm > 0:
                 nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
             optim.step()
