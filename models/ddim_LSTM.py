@@ -8,7 +8,7 @@ from models.unet import *
 torch.autograd.set_detect_anomaly(True)
 class classifyer(nn.Module):
 
-    def __init__(self, d_hiddens_tate, temperature='none', tau=1.0):
+    def __init__(self, d_hiddens_tate):
         super().__init__()
         self.layer1 = nn.Linear(d_hiddens_tate, 4 * d_hiddens_tate)
         self.layer2 = nn.Linear(4 * d_hiddens_tate, 2 * d_hiddens_tate)
@@ -16,9 +16,7 @@ class classifyer(nn.Module):
 
         self.relu = nn.ReLU()
         self.drop = nn.Dropout(p=0.1)
-        self.tau = tau
         self.softmax = nn.Softmax(dim=-1)
-        self.temperature = temperature
 
     def forward(self, h):
         h = self.relu(self.layer1(h))
@@ -38,7 +36,7 @@ class classifyer(nn.Module):
 
 class diffRNN(nn.Module):
 
-    def __init__(self, config, vocab_size, d_model, h_model, dropout, dropout_emb, device, temperature = 'none', tau = 1.0):
+    def __init__(self, config, vocab_size, d_model, h_model, dropout, dropout_emb, device):
         super().__init__()
         self.config = config
         self.vocab_size = vocab_size
@@ -72,9 +70,7 @@ class diffRNN(nn.Module):
         # )
         if self.model_var_type == "fixedlarge":
             self.logvar = betas.log()
-        self.temperature = temperature
-        self.tau = tau
-        self.classifyer = classifyer(h_model, temperature=self.temperature, tau = self.tau)
+        self.classifyer = classifyer(h_model)
         self.embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.target_embedding = nn.Embedding(1, d_model)
         self.emb_dropout = nn.Dropout(dropout_emb)
@@ -142,14 +138,16 @@ class diffRNN(nn.Module):
                                           (seq_h_gen.clone(), seq_c_gen.clone()))
             hidden_state_all_visit_generated[:, i:i + 1, :] = seq_h_gen.permute(1, 0, 2)
 
-        for i in range(visit_size):
+        # for i in range(visit_size):
+        #
+        #     hidden_state_softmax_res[:, i:i+1, :] = self.classifyer(hidden_state_all_visit[:, i:i + 1, :])
+        #     hidden_state_softmax_res_generated[:, i:i+1, :] = self.classifyer(hidden_state_all_visit_generated[:, i:i + 1, :])
+        #
+        # final_prediction = hidden_state_softmax_res[:, -1, :]
+        # final_prediction_generated = hidden_state_softmax_res_generated[:, -1, :]
 
-            hidden_state_softmax_res[:, i:i+1, :] = self.classifyer(hidden_state_all_visit[:, i:i + 1, :])
-            hidden_state_softmax_res_generated[:, i:i+1, :] = self.classifyer(hidden_state_all_visit_generated[:, i:i + 1, :])
-
-        final_prediction = hidden_state_softmax_res[:, -1, :]
-        final_prediction_generated = hidden_state_softmax_res_generated[:, -1, :]
-
+        final_prediction = self.classifyer(hidden_state_all_visit[:, visit_size-1:visit_size, :]).squeeze()
+        final_prediction_generated = self.classifyer(hidden_state_all_visit[:, visit_size-1:visit_size, :]).squeeze()
 
         return hidden_state_softmax_res, hidden_state_softmax_res_generated, \
                final_prediction, final_prediction_generated, \

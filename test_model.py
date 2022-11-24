@@ -100,7 +100,7 @@ def main():
     parser.add_argument('--target_att_heads', default=4, type=int, help='target disease attention heads number')
     parser.add_argument('--mem_size', default=15, type=int, help='memory size')
     parser.add_argument('--mem_update_size', default=15, type=int, help='memory update size')
-    parser.add_argument('-lr', '--learning_rate', default=1e-5, type=float, help='learning rate')
+    parser.add_argument('-lr', '--learning_rate', default=1e-3, type=float, help='learning rate')
     parser.add_argument('--weight_decay', default=0.001, type=float)
     parser.add_argument('--target_rate', default=0.3, type=float)
     parser.add_argument('--lamda', default=0.1, type=float)
@@ -118,7 +118,8 @@ def main():
     parser.add_argument("--lambda_CE_gen_loss", type=float, default=0.5, help="scale of generated sample loss")
     parser.add_argument("--lambda_KL_loss", type=float, default=0.01, help="scale of hidden state KL loss")
     parser.add_argument("--temperature", type=str, default='temperature', help="temperature control of classifier softmax")
-    parser.add_argument("--tau", type=float, default=0.05, help="parameter tau of temperature control")
+    parser.add_argument("--mintau", type=float, default=0.05, help="parameter mintau of temperature control")
+    parser.add_argument("--maxtau", type=float, default=5.0, help="parameter maxtau of temperature control")
 
     args = parser.parse_args()
     if args.mode == 'train':
@@ -203,7 +204,7 @@ def train(args):
     # model = testSimpleRNN(config, vocab_size=pad_id, d_model=args.d_model, h_model=args.h_model,
     #                 dropout=args.dropout, dropout_emb=args.dropout_emb, device = device)
     model = diffRNN(config, vocab_size=pad_id, d_model=args.d_model, h_model=args.h_model,
-                    dropout=args.dropout, dropout_emb=args.dropout_emb, device = device, temperature=args.temperature, tau=args.tau)
+                    dropout=args.dropout, dropout_emb=args.dropout_emb, device = device)
 
     # if args.model == 'Selected':
     #     model = Selected(pad_id, args.d_model, args.dropout, args.dropout_emb)
@@ -237,6 +238,13 @@ def train(args):
     best_dev_auc, final_test_auc, total_loss = 0.0, 0.0, 0.0
     total_DF_loss, total_CE_loss, total_CE_gen_loss, total_KL_loss = 0.0, 0.0, 0.0, 0.0
     model.train()
+    if args.temperature == 'temperature':
+        tau_schedule = np.linspace(args.maxtau, args.mintau, num=int(args.n_epochs/2))
+        constant = np.full(len(tau_schedule), args.mintau)
+        tau_schedule = np.append(tau_schedule, constant)
+
+    assert len(tau_schedule) == args.n_epochs
+
     for epoch_id in range(args.n_epochs):
         print('epoch: {:5} '.format(epoch_id))
         model.train()
@@ -248,6 +256,10 @@ def train(args):
 
             optim.zero_grad()
             h_res, h_gen_v2, pred, pred_v2, noise, diff_noise = model(ehr, time_step)
+
+            if args.temperature == 'temperature':
+                pred = pred/tau_schedule[epoch_id]
+                pred_v2 = pred_v2/tau_schedule[epoch_id]
 
             DF_loss = Loss_func_diff(diff_noise, noise) * args.lambda_DF_loss
             # KL_loss = Loss_func_h(h_res.log(), h_gen_v2) * args.lambda_KL_loss
