@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="classifyer do not do softmax">
+    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="temperature option set">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/models/ddim_LSTM.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/ddim_LSTM.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/test_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_model.py" afterDir="false" />
@@ -198,7 +198,7 @@
       <workItem from="1668352832468" duration="2021000" />
       <workItem from="1668455346367" duration="991000" />
       <workItem from="1669047227728" duration="15773000" />
-      <workItem from="1669236759874" duration="8867000" />
+      <workItem from="1669236759874" duration="10422000" />
     </task>
     <task id="LOCAL-00001" summary="implementing diffusion model">
       <created>1667068514499</created>
@@ -270,7 +270,14 @@
       <option name="project" value="LOCAL" />
       <updated>1669235874433</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="temperature option set">
+      <created>1669326276258</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1669326276258</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -305,7 +312,8 @@
     <MESSAGE value="eval fixed" />
     <MESSAGE value="temp and gumbel added" />
     <MESSAGE value="classifyer do not do softmax" />
-    <option name="LAST_COMMIT_MESSAGE" value="classifyer do not do softmax" />
+    <MESSAGE value="temperature option set" />
+    <option name="LAST_COMMIT_MESSAGE" value="temperature option set" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

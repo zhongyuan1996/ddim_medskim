@@ -118,7 +118,7 @@ def main():
     parser.add_argument("--lambda_CE_gen_loss", type=float, default=0.5, help="scale of generated sample loss")
     parser.add_argument("--lambda_KL_loss", type=float, default=0.01, help="scale of hidden state KL loss")
     parser.add_argument("--temperature", type=str, default='temperature', help="temperature control of classifier softmax")
-    parser.add_argument("--mintau", type=float, default=0.05, help="parameter mintau of temperature control")
+    parser.add_argument("--mintau", type=float, default=0.5, help="parameter mintau of temperature control")
     parser.add_argument("--maxtau", type=float, default=5.0, help="parameter maxtau of temperature control")
 
     args = parser.parse_args()
@@ -243,7 +243,7 @@ def train(args):
         constant = np.full(len(tau_schedule), args.mintau)
         tau_schedule = np.append(tau_schedule, constant)
 
-    assert len(tau_schedule) == args.n_epochs
+        assert len(tau_schedule) == args.n_epochs
 
     for epoch_id in range(args.n_epochs):
         print('epoch: {:5} '.format(epoch_id))

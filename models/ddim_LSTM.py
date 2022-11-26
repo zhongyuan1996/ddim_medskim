@@ -138,16 +138,16 @@ class diffRNN(nn.Module):
                                           (seq_h_gen.clone(), seq_c_gen.clone()))
             hidden_state_all_visit_generated[:, i:i + 1, :] = seq_h_gen.permute(1, 0, 2)
 
-        # for i in range(visit_size):
-        #
-        #     hidden_state_softmax_res[:, i:i+1, :] = self.classifyer(hidden_state_all_visit[:, i:i + 1, :])
-        #     hidden_state_softmax_res_generated[:, i:i+1, :] = self.classifyer(hidden_state_all_visit_generated[:, i:i + 1, :])
-        #
-        # final_prediction = hidden_state_softmax_res[:, -1, :]
-        # final_prediction_generated = hidden_state_softmax_res_generated[:, -1, :]
+        for i in range(visit_size):
 
-        final_prediction = self.classifyer(hidden_state_all_visit[:, visit_size-1:visit_size, :]).squeeze()
-        final_prediction_generated = self.classifyer(hidden_state_all_visit[:, visit_size-1:visit_size, :]).squeeze()
+            hidden_state_softmax_res[:, i:i+1, :] = self.classifyer(hidden_state_all_visit[:, i:i + 1, :])
+            hidden_state_softmax_res_generated[:, i:i+1, :] = self.classifyer(hidden_state_all_visit_generated[:, i:i + 1, :])
+
+        final_prediction = hidden_state_softmax_res[:, -1, :]
+        final_prediction_generated = hidden_state_softmax_res_generated[:, -1, :]
+
+        # final_prediction = self.classifyer(hidden_state_all_visit[:, visit_size-1:visit_size, :]).squeeze()
+        # final_prediction_generated = self.classifyer(hidden_state_all_visit[:, visit_size-1:visit_size, :]).squeeze()
 
         return hidden_state_softmax_res, hidden_state_softmax_res_generated, \
                final_prediction, final_prediction_generated, \
