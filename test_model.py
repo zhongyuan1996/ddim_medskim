@@ -155,7 +155,7 @@ def train(args):
     with open(log_loss_path, 'w') as lossout:
         lossout.write('step,DF_loss,CE_loss,CE_gen_loss,KL_loss\n')
     with open(stats_path, 'w') as statout:
-        statout.write('train_acc,dev_acc,test_acc,train_precision,dev_precision,test_precision,train_recall,dev_recall,test_recall,train_f1,dev_f1,test_f1,train_auc,dev_auc,test_auc,train_pr,dev_pr,test_pr,train_kappa,dev_kappa,test_kappa\n')
+        statout.write('train_acc,dev_acc,test_acc,train_precision,dev_precision,test_precision,train_recall,dev_recall,test_recall,train_f1,dev_f1,test_f1,train_auc,dev_auc,test_auc,train_pr,dev_pr,test_pr,train_kappa,dev_kappa,test_kappa,train_loss,dev_loss,test_loss\n')
 
 
     # blk_emb = np.load(args.blk_emb_path)
