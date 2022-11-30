@@ -347,7 +347,7 @@ def train(args):
                                                                                           tr_loss,
                                                                                           d_loss,
                                                                                           t_loss))
-        exit()
+
         print('-' * 71)
         with open(stats_path, 'a') as statout:
             statout.write('{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n'.format(train_acc,dev_acc,test_acc,tr_precision,d_precision,t_precision,tr_recall,d_recall,t_recall,tr_f1,d_f1,t_f1,tr_roc_auc,d_roc_auc,t_roc_auc,tr_pr_auc,d_pr_auc,t_pr_auc,tr_kappa,d_kappa,t_kappa,tr_loss,d_loss,t_loss))
