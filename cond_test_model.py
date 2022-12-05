@@ -58,7 +58,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
     parser.add_argument('--seed', default=1234, type=int, help='seed')
-    parser.add_argument('-bs', '--batch_size', default=32, type=int)
+    parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
@@ -91,7 +91,7 @@ def main():
     parser.add_argument("--h_model", type=int, default=256, help="dimension of hidden state in LSTM")
     parser.add_argument("--lambda_DF_loss", type=float, default=0.1, help="scale of diffusion model loss")
     parser.add_argument("--lambda_CE_gen_loss", type=float, default=0.5, help="scale of generated sample loss")
-    parser.add_argument("--lambda_COS_loss", type=float, default=1e-2, help="scale of COS embedding loss")
+    parser.add_argument("--lambda_COS_loss", type=float, default=1e-1, help="scale of COS embedding loss")
     parser.add_argument("--temperature", type=str, default='temperature', help="temperature control of classifier softmax")
     parser.add_argument("--mintau", type=float, default=0.5, help="parameter mintau of temperature control")
     parser.add_argument("--maxtau", type=float, default=5.0, help="parameter maxtau of temperature control")
@@ -243,9 +243,10 @@ def train(args):
                 pred_v2 = pred_v2/tau_schedule[epoch_id]
 
             DF_loss = Loss_func_diff(diff_noise, noise) * args.lambda_DF_loss
-            target = torch.full((args.batch_size,), -1).to(device)
+
             emb = torch.flatten(emb,1,-1).to(device)
             emb_gen = torch.flatten(emb_gen,1,-1).to(device)
+            target = torch.full((emb.size(dim=0),), -1).to(device)
 
             COS_loss = Loss_func_cos(emb, emb_gen, target) * args.lambda_COS_loss
             CE_loss = loss_func_pred(pred, labels)
