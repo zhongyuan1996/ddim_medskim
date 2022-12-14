@@ -106,7 +106,7 @@ def main():
     parser.add_argument('--lamda', default=0.1, type=float)
     parser.add_argument('--max_grad_norm', default=1.0, type=float, help='max grad norm (0 to disable)')
     parser.add_argument('--warmup_steps', default=200, type=int)
-    parser.add_argument('--n_epochs', default=100, type=int)
+    parser.add_argument('--n_epochs', default=50, type=int)
     parser.add_argument('--log_interval', default=20, type=int)
     parser.add_argument('--mode', default='train', choices=['train', 'pred', 'study'],
                         help='run training or evaluation')
