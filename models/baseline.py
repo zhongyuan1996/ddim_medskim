@@ -349,6 +349,50 @@ class Timeline(nn.Module):
         return label_space
 
 
+class TLSTM(nn.Module):
+    def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos):
+        super(TLSTM, self).__init__()
+        self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.W_all = nn.Linear(d_model, d_model * 4)
+        self.U_all = nn.Linear(d_model, d_model * 4)
+        self.W_d = nn.Linear(d_model, d_model)
+        self.d_model = d_model
+        self.time_layer = torch.nn.Linear(64, d_model)
+        self.selection_layer = torch.nn.Linear(1, 64)
+        self.output_mlp = nn.Sequential(nn.Linear(d_model, 2))
+        self.pooler = MaxPoolLayer()
+
+    def forward(self, input_seqs, masks, lengths, seq_time_step, code_masks):
+        x = self.embbedding(input_seqs).sum(dim=2)
+        b, seq, embed = x.size()
+        h = torch.zeros(b, self.d_model, requires_grad=False).to(x.device)
+        c = torch.zeros(b, self.d_model, requires_grad=False).to(x.device)
+        outputs = []
+        seq_time_step = seq_time_step.unsqueeze(2) / 180
+        time_feature = 1 - torch.tanh(torch.pow(self.selection_layer(seq_time_step), 2))
+        time_feature = self.time_layer(time_feature)
+        for s in range(seq):
+            c_s1 = torch.tanh(self.W_d(c))
+            c_s2 = c_s1 * time_feature[:, s]
+            c_l = c - c_s1
+            c_adj = c_l + c_s2
+            outs = self.W_all(h) + self.U_all(x[:, s])
+            # print(outs.size())
+            f, i, o, c_tmp = torch.chunk(outs, 4, 1)
+            f = torch.sigmoid(f)
+            i = torch.sigmoid(i)
+            o = torch.sigmoid(o)
+            c_tmp = torch.sigmoid(c_tmp)
+            c = f * c_adj + i * c_tmp
+            h = o * torch.tanh(c)
+            outputs.append(h)
+        outputs = torch.stack(outputs, 1)
+        out = self.pooler(outputs, lengths)
+        out = self.output_mlp(out)
+        return out
+
+
+
 class SAND(nn.Module):
     def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos):
         super().__init__()

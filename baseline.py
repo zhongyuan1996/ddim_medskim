@@ -8,7 +8,7 @@ from tqdm import tqdm
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, cohen_kappa_score
 from torch.optim import *
 from sklearn.metrics import precision_recall_curve, auc
-from models.dataset import *
+from models.og_dataset import *
 from models.baseline import *
 from models.leap_lstm import LeapLSTM
 from models.skim_rnn import SkimRNN
@@ -49,7 +49,7 @@ def main():
     parser.add_argument('--seed', default=0, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
-    parser.add_argument('--encoder', default='hita', choices=['hita', 'lsan', 'lstm', 'sand', 'gruself', 'timeline', 'retain', 'retainex', 'LeapLSTM', 'skimrnn', 'skiprnn'])
+    parser.add_argument('--encoder', default='hita', choices=['hita', 'lsan', 'lstm', 'sand', 'gruself', 'timeline', 'retain', 'retainex', 'LeapLSTM', 'skimrnn', 'skiprnn','TLSTM'])
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
     parser.add_argument('--dropout_emb', default=0.1, type=float, help='dropout rate of embedding layers')
@@ -71,7 +71,7 @@ def main():
     parser.add_argument('--warmup_steps', default=200, type=int)
     parser.add_argument('--n_epochs', default=30, type=int)
     parser.add_argument('--log_interval', default=20, type=int)
-    parser.add_argument('--mode', default='train', choices=['train', 'eval', 'pred'], help='run training or evaluation')
+    parser.add_argument('--mode', default='train', choices=['train', 'eval', 'pred','gen'], help='run training or evaluation')
     parser.add_argument('--save_dir', default='./saved_models/', help='model output directory')
     args = parser.parse_args()
     if args.mode == 'train':
@@ -168,6 +168,9 @@ def train(args):
     elif args.encoder == 'skimrnn':
         model = SkimRNN(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
                             args.max_len)
+    elif args.encoder == 'TLSTM':
+        model = TLSTM(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
+                            args.max_len)
     elif args.encoder == 'skiprnn':
         model = SkipLSTM(pad_id, args.d_model, args.d_model, 1)
     else:
@@ -253,6 +256,10 @@ def train(args):
                                                                                              tr_pr_auc,
                                                                                              d_pr_auc,
                                                                                              t_pr_auc))
+        print('| step {:5} | train_kappa {:7.4f} | dev_kappa {:7.4f} | test_kappa {:7.4f} '.format(global_step,
+                                                                                             tr_kappa,
+                                                                                             d_kappa,
+                                                                                             t_kappa))
         print('-' * 71)
 
         if d_f1 >= best_dev_auc:

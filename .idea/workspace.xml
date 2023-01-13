@@ -4,8 +4,13 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="add kappaa to og medskim">
+    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="ablation1">
+      <change afterPath="$PROJECT_DIR$/embGen_test_model.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/embGen_LSTM_ddim.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baseline.py" beforeDir="false" afterPath="$PROJECT_DIR$/baseline.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/LSTM_ddim.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/LSTM_ddim.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/baseline.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/baseline.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -214,7 +219,7 @@
       <workItem from="1672519157586" duration="1487000" />
       <workItem from="1673311412283" duration="604000" />
       <workItem from="1673454935593" duration="832000" />
-      <workItem from="1673469430369" duration="4306000" />
+      <workItem from="1673469430369" duration="18342000" />
     </task>
     <task id="LOCAL-00001" summary="implementing diffusion model">
       <created>1667068514499</created>
@@ -377,7 +382,14 @@
       <option name="project" value="LOCAL" />
       <updated>1673480407690</updated>
     </task>
-    <option name="localTasksCounter" value="24" />
+    <task id="LOCAL-00024" summary="ablation1">
+      <created>1673494670891</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1673494670891</updated>
+    </task>
+    <option name="localTasksCounter" value="25" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -423,7 +435,8 @@
     <MESSAGE value="fixed a bug in e_t_prime" />
     <MESSAGE value="restored original og medskim" />
     <MESSAGE value="add kappaa to og medskim" />
-    <option name="LAST_COMMIT_MESSAGE" value="add kappaa to og medskim" />
+    <MESSAGE value="ablation1" />
+    <option name="LAST_COMMIT_MESSAGE" value="ablation1" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
