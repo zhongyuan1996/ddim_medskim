@@ -79,10 +79,8 @@ class RNNdiff(nn.Module):
         self.time_layer = nn.Linear(1, 64)
         self.time_updim = nn.Linear(64, d_model)
 
+    def before(self, input_seqs, seq_time_step):
 
-    def forward(self, input_seqs, seq_time_step):
-
-        batch_size, visit_size, icd_code_size = input_seqs.size()
         #time embedding
         seq_time_step = seq_time_step.unsqueeze(2) / 180
         time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
@@ -93,7 +91,16 @@ class RNNdiff(nn.Module):
         visit_embedding = self.relu(visit_embedding)
 
         visit_embedding = visit_embedding.sum(-2) + time_encoding
+        return visit_embedding
+
+
+    def forward(self, input_seqs, seq_time_step):
+        batch_size, visit_size, icd_code_size = input_seqs.size()
+
+        visit_embedding = self.before(input_seqs, seq_time_step)
+
         e_t_prime_all = torch.zeros_like(visit_embedding)
+        E_t_prime_all = torch.zeros_like(e_t_prime_all)
         #ht and et'
         hidden_state_all_visit = torch.zeros(batch_size, visit_size, self.h_model).to(self.device)
         hidden_state_all_visit_generated = torch.zeros(batch_size, visit_size, self.h_model).to(self.device)
@@ -111,13 +118,13 @@ class RNNdiff(nn.Module):
         for i in range(visit_size):
             e_t = visit_embedding[:, i:i + 1, :].permute(1, 0, 2)
             # ablation:no e_t_prime
-            # e_t_prime, _ = self.cross_attention(seq_h.clone(), e_t, e_t)
-            # e_t_prime_all[:, i:i + 1, :] = e_t_prime.permute(1, 0, 2)
-            #
-            # _, (seq_h, seq_c) = self.lstm(e_t_prime,
-            #                               (seq_h.clone(), seq_c.clone()))
-            _, (seq_h, seq_c) = self.lstm(e_t,
+            e_t_prime, _ = self.cross_attention(seq_h.clone(), e_t, e_t)
+            e_t_prime_all[:, i:i + 1, :] = e_t_prime.permute(1, 0, 2)
+
+            _, (seq_h, seq_c) = self.lstm(e_t_prime,
                                           (seq_h.clone(), seq_c.clone()))
+            # _, (seq_h, seq_c) = self.lstm(e_t,
+            #                               (seq_h.clone(), seq_c.clone()))
             hidden_state_all_visit[:, i:i + 1, :] = seq_h.permute(1, 0, 2)
 
         ##########diff start
@@ -140,14 +147,15 @@ class RNNdiff(nn.Module):
 
         for i in range(visit_size):
             #```new stuff that generate Et_prime from Et```
-            # E_gen_t = GEN_E_t[:, i:i + 1, :].permute(1, 0, 2)
-            # E_gen_t_prime, _ = self.cross_attention(seq_h_gen.clone(), E_gen_t, E_gen_t)
-            # _, (seq_h_gen, seq_c_gen) = self.lstm(E_gen_t_prime,
-            #                               (seq_h_gen.clone(), seq_c_gen.clone()))
-
-
-            _, (seq_h_gen, seq_c_gen) = self.lstm(GEN_E_t[:, i:i + 1, :].permute(1, 0, 2),
+            E_gen_t = GEN_E_t[:, i:i + 1, :].permute(1, 0, 2)
+            E_gen_t_prime, _ = self.cross_attention(seq_h_gen.clone(), E_gen_t, E_gen_t)
+            E_t_prime_all[:, i:i + 1, :] = E_gen_t_prime.permute(1, 0, 2)
+            _, (seq_h_gen, seq_c_gen) = self.lstm(E_gen_t_prime,
                                           (seq_h_gen.clone(), seq_c_gen.clone()))
+
+
+            # _, (seq_h_gen, seq_c_gen) = self.lstm(GEN_E_t[:, i:i + 1, :].permute(1, 0, 2),
+            #                               (seq_h_gen.clone(), seq_c_gen.clone()))
             hidden_state_all_visit_generated[:, i:i + 1, :] = seq_h_gen.permute(1, 0, 2)
 
         for i in range(visit_size):
@@ -163,4 +171,8 @@ class RNNdiff(nn.Module):
 
         return hidden_state_softmax_res, hidden_state_softmax_res_generated, \
                final_prediction, final_prediction_generated, \
-               normal_noise, predicted_noise
+               normal_noise, predicted_noise, \
+               e_t_prime_all, E_t_prime_all,\
+               hidden_state_all_visit, hidden_state_all_visit_generated
+
+

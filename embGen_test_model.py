@@ -1,7 +1,9 @@
 import argparse
 import os
 import time
+import pandas as pd
 
+import torch
 # import numpy as np
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, \
     precision_recall_curve, auc, cohen_kappa_score, log_loss
@@ -56,18 +58,49 @@ def eval_metric(eval_set, model):
         y_true = np.array([])
         y_pred = np.array([])
         y_score = np.array([])
+        res_e_t = np.array([[]])
+        res_E_t = np.array([[]])
+        res_h_t = np.array([[]])
+        res_H_t = np.array([[]])
         for i, data in enumerate(eval_set):
             ehr, time_step, labels = data
-            _,_,final_prediction,_,_,_ = model(ehr, time_step)
+            _,_,final_prediction,_,_,_,e_ts,E_ts,h_ts,H_ts = model(ehr, time_step)
+            e_ts = torch.flatten(e_ts, start_dim=1)
+            E_ts = torch.flatten(E_ts, start_dim=1)
+            h_ts = torch.flatten(h_ts, start_dim=1)
+            H_ts = torch.flatten(H_ts, start_dim=1)
+            e_ts = e_ts.data.cpu().numpy()
+            E_ts = E_ts.data.cpu().numpy()
+            h_ts = h_ts.data.cpu().numpy()
+            H_ts = H_ts.data.cpu().numpy()
+
             scores = torch.softmax(final_prediction, dim=-1)
             scores = scores.data.cpu().numpy()
             labels = labels.data.cpu().numpy()
             labels = labels.argmax(1)
             score = scores[:, 1]
             pred = scores.argmax(1)
+
             y_true = np.concatenate((y_true, labels))
             y_pred = np.concatenate((y_pred, pred))
             y_score = np.concatenate((y_score, score))
+            try:
+                res_e_t = np.concatenate((res_e_t, e_ts), axis=0)
+            except ValueError:
+                res_e_t = e_ts
+            try:
+                res_E_t = np.concatenate((res_E_t, E_ts), axis=0)
+            except ValueError:
+                res_E_t = E_ts
+            try:
+                res_h_t = np.concatenate((res_h_t, h_ts), axis=0)
+            except ValueError:
+                res_h_t = h_ts
+            try:
+                res_H_t = np.concatenate((res_H_t, H_ts), axis=0)
+            except ValueError:
+                res_H_t = H_ts
+
         accuary = accuracy_score(y_true, y_pred)
         precision = precision_score(y_true, y_pred)
         recall = recall_score(y_true, y_pred)
@@ -77,7 +110,7 @@ def eval_metric(eval_set, model):
         pr_auc = auc(lr_recall, lr_precision)
         kappa = cohen_kappa_score(y_true, y_pred)
         loss = log_loss(y_true, y_pred)
-    return accuary, precision, recall, f1, roc_auc, pr_auc, kappa, loss
+    return accuary, precision, recall, f1, roc_auc, pr_auc, kappa, loss, res_e_t, res_E_t, res_h_t, res_H_t, y_true
 
 def main():
     parser = argparse.ArgumentParser()
@@ -147,6 +180,7 @@ def train(args):
     log_path = os.path.join(args.save_dir, 'log.csv')
     log_loss_path = os.path.join(args.save_dir, 'log_loss.csv')
     stats_path = os.path.join(args.save_dir, 'stats.csv')
+
     export_config(args, config_path)
     check_path(model_path)
     with open(log_path, 'w') as fout:
@@ -260,7 +294,7 @@ def train(args):
             ehr, time_step, labels = data
 
             optim.zero_grad()
-            h_res, h_gen_v2, pred, pred_v2, noise, diff_noise = model(ehr, time_step)
+            h_res, h_gen_v2, pred, pred_v2, noise, diff_noise,_,_,_,_ = model(ehr, time_step)
 
             if args.temperature == 'temperature':
                 pred = pred/tau_schedule[epoch_id]
@@ -305,10 +339,10 @@ def train(args):
             global_step += 1
 
         model.eval()
-        train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa, tr_loss = eval_metric(train_dataloader,
+        train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa, tr_loss,_,_,_,_,_ = eval_metric(train_dataloader,
                                                                                                  model)
-        dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa, d_loss = eval_metric(dev_dataloader, model)
-        test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss = eval_metric(test_dataloader, model)
+        dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa, d_loss,_,_,_,_,_ = eval_metric(dev_dataloader, model)
+        test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss, t_e_t, t_E_t, t_h_t, t_H_t, t_label = eval_metric(test_dataloader, model)
         scheduler.step(d_loss)
         print('-' * 71)
         print('| step {:5} | train_acc {:7.4f} | dev_acc {:7.4f} | test_acc {:7.4f} '.format(global_step,
@@ -358,6 +392,23 @@ def train(args):
             with open(log_path, 'a') as fout:
                 fout.write('{},{},{},{}\n'.format(global_step, tr_pr_auc, d_pr_auc, t_pr_auc))
             print(f'model saved to {model_path}')
+
+            e_t_fileName = 'e_t_epoch' + str(epoch_id) + '.csv'
+            E_t_gen_fileName = 'E_t_gen_epoch' + str(epoch_id) + '.csv'
+            h_t_fileName = 'h_t_epoch' + str(epoch_id) + '.csv'
+            H_t_gen_fileName = 'H_t_gen_epoch' + str(epoch_id) + '.csv'
+
+            e_t_path = os.path.join(args.save_dir, e_t_fileName)
+            E_t_path = os.path.join(args.save_dir, E_t_gen_fileName)
+            h_t_path = os.path.join(args.save_dir, h_t_fileName)
+            H_t_path = os.path.join(args.save_dir, H_t_gen_fileName)
+
+            np.savetxt(e_t_path, t_e_t, delimiter=',')
+            np.savetxt(E_t_path, t_E_t, delimiter=',')
+            np.savetxt(h_t_path, t_h_t, delimiter=',')
+            np.savetxt(H_t_path, t_H_t, delimiter=',')
+
+
         # if epoch_id - best_dev_epoch >= args.max_epochs_before_stop:
         #     break
 
