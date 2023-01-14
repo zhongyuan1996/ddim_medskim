@@ -110,7 +110,7 @@ def eval_metric(eval_set, model):
         pr_auc = auc(lr_recall, lr_precision)
         kappa = cohen_kappa_score(y_true, y_pred)
         loss = log_loss(y_true, y_pred)
-    return accuary, precision, recall, f1, roc_auc, pr_auc, kappa, loss, res_e_t, res_E_t, res_h_t, res_H_t, y_true
+    return accuary, precision, recall, f1, roc_auc, pr_auc, kappa, loss, res_e_t, res_E_t, res_h_t, res_H_t, y_true, y_pred
 
 def main():
     parser = argparse.ArgumentParser()
@@ -339,10 +339,10 @@ def train(args):
             global_step += 1
 
         model.eval()
-        train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa, tr_loss,_,_,_,_,_ = eval_metric(train_dataloader,
+        train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa, tr_loss,_,_,_,_,_,_ = eval_metric(train_dataloader,
                                                                                                  model)
-        dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa, d_loss,_,_,_,_,_ = eval_metric(dev_dataloader, model)
-        test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss, t_e_t, t_E_t, t_h_t, t_H_t, t_label = eval_metric(test_dataloader, model)
+        dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa, d_loss,_,_,_,_,_,_ = eval_metric(dev_dataloader, model)
+        test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss, t_e_t, t_E_t, t_h_t, t_H_t, t_label,t_pred = eval_metric(test_dataloader, model)
         scheduler.step(d_loss)
         print('-' * 71)
         print('| step {:5} | train_acc {:7.4f} | dev_acc {:7.4f} | test_acc {:7.4f} '.format(global_step,
@@ -393,20 +393,29 @@ def train(args):
                 fout.write('{},{},{},{}\n'.format(global_step, tr_pr_auc, d_pr_auc, t_pr_auc))
             print(f'model saved to {model_path}')
 
-            e_t_fileName = 'e_t_epoch' + str(epoch_id) + '.csv'
-            E_t_gen_fileName = 'E_t_gen_epoch' + str(epoch_id) + '.csv'
-            h_t_fileName = 'h_t_epoch' + str(epoch_id) + '.csv'
-            H_t_gen_fileName = 'H_t_gen_epoch' + str(epoch_id) + '.csv'
+        if epoch_id%5==0:
+
+            e_t_fileName = 'e_t_epoch_' + str(epoch_id) + '.csv'
+            E_t_gen_fileName = 'E_t_gen_epoch_' + str(epoch_id) + '.csv'
+            h_t_fileName = 'h_t_epoch_' + str(epoch_id) + '.csv'
+            H_t_gen_fileName = 'H_t_gen_epoch_' + str(epoch_id) + '.csv'
+            label_fileName = 'label_epoch_' + str(epoch_id) + '.csv'
+            pred_fileName = 'pred_epoch_' + str(epoch_id) + '.csv'
 
             e_t_path = os.path.join(args.save_dir, e_t_fileName)
             E_t_path = os.path.join(args.save_dir, E_t_gen_fileName)
             h_t_path = os.path.join(args.save_dir, h_t_fileName)
             H_t_path = os.path.join(args.save_dir, H_t_gen_fileName)
+            label_path = os.path.join(args.save_dir, label_fileName)
+            pred_path = os.path.join(args.save_dir, pred_fileName)
+
 
             np.savetxt(e_t_path, t_e_t, delimiter=',')
             np.savetxt(E_t_path, t_E_t, delimiter=',')
             np.savetxt(h_t_path, t_h_t, delimiter=',')
             np.savetxt(H_t_path, t_H_t, delimiter=',')
+            np.savetxt(label_path, t_label, delimiter=',')
+            np.savetxt(pred_path, t_pred, delimiter=',')
 
 
         # if epoch_id - best_dev_epoch >= args.max_epochs_before_stop:
