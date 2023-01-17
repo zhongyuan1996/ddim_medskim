@@ -59,20 +59,21 @@ def eval_metric(eval_set, model):
         y_pred = np.array([])
         y_score = np.array([])
         res_e_t = np.array([[]])
-        res_E_t = np.array([[]])
+        # res_E_t = np.array([[]])
         res_h_t = np.array([[]])
-        res_H_t = np.array([[]])
+        # res_H_t = np.array([[]])
         for i, data in enumerate(eval_set):
             ehr, time_step, labels = data
-            _,_,final_prediction,_,_,_,e_ts,E_ts,h_ts,H_ts = model(ehr, time_step)
+            # _,_,final_prediction,_,_,_,e_ts,E_ts,h_ts,H_ts = model(ehr, time_step)
+            _, final_prediction, e_ts, h_ts= model(ehr, time_step)
             e_ts = torch.flatten(e_ts, start_dim=1)
-            E_ts = torch.flatten(E_ts, start_dim=1)
+            # E_ts = torch.flatten(E_ts, start_dim=1)
             h_ts = torch.flatten(h_ts, start_dim=1)
-            H_ts = torch.flatten(H_ts, start_dim=1)
+            # H_ts = torch.flatten(H_ts, start_dim=1)
             e_ts = e_ts.data.cpu().numpy()
-            E_ts = E_ts.data.cpu().numpy()
+            # E_ts = E_ts.data.cpu().numpy()
             h_ts = h_ts.data.cpu().numpy()
-            H_ts = H_ts.data.cpu().numpy()
+            # H_ts = H_ts.data.cpu().numpy()
 
             scores = torch.softmax(final_prediction, dim=-1)
             scores = scores.data.cpu().numpy()
@@ -88,18 +89,18 @@ def eval_metric(eval_set, model):
                 res_e_t = np.concatenate((res_e_t, e_ts), axis=0)
             except ValueError:
                 res_e_t = e_ts
-            try:
-                res_E_t = np.concatenate((res_E_t, E_ts), axis=0)
-            except ValueError:
-                res_E_t = E_ts
+            # try:
+            #     res_E_t = np.concatenate((res_E_t, E_ts), axis=0)
+            # except ValueError:
+            #     res_E_t = E_ts
             try:
                 res_h_t = np.concatenate((res_h_t, h_ts), axis=0)
             except ValueError:
                 res_h_t = h_ts
-            try:
-                res_H_t = np.concatenate((res_H_t, H_ts), axis=0)
-            except ValueError:
-                res_H_t = H_ts
+            # try:
+            #     res_H_t = np.concatenate((res_H_t, H_ts), axis=0)
+            # except ValueError:
+            #     res_H_t = H_ts
 
         accuary = accuracy_score(y_true, y_pred)
         precision = precision_score(y_true, y_pred)
@@ -110,7 +111,7 @@ def eval_metric(eval_set, model):
         pr_auc = auc(lr_recall, lr_precision)
         kappa = cohen_kappa_score(y_true, y_pred)
         loss = log_loss(y_true, y_pred)
-    return accuary, precision, recall, f1, roc_auc, pr_auc, kappa, loss, res_e_t, res_E_t, res_h_t, res_H_t, y_true, y_pred
+    return accuary, precision, recall, f1, roc_auc, pr_auc, kappa, loss, res_e_t, res_h_t, y_true, y_pred
 
 def main():
     parser = argparse.ArgumentParser()
@@ -294,23 +295,23 @@ def train(args):
             ehr, time_step, labels = data
 
             optim.zero_grad()
-            h_res, h_gen_v2, pred, pred_v2, noise, diff_noise,_,_,_,_ = model(ehr, time_step)
+            # h_res, h_gen_v2, pred, pred_v2, noise, diff_noise,_,_,_,_ = model(ehr, time_step)
+            h_res, pred, e_t, h_t= model(ehr, time_step)
+            # if args.temperature == 'temperature':
+            #     pred = pred/tau_schedule[epoch_id]
+            #     pred_v2 = pred_v2/tau_schedule[epoch_id]
 
-            if args.temperature == 'temperature':
-                pred = pred/tau_schedule[epoch_id]
-                pred_v2 = pred_v2/tau_schedule[epoch_id]
-
-            DF_loss = Loss_func_diff(diff_noise, noise) * args.lambda_DF_loss
+            # DF_loss = Loss_func_diff(diff_noise, noise) * args.lambda_DF_loss
             # KL_loss = Loss_func_h(h_res.log(), h_gen_v2) * args.lambda_KL_loss
             CE_loss = loss_func_pred(pred, labels)
-            CE_gen_loss = loss_func_pred(pred_v2, labels) * args.lambda_CE_gen_loss
-            loss = DF_loss + CE_loss + CE_gen_loss
-            # loss = CE_loss
+            # CE_gen_loss = loss_func_pred(pred_v2, labels) * args.lambda_CE_gen_loss
+            # loss = DF_loss + CE_loss + CE_gen_loss
+            loss = CE_loss
             loss.backward()
             total_loss += (loss.item() / labels.size(0)) * args.batch_size
-            total_DF_loss += (DF_loss.item() / labels.size(0)) * args.batch_size
+            # total_DF_loss += (DF_loss.item() / labels.size(0)) * args.batch_size
             total_CE_loss += (CE_loss.item() / labels.size(0)) * args.batch_size
-            total_CE_gen_loss += (CE_gen_loss.item() / labels.size(0)) * args.batch_size
+            # total_CE_gen_loss += (CE_gen_loss.item() / labels.size(0)) * args.batch_size
             # total_KL_loss += (KL_loss.item() / labels.size(0)) * args.batch_size
             if args.max_grad_norm > 0:
                 nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
@@ -339,10 +340,10 @@ def train(args):
             global_step += 1
 
         model.eval()
-        train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa, tr_loss,_,_,_,_,_,_ = eval_metric(train_dataloader,
+        train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa, tr_loss,_,_,_,_ = eval_metric(train_dataloader,
                                                                                                  model)
-        dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa, d_loss,_,_,_,_,_,_ = eval_metric(dev_dataloader, model)
-        test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss, t_e_t, t_E_t, t_h_t, t_H_t, t_label,t_pred = eval_metric(test_dataloader, model)
+        dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa, d_loss,_,_,_,_ = eval_metric(dev_dataloader, model)
+        test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss, t_e_t, t_h_t, t_label,t_pred = eval_metric(test_dataloader, model)
         scheduler.step(d_loss)
         print('-' * 71)
         print('| step {:5} | train_acc {:7.4f} | dev_acc {:7.4f} | test_acc {:7.4f} '.format(global_step,
@@ -396,24 +397,24 @@ def train(args):
         if epoch_id%5==0:
 
             e_t_fileName = 'e_t_epoch_' + str(epoch_id) + '.csv'
-            E_t_gen_fileName = 'E_t_gen_epoch_' + str(epoch_id) + '.csv'
+            # E_t_gen_fileName = 'E_t_gen_epoch_' + str(epoch_id) + '.csv'
             h_t_fileName = 'h_t_epoch_' + str(epoch_id) + '.csv'
-            H_t_gen_fileName = 'H_t_gen_epoch_' + str(epoch_id) + '.csv'
+            # H_t_gen_fileName = 'H_t_gen_epoch_' + str(epoch_id) + '.csv'
             label_fileName = 'label_epoch_' + str(epoch_id) + '.csv'
             pred_fileName = 'pred_epoch_' + str(epoch_id) + '.csv'
 
             e_t_path = os.path.join(args.save_dir, e_t_fileName)
-            E_t_path = os.path.join(args.save_dir, E_t_gen_fileName)
+            # E_t_path = os.path.join(args.save_dir, E_t_gen_fileName)
             h_t_path = os.path.join(args.save_dir, h_t_fileName)
-            H_t_path = os.path.join(args.save_dir, H_t_gen_fileName)
+            # H_t_path = os.path.join(args.save_dir, H_t_gen_fileName)
             label_path = os.path.join(args.save_dir, label_fileName)
             pred_path = os.path.join(args.save_dir, pred_fileName)
 
 
             np.savetxt(e_t_path, t_e_t, delimiter=',')
-            np.savetxt(E_t_path, t_E_t, delimiter=',')
+            # np.savetxt(E_t_path, t_E_t, delimiter=',')
             np.savetxt(h_t_path, t_h_t, delimiter=',')
-            np.savetxt(H_t_path, t_H_t, delimiter=',')
+            # np.savetxt(H_t_path, t_H_t, delimiter=',')
             np.savetxt(label_path, t_label, delimiter=',')
             np.savetxt(pred_path, t_pred, delimiter=',')
 
