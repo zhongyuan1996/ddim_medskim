@@ -4,10 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="softmax gen">
+    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="e_t, h_t for no ddpm embedding gen">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/embGen_test_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/embGen_test_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/embGen_LSTM_ddim.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/embGen_LSTM_ddim.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -219,7 +217,7 @@
       <workItem from="1673469430369" duration="21042000" />
       <workItem from="1673643931198" duration="23500000" />
       <workItem from="1673885138198" duration="3897000" />
-      <workItem from="1673971339584" duration="2350000" />
+      <workItem from="1673971339584" duration="4219000" />
     </task>
     <task id="LOCAL-00001" summary="implementing diffusion model">
       <created>1667068514499</created>
@@ -424,7 +422,14 @@
       <option name="project" value="LOCAL" />
       <updated>1673891301075</updated>
     </task>
-    <option name="localTasksCounter" value="30" />
+    <task id="LOCAL-00030" summary="e_t, h_t for no ddpm embedding gen">
+      <created>1673982699079</created>
+      <option name="number" value="00030" />
+      <option name="presentableId" value="LOCAL-00030" />
+      <option name="project" value="LOCAL" />
+      <updated>1673982699079</updated>
+    </task>
+    <option name="localTasksCounter" value="31" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -449,7 +454,6 @@
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
-    <MESSAGE value="implemented diffusion model" />
     <MESSAGE value="more debug" />
     <MESSAGE value="runnable" />
     <MESSAGE value="fixed diff" />
@@ -474,7 +478,8 @@
     <MESSAGE value="ready to generate et ht with labels, 5 epochs" />
     <MESSAGE value="ablation: no ddpm" />
     <MESSAGE value="softmax gen" />
-    <option name="LAST_COMMIT_MESSAGE" value="softmax gen" />
+    <MESSAGE value="e_t, h_t for no ddpm embedding gen" />
+    <option name="LAST_COMMIT_MESSAGE" value="e_t, h_t for no ddpm embedding gen" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

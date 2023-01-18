@@ -111,13 +111,13 @@ class RNNdiff(nn.Module):
         for i in range(visit_size):
             e_t = visit_embedding[:, i:i + 1, :].permute(1, 0, 2)
             # ablation:no e_t_prime
-            e_t_prime, _ = self.cross_attention(seq_h.clone(), e_t, e_t)
-            e_t_prime_all[:, i:i + 1, :] = e_t_prime.permute(1, 0, 2)
-
-            _, (seq_h, seq_c) = self.lstm(e_t_prime,
-                                          (seq_h.clone(), seq_c.clone()))
-            # _, (seq_h, seq_c) = self.lstm(e_t,
+            # e_t_prime, _ = self.cross_attention(seq_h.clone(), e_t, e_t)
+            # e_t_prime_all[:, i:i + 1, :] = e_t_prime.permute(1, 0, 2)
+            #
+            # _, (seq_h, seq_c) = self.lstm(e_t_prime,
             #                               (seq_h.clone(), seq_c.clone()))
+            _, (seq_h, seq_c) = self.lstm(e_t,
+                                          (seq_h.clone(), seq_c.clone()))
             hidden_state_all_visit[:, i:i + 1, :] = seq_h.permute(1, 0, 2)
 
         ##########diff start
