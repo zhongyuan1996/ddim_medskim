@@ -356,7 +356,6 @@ def train(args):
                 fout.write('{},{},{},{}\n'.format(global_step, tr_pr_auc, d_pr_auc, t_pr_auc))
             print(f'model saved to {model_path}')
 
-        if epoch_id%5==0:
 
             softmaxres_fileName = 'softmaxres_epoch_' + str(epoch_id) + '.csv'
             gen_softmaxres_gen_fileName = 'gen_softmaxres_epoch_' + str(epoch_id) + '.csv'
