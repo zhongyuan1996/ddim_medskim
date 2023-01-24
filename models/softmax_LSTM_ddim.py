@@ -78,6 +78,9 @@ class RNNdiff(nn.Module):
         self.tanh = nn.Tanh()
         self.time_layer = nn.Linear(1, 64)
         self.time_updim = nn.Linear(64, d_model)
+        self.dropout = nn.Dropout(dropout)
+        self.fc = nn.Linear(d_model, d_model, bias=False)
+        self.layer_norm = nn.LayerNorm(d_model)
 
     def before(self, input_seqs, seq_time_step):
 
@@ -125,10 +128,15 @@ class RNNdiff(nn.Module):
             if i == 0:
                 e_t_prime = e_t.clone()
             else:
-                e_t_prime, _ = self.cross_attention(e_t, hidden_state_all_visit[:, 0:i, :].clone().permute(1, 0, 2), hidden_state_all_visit[:, 0:i, :].clone().permute(1, 0, 2))
+                attenOut, _ = self.cross_attention(e_t, hidden_state_all_visit[:, 0:i, :].clone().permute(1, 0, 2), hidden_state_all_visit[:, 0:i, :].clone().permute(1, 0, 2))
+                attenOut = self.fc(attenOut)
+                attenOut = self.dropout(attenOut)
+                e_t_prime += attenOut
+                e_t_prime = self.layer_norm(e_t_prime)
+
             e_t_prime_all[:, i:i + 1, :] = e_t_prime.permute(1, 0, 2)
 
-            _, (seq_h, seq_c) = self.lstm(e_t_prime,
+            _, (seq_h, seq_c) = self.lstm(e_t_prime.clone(),
                                           (hidden_state_all_visit[:, i:i+1, :].clone().permute(1, 0, 2), c_all_visit[:, i:i+1, :].clone().permute(1, 0, 2)))
             # _, (seq_h, seq_c) = self.lstm(e_t,
             #                               (seq_h.clone(), seq_c.clone()))
@@ -160,10 +168,14 @@ class RNNdiff(nn.Module):
             if i == 0:
                 E_gen_t_prime = E_gen_t.clone()
             else:
-                E_gen_t_prime, _ = self.cross_attention(E_gen_t, hidden_state_all_visit_generated[:, 0:i, :].clone().permute(1, 0, 2), hidden_state_all_visit_generated[:, 0:i, :].clone().permute(1, 0, 2))
+                gen_attenOut, _ = self.cross_attention(E_gen_t, hidden_state_all_visit_generated[:, 0:i, :].clone().permute(1, 0, 2), hidden_state_all_visit_generated[:, 0:i, :].clone().permute(1, 0, 2))
+                gen_attenOut = self.fc(gen_attenOut)
+                gen_attenOut = self.dropout(gen_attenOut)
+                E_gen_t_prime += gen_attenOut
+                E_gen_t_prime = self.layer_norm(E_gen_t_prime)
             E_gen_t_prime_all[:, i:i + 1, :] = E_gen_t_prime.permute(1, 0, 2)
 
-            _, (seq_h, seq_c) = self.lstm(E_gen_t_prime,
+            _, (seq_h, seq_c) = self.lstm(E_gen_t_prime.clone(),
                                           (hidden_state_all_visit_generated[:, i:i+1, :].clone().permute(1, 0, 2), c_all_visit_generated[:, i:i+1, :].clone().permute(1, 0, 2)))
             # _, (seq_h, seq_c) = self.lstm(e_t,
             #                               (seq_h.clone(), seq_c.clone()))
