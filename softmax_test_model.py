@@ -116,7 +116,7 @@ def main():
     parser.add_argument("--temperature", type=str, default='temperature', help="temperature control of classifier softmax")
     parser.add_argument("--mintau", type=float, default=0.5, help="parameter mintau of temperature control")
     parser.add_argument("--maxtau", type=float, default=5.0, help="parameter maxtau of temperature control")
-    parser.add_argument("--patience", type=int, default=10, help="learning rate patience")
+    parser.add_argument("--patience", type=int, default=7, help="learning rate patience")
     parser.add_argument("--factor", type=float, default=0.2, help="learning rate factor")
 
     args = parser.parse_args()

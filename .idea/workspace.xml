@@ -7,6 +7,7 @@
     <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="fixing attention">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/models/softmax_LSTM_ddim.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/softmax_LSTM_ddim.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/softmax_test_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/softmax_test_model.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -221,7 +222,7 @@
       <workItem from="1673971339584" duration="4375000" />
       <workItem from="1674084001969" duration="2792000" />
       <workItem from="1674506136909" duration="6381000" />
-      <workItem from="1674516873386" duration="6958000" />
+      <workItem from="1674516873386" duration="10647000" />
     </task>
     <task id="LOCAL-00001" summary="implementing diffusion model">
       <created>1667068514499</created>
@@ -461,7 +462,14 @@
       <option name="project" value="LOCAL" />
       <updated>1674532779381</updated>
     </task>
-    <option name="localTasksCounter" value="35" />
+    <task id="LOCAL-00035" summary="fixing attention">
+      <created>1674565307107</created>
+      <option name="number" value="00035" />
+      <option name="presentableId" value="LOCAL-00035" />
+      <option name="project" value="LOCAL" />
+      <updated>1674565307107</updated>
+    </task>
+    <option name="localTasksCounter" value="36" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -575,7 +583,7 @@
     <SUITE FILE_PATH="coverage/ddim_medskim$embGen_test_model.coverage" NAME="embGen_test_model Coverage Results" MODIFIED="1673981586319" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$seeData.coverage" NAME="seeData Coverage Results" MODIFIED="1667142088225" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$softmax_LSTM_ddim.coverage" NAME="softmax_LSTM_ddim Coverage Results" MODIFIED="1674520805680" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$softmax_test_model.coverage" NAME="softmax_test_model Coverage Results" MODIFIED="1674520809096" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$softmax_test_model.coverage" NAME="softmax_test_model Coverage Results" MODIFIED="1674570377478" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$diffUtil.coverage" NAME="diffUtil Coverage Results" MODIFIED="1667527925286" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/utils" />
   </component>
 </project>
