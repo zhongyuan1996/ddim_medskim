@@ -82,7 +82,7 @@ class RNNdiff(nn.Module):
         self.h_model = h_model
         self.model_var_type = self.config.model.var_type
         self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
-        self.cross_attention = nn.MultiheadAttention(d_model, 4, batch_first=False)
+        self.cross_attention = nn.MultiheadAttention(d_model, 8, batch_first=False)
         self.cross_attention_alt = SelfAttention(d_model)
         # CrossAttentionBlock(d_model, 2, drop=0.1, attn_drop=0.1)
         self.lstm = nn.LSTM(d_model, h_model, num_layers=1, batch_first=False, dropout=dropout)

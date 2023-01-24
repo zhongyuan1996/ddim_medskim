@@ -102,7 +102,7 @@ def main():
     parser.add_argument('--lamda', default=0.1, type=float)
     parser.add_argument('--max_grad_norm', default=1.0, type=float, help='max grad norm (0 to disable)')
     parser.add_argument('--warmup_steps', default=200, type=int)
-    parser.add_argument('--n_epochs', default=100, type=int)
+    parser.add_argument('--n_epochs', default=50, type=int)
     parser.add_argument('--log_interval', default=20, type=int)
     parser.add_argument('--mode', default='train', choices=['train', 'pred', 'study'],
                         help='run training or evaluation')
@@ -116,7 +116,7 @@ def main():
     parser.add_argument("--temperature", type=str, default='temperature', help="temperature control of classifier softmax")
     parser.add_argument("--mintau", type=float, default=0.5, help="parameter mintau of temperature control")
     parser.add_argument("--maxtau", type=float, default=5.0, help="parameter maxtau of temperature control")
-    parser.add_argument("--patience", type=int, default=7, help="learning rate patience")
+    parser.add_argument("--patience", type=int, default=5, help="learning rate patience")
     parser.add_argument("--factor", type=float, default=0.2, help="learning rate factor")
 
     args = parser.parse_args()
