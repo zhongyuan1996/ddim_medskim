@@ -128,7 +128,7 @@ class RNNdiff(nn.Module):
             if i == 0:
                 e_t_prime = e_t.clone()
             else:
-                attenOut, _ = self.cross_attention(e_t, hidden_state_all_visit[:, 0:i, :].clone().permute(1, 0, 2), hidden_state_all_visit[:, 0:i, :].clone().permute(1, 0, 2))
+                attenOut, _ = self.cross_attention(e_t, hidden_state_all_visit[:, i-1:i, :].clone().permute(1, 0, 2), hidden_state_all_visit[:, i-1:i, :].clone().permute(1, 0, 2))
                 attenOut = self.fc(attenOut)
                 attenOut = self.dropout(attenOut)
                 e_t_prime += attenOut
@@ -168,7 +168,7 @@ class RNNdiff(nn.Module):
             if i == 0:
                 E_gen_t_prime = E_gen_t.clone()
             else:
-                gen_attenOut, _ = self.cross_attention(E_gen_t, hidden_state_all_visit_generated[:, 0:i, :].clone().permute(1, 0, 2), hidden_state_all_visit_generated[:, 0:i, :].clone().permute(1, 0, 2))
+                gen_attenOut, _ = self.cross_attention(E_gen_t, hidden_state_all_visit_generated[:, i-1:i, :].clone().permute(1, 0, 2), hidden_state_all_visit_generated[:, i-1:i, :].clone().permute(1, 0, 2))
                 gen_attenOut = self.fc(gen_attenOut)
                 gen_attenOut = self.dropout(gen_attenOut)
                 E_gen_t_prime += gen_attenOut
