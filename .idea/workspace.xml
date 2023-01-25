@@ -4,9 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="rerun hf and amnesia">
-      <change beforePath="$PROJECT_DIR$/models/softmax_LSTM_ddim.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/softmax_LSTM_ddim.py" afterDir="false" />
-    </list>
+    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="rerun hf and amnesia" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -221,7 +219,7 @@
       <workItem from="1674084001969" duration="2792000" />
       <workItem from="1674506136909" duration="6381000" />
       <workItem from="1674516873386" duration="21621000" />
-      <workItem from="1674656467519" duration="3120000" />
+      <workItem from="1674656467519" duration="3745000" />
     </task>
     <task id="LOCAL-00001" summary="implementing diffusion model">
       <created>1667068514499</created>
@@ -503,7 +501,14 @@
       <option name="project" value="LOCAL" />
       <updated>1674668654505</updated>
     </task>
-    <option name="localTasksCounter" value="41" />
+    <task id="LOCAL-00041" summary="rerun hf and amnesia">
+      <created>1674669083375</created>
+      <option name="number" value="00041" />
+      <option name="presentableId" value="LOCAL-00041" />
+      <option name="project" value="LOCAL" />
+      <updated>1674669083375</updated>
+    </task>
+    <option name="localTasksCounter" value="42" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

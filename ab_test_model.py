@@ -58,7 +58,7 @@ def eval_metric(eval_set, model):
         y_score = np.array([])
         for i, data in enumerate(eval_set):
             ehr, time_step, labels = data
-            _,_,final_prediction = model(ehr, time_step)
+            _,_,final_prediction,_,_,_ = model(ehr, time_step)
             scores = torch.softmax(final_prediction, dim=-1)
             scores = scores.data.cpu().numpy()
             labels = labels.data.cpu().numpy()
@@ -260,8 +260,8 @@ def train(args):
             ehr, time_step, labels = data
 
             optim.zero_grad()
-            # h_res, h_gen_v2, pred, pred_v2, noise, diff_noise = model(ehr, time_step)
-            h_res ,_, pred = model(ehr, time_step)
+            h_res, h_gen_v2, pred, pred_v2, noise, diff_noise = model(ehr, time_step)
+            # h_res ,_, pred = model(ehr, time_step)
 
             # if args.temperature == 'temperature':
             #     pred = pred/tau_schedule[epoch_id]

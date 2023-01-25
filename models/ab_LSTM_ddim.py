@@ -171,14 +171,18 @@ class RNNdiff(nn.Module):
             #     e_t += attenOut
             #     e_t_prime = self.layer_norm(e_t.clone())
             #
-            #     # e_t_prime = self.cross_attention_alt(e_t, )
-            #
             # e_t_prime_all[:, i:i + 1, :] = e_t_prime.permute(1, 0, 2)
             #
-            # _, (seq_h, seq_c) = self.lstm(e_t_prime.clone(),
-            #                               (hidden_state_all_visit[:, i:i+1, :].clone().permute(1, 0, 2), c_all_visit[:, i:i+1, :].clone().permute(1, 0, 2)))
-            _, (seq_h, seq_c) = self.lstm(e_t,
-                                          (hidden_state_all_visit[:, i:i+1, :].clone().permute(1, 0, 2), c_all_visit[:, i:i+1, :].clone().permute(1, 0, 2)))
+            # if i ==0:
+            #     _, (seq_h, seq_c) = self.lstm(e_t_prime.clone())
+            # else:
+            #     _, (seq_h, seq_c) = self.lstm(e_t_prime.clone(),
+            #                               (hidden_state_all_visit[:, i-1: i, :].clone().permute(1, 0, 2), c_all_visit[:, i-1: i, :].clone().permute(1, 0, 2)))
+            if i ==0:
+                _, (seq_h, seq_c) = self.lstm(e_t.clone())
+            else:
+                _, (seq_h, seq_c) = self.lstm(e_t.clone(),
+                                          (hidden_state_all_visit[:, i-1: i, :].clone().permute(1, 0, 2), c_all_visit[:, i-1: i, :].clone().permute(1, 0, 2)))
             hidden_state_all_visit[:, i:i + 1, :] = seq_h.permute(1, 0, 2)
             c_all_visit[:, i:i + 1, :] = seq_c.permute(1, 0, 2)
 
@@ -202,7 +206,7 @@ class RNNdiff(nn.Module):
 
         for i in range(visit_size):
             E_gen_t = GEN_E_t[:, i:i + 1, :].permute(1, 0, 2)
-            #
+
             # if i == 0:
             #     E_gen_t_prime = E_gen_t.clone()
             # else:
@@ -213,10 +217,16 @@ class RNNdiff(nn.Module):
             #     E_gen_t_prime = self.layer_norm(E_gen_t.clone())
             # E_gen_t_prime_all[:, i:i + 1, :] = E_gen_t_prime.permute(1, 0, 2)
             #
-            # _, (seq_h, seq_c) = self.lstm(E_gen_t_prime.clone(),
-            #                               (hidden_state_all_visit_generated[:, i:i+1, :].clone().permute(1, 0, 2), c_all_visit_generated[:, i:i+1, :].clone().permute(1, 0, 2)))
-            _, (seq_h, seq_c) = self.lstm(e_t,
-                                          (hidden_state_all_visit_generated[:, i:i+1, :].clone().permute(1, 0, 2), c_all_visit_generated[:, i:i+1, :].clone().permute(1, 0, 2)))
+            # if i ==0:
+            #     _, (seq_h, seq_c) = self.lstm(E_gen_t_prime.clone())
+            # else:
+            #     _, (seq_h, seq_c) = self.lstm(E_gen_t_prime.clone(),
+            #                               (hidden_state_all_visit_generated[:, i-1: i, :].clone().permute(1, 0, 2), c_all_visit_generated[:, i-1: i, :].clone().permute(1, 0, 2)))
+            if i ==0:
+                _, (seq_h, seq_c) = self.lstm(E_gen_t.clone())
+            else:
+                _, (seq_h, seq_c) = self.lstm(E_gen_t.clone(),
+                                          (hidden_state_all_visit_generated[:, i-1: i, :].clone().permute(1, 0, 2), c_all_visit_generated[:, i-1: i, :].clone().permute(1, 0, 2)))
             hidden_state_all_visit_generated[:, i:i + 1, :] = seq_h.permute(1, 0, 2)
             c_all_visit_generated[:, i:i + 1, :] = seq_c.permute(1, 0, 2)
 
