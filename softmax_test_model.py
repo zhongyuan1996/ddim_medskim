@@ -41,6 +41,9 @@ def eval_metric(eval_set, model):
             ehr, time_step, labels = data
             e_t,E_t_gen,final_prediction,_,_,_ = model(ehr, time_step)
 
+            e_t = torch.flatten(e_t, start_dim=1)
+            E_t_gen = torch.flatten(E_t_gen, start_dim=1)
+
             scores = torch.softmax(final_prediction, dim=-1)
             scores = scores.data.cpu().numpy()
             e_t = e_t.data.cpu().numpy()
