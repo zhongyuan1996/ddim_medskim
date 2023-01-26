@@ -36,6 +36,8 @@ def eval_metric(eval_set, model):
         y_score = np.array([])
         y_scores = np.array([[]])
         y_scores_gen = np.array([[]])
+        final_predictions = np.array([[]])
+        final_predictions_gen = np.array([[]])
 
         for i, data in enumerate(eval_set):
             ehr, time_step, labels = data
@@ -45,6 +47,8 @@ def eval_metric(eval_set, model):
             scores_gen = torch.softmax(final_prediction_gen, dim=-1)
             scores = scores.data.cpu().numpy()
             scores_gen = scores_gen.data.cpu().numpy()
+            final_prediction = final_prediction.data.cpu().numpy()
+            final_prediction_gen = final_prediction_gen.data.cpu().numpy()
 
             labels = labels.data.cpu().numpy()
             labels = labels.argmax(1)
@@ -54,6 +58,16 @@ def eval_metric(eval_set, model):
             y_true = np.concatenate((y_true, labels))
             y_pred = np.concatenate((y_pred, pred))
             y_score = np.concatenate((y_score, score))
+            try:
+                final_predictions = np.concatenate((final_predictions, final_prediction), axis=0)
+            except ValueError:
+                final_predictions = final_prediction
+
+            try:
+                final_predictions_gen = np.concatenate((final_predictions_gen, final_prediction_gen), axis=0)
+            except ValueError:
+                final_predictions_gen = final_prediction_gen
+
             try:
                 y_scores = np.concatenate((y_scores, scores), axis=0)
             except ValueError:
@@ -73,7 +87,7 @@ def eval_metric(eval_set, model):
         pr_auc = auc(lr_recall, lr_precision)
         kappa = cohen_kappa_score(y_true, y_pred)
         loss = log_loss(y_true, y_pred)
-    return accuary, precision, recall, f1, roc_auc, pr_auc, kappa, loss, y_scores, y_scores_gen , y_true, y_pred
+    return accuary, precision, recall, f1, roc_auc, pr_auc, kappa, loss, final_predictions, final_predictions_gen , y_true, y_pred
 
 def main():
     parser = argparse.ArgumentParser()
