@@ -370,24 +370,24 @@ def train(args):
                 fout.write('{},{},{},{}\n'.format(global_step, tr_pr_auc, d_pr_auc, t_pr_auc))
             print(f'model saved to {model_path}')
 
-
-            softmaxres_fileName = 'softmaxres_epoch_' + str(epoch_id) + '.csv'
-            gen_softmaxres_gen_fileName = 'gen_softmaxres_epoch_' + str(epoch_id) + '.csv'
-
-            label_fileName = 'label_epoch_' + str(epoch_id) + '.csv'
-            pred_fileName = 'pred_epoch_' + str(epoch_id) + '.csv'
-
-            softmax_path = os.path.join(args.save_dir, softmaxres_fileName)
-            gen_softmax_path = os.path.join(args.save_dir, gen_softmaxres_gen_fileName)
-
-            label_path = os.path.join(args.save_dir, label_fileName)
-            pred_path = os.path.join(args.save_dir, pred_fileName)
-
-
-            np.savetxt(softmax_path, softmaxres, delimiter=',')
-            np.savetxt(gen_softmax_path, gen_softmaxres, delimiter=',')
-            np.savetxt(label_path, t_label, delimiter=',')
-            np.savetxt(pred_path, t_pred, delimiter=',')
+            #
+            # softmaxres_fileName = 'softmaxres_epoch_' + str(epoch_id) + '.csv'
+            # gen_softmaxres_gen_fileName = 'gen_softmaxres_epoch_' + str(epoch_id) + '.csv'
+            #
+            # label_fileName = 'label_epoch_' + str(epoch_id) + '.csv'
+            # pred_fileName = 'pred_epoch_' + str(epoch_id) + '.csv'
+            #
+            # softmax_path = os.path.join(args.save_dir, softmaxres_fileName)
+            # gen_softmax_path = os.path.join(args.save_dir, gen_softmaxres_gen_fileName)
+            #
+            # label_path = os.path.join(args.save_dir, label_fileName)
+            # pred_path = os.path.join(args.save_dir, pred_fileName)
+            #
+            #
+            # np.savetxt(softmax_path, softmaxres, delimiter=',')
+            # np.savetxt(gen_softmax_path, gen_softmaxres, delimiter=',')
+            # np.savetxt(label_path, t_label, delimiter=',')
+            # np.savetxt(pred_path, t_pred, delimiter=',')
 
 
         # if epoch_id - best_dev_epoch >= args.max_epochs_before_stop:
