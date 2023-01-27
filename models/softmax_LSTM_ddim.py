@@ -233,12 +233,13 @@ class RNNdiff(nn.Module):
         final_prediction = hidden_state_softmax_res[:, -1, :]
         final_prediction_generated = hidden_state_softmax_res_generated[:, -1, :]
 
-
+        h_K = hidden_state_all_visit[:, 49:50, :].clone()
+        h_gen_K = hidden_state_all_visit_generated[:, 49:50, :].clone()
 
         # final_prediction = self.classifyer(hidden_state_all_visit[:, visit_size-1:visit_size, :]).squeeze()
         # final_prediction_generated = self.classifyer(hidden_state_all_visit[:, visit_size-1:visit_size, :]).squeeze()
 
-        return e_t_prime_all, E_gen_t_prime_all, \
+        return h_K, h_gen_K, \
                final_prediction, final_prediction_generated, \
                normal_noise, predicted_noise
 

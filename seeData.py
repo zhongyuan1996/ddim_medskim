@@ -3,7 +3,7 @@ import pandas as pd
 from models.dataset import padMatrix,padTime
 
 
-ehr, label, time_step = pickle.load(open('data/hf/hf_training_new.pickle', 'rb'))
+ehr, label, time_step = pickle.load(open('data/copd/copd_training_new.pickle', 'rb'))
 i = 0
 for a, b, c in zip(ehr, label, time_step):
     print("ehr data: " + str(a))
@@ -14,7 +14,7 @@ for a, b, c in zip(ehr, label, time_step):
         break
 
 print("started data transfrom")
-code2id = pickle.load(open('data/hf/hf_code2idx_new.pickle', 'rb'))
+code2id = pickle.load(open('data/copd/copd_code2idx_new.pickle', 'rb'))
 pad_id = len(code2id)
 ehr, _, _ = padMatrix(ehr, 20, 50, pad_id)
 time_step = padTime(time_step, 50, 100000)

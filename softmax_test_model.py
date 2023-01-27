@@ -34,20 +34,20 @@ def eval_metric(eval_set, model):
         y_true = np.array([])
         y_pred = np.array([])
         y_score = np.array([])
-        e_ts = np.array([])
-        E_t_gens = np.array([])
+        h_ts = np.array([])
+        h_t_gens = np.array([])
 
         for i, data in enumerate(eval_set):
             ehr, time_step, labels = data
-            e_t,E_t_gen,final_prediction,_,_,_ = model(ehr, time_step)
+            h_t,h_t_gen,final_prediction,_,_,_ = model(ehr, time_step)
 
-            e_t = torch.flatten(e_t, start_dim=1)
-            E_t_gen = torch.flatten(E_t_gen, start_dim=1)
+            h_t = torch.flatten(h_t, start_dim=1)
+            h_t_gen = torch.flatten(h_t_gen, start_dim=1)
 
             scores = torch.softmax(final_prediction, dim=-1)
             scores = scores.data.cpu().numpy()
-            e_t = e_t.data.cpu().numpy()
-            E_t_gen = E_t_gen.data.cpu().numpy()
+            h_t = h_t.data.cpu().numpy()
+            h_t_gen = h_t_gen.data.cpu().numpy()
 
             labels = labels.data.cpu().numpy()
             labels = labels.argmax(1)
@@ -58,14 +58,14 @@ def eval_metric(eval_set, model):
             y_pred = np.concatenate((y_pred, pred))
             y_score = np.concatenate((y_score, score))
             try:
-                e_ts = np.concatenate((e_ts, e_t), axis=0)
+                h_ts = np.concatenate((h_ts, h_t), axis=0)
             except ValueError:
-                e_ts = e_t
+                h_ts = h_t
 
             try:
-                E_t_gens = np.concatenate((E_t_gens, E_t_gen), axis=0)
+                h_t_gens = np.concatenate((h_t_gens, h_t_gen), axis=0)
             except ValueError:
-                E_t_gens = E_t_gen
+                h_t_gens = h_t_gen
 
 
         accuary = accuracy_score(y_true, y_pred)
@@ -77,7 +77,7 @@ def eval_metric(eval_set, model):
         pr_auc = auc(lr_recall, lr_precision)
         kappa = cohen_kappa_score(y_true, y_pred)
         loss = log_loss(y_true, y_pred)
-    return accuary, precision, recall, f1, roc_auc, pr_auc, kappa, loss, e_ts, E_t_gens , y_true, y_pred
+    return accuary, precision, recall, f1, roc_auc, pr_auc, kappa, loss, h_ts, h_t_gens , y_true, y_pred
 
 def main():
     parser = argparse.ArgumentParser()
@@ -309,7 +309,7 @@ def train(args):
         train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa, tr_loss,_,_,_,_ = eval_metric(train_dataloader,
                                                                                                  model)
         dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa, d_loss,_,_,_,_ = eval_metric(dev_dataloader, model)
-        test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss, e_t, gen_e_t, t_label,t_pred = eval_metric(test_dataloader, model)
+        test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss, h_t, gen_h_t, t_label,t_pred = eval_metric(test_dataloader, model)
         scheduler.step(d_loss)
         print('-' * 71)
         print('| step {:5} | train_acc {:7.4f} | dev_acc {:7.4f} | test_acc {:7.4f} '.format(global_step,
@@ -361,8 +361,8 @@ def train(args):
             print(f'model saved to {model_path}')
 
 
-            softmaxres_fileName = 'e_t_epoch_' + str(epoch_id) + '.csv'
-            gen_softmaxres_gen_fileName = 'gen_e_t_epoch_' + str(epoch_id) + '.csv'
+            softmaxres_fileName = 'h_t_epoch_' + str(epoch_id) + '.csv'
+            gen_softmaxres_gen_fileName = 'gen_h_t_epoch_' + str(epoch_id) + '.csv'
 
             label_fileName = 'label_epoch_' + str(epoch_id) + '.csv'
             pred_fileName = 'pred_epoch_' + str(epoch_id) + '.csv'
@@ -374,8 +374,8 @@ def train(args):
             pred_path = os.path.join(args.save_dir, pred_fileName)
 
 
-            np.savetxt(softmax_path, e_t, delimiter=',')
-            np.savetxt(gen_softmax_path, gen_e_t, delimiter=',')
+            np.savetxt(softmax_path, h_t, delimiter=',')
+            np.savetxt(gen_softmax_path, gen_h_t, delimiter=',')
             np.savetxt(label_path, t_label, delimiter=',')
             np.savetxt(pred_path, t_pred, delimiter=',')
 
