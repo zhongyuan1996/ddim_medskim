@@ -225,7 +225,7 @@ def train(args):
     scheduler = lr_scheduler.ReduceLROnPlateau(optim, mode='min', factor=args.factor, patience=args.patience, threshold=0,
                                                threshold_mode='rel',
                                                cooldown=0, min_lr=1e-07, eps=1e-08, verbose=True)
-    # Loss_func_diff = nn.MSELoss(reduction='mean')
+    Loss_func_diff = nn.MSELoss(reduction='mean')
     # Loss_func_h = nn.KLDivLoss(reduction='batchmean')
     loss_func_pred = nn.CrossEntropyLoss(reduction='mean')
     # scheduler = get_cosine_schedule_with_warmup(optim, args.warmup_steps, 2500)
@@ -260,24 +260,24 @@ def train(args):
             ehr, time_step, labels = data
 
             optim.zero_grad()
-            # h_res, h_gen_v2, pred, pred_v2, noise, diff_noise = model(ehr, time_step)
-            h_res ,_, pred, _,_,_ = model(ehr, time_step)
+            h_res, h_gen_v2, pred, pred_v2, noise, diff_noise = model(ehr, time_step)
+            # h_res ,_, pred, _,_,_ = model(ehr, time_step)
 
             # if args.temperature == 'temperature':
             #     pred = pred/tau_schedule[epoch_id]
             #     pred_v2 = pred_v2/tau_schedule[epoch_id]
 
-            # DF_loss = Loss_func_diff(diff_noise, noise) * args.lambda_DF_loss
+            DF_loss = Loss_func_diff(diff_noise, noise) * args.lambda_DF_loss
             # KL_loss = Loss_func_h(h_res.log(), h_gen_v2) * args.lambda_KL_loss
             CE_loss = loss_func_pred(pred, labels)
-            # CE_gen_loss = loss_func_pred(pred_v2, labels) * args.lambda_CE_gen_loss
-            # loss = DF_loss + CE_loss + CE_gen_loss
-            loss = CE_loss
+            CE_gen_loss = loss_func_pred(pred_v2, labels) * args.lambda_CE_gen_loss
+            loss = DF_loss + CE_loss + CE_gen_loss
+            # loss = CE_loss
             loss.backward()
             total_loss += (loss.item() / labels.size(0)) * args.batch_size
-            # total_DF_loss += (DF_loss.item() / labels.size(0)) * args.batch_size
+            total_DF_loss += (DF_loss.item() / labels.size(0)) * args.batch_size
             total_CE_loss += (CE_loss.item() / labels.size(0)) * args.batch_size
-            # total_CE_gen_loss += (CE_gen_loss.item() / labels.size(0)) * args.batch_size
+            total_CE_gen_loss += (CE_gen_loss.item() / labels.size(0)) * args.batch_size
             # total_KL_loss += (KL_loss.item() / labels.size(0)) * args.batch_size
             if args.max_grad_norm > 0:
                 nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
