@@ -4,10 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="remaster model for hyper-perameter study">
+    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="abtest rewritten">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ab_test_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/ab_test_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/ab_LSTM_ddim.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/ab_LSTM_ddim.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -227,14 +225,7 @@
       <workItem from="1674748651156" duration="950000" />
       <workItem from="1674751652497" duration="7249000" />
       <workItem from="1674775304398" duration="7822000" />
-      <workItem from="1674855730889" duration="1673000" />
-    </task>
-    <task id="LOCAL-00001" summary="implementing diffusion model">
-      <created>1667068514499</created>
-      <option name="number" value="00001" />
-      <option name="presentableId" value="LOCAL-00001" />
-      <option name="project" value="LOCAL" />
-      <updated>1667068514499</updated>
+      <workItem from="1674855730889" duration="3093000" />
     </task>
     <task id="LOCAL-00002" summary="implemented diffusion model">
       <created>1667149332856</created>
@@ -572,7 +563,14 @@
       <option name="project" value="LOCAL" />
       <updated>1674780647940</updated>
     </task>
-    <option name="localTasksCounter" value="50" />
+    <task id="LOCAL-00050" summary="abtest rewritten">
+      <created>1674867063329</created>
+      <option name="number" value="00050" />
+      <option name="presentableId" value="LOCAL-00050" />
+      <option name="project" value="LOCAL" />
+      <updated>1674867063330</updated>
+    </task>
+    <option name="localTasksCounter" value="51" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -597,7 +595,6 @@
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
-    <MESSAGE value="Starting to add contrastive between gen and org" />
     <MESSAGE value="created model version remastered_model.py" />
     <MESSAGE value="Et will generate Et'" />
     <MESSAGE value="ablation study: No E_t_prime" />
@@ -622,7 +619,8 @@
     <MESSAGE value="getting e_t and E_t" />
     <MESSAGE value="getting h_t and H_t" />
     <MESSAGE value="remaster model for hyper-perameter study" />
-    <option name="LAST_COMMIT_MESSAGE" value="remaster model for hyper-perameter study" />
+    <MESSAGE value="abtest rewritten" />
+    <option name="LAST_COMMIT_MESSAGE" value="abtest rewritten" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
