@@ -4,9 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="ab3">
+    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="rewritten model">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/LSTM_ddim.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/LSTM_ddim.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/softmax_LSTM_ddim.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/softmax_LSTM_ddim.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -227,14 +227,7 @@
       <workItem from="1674751652497" duration="7249000" />
       <workItem from="1674775304398" duration="7822000" />
       <workItem from="1674855730889" duration="4976000" />
-      <workItem from="1674938594908" duration="8751000" />
-    </task>
-    <task id="LOCAL-00005" summary="fixed diff">
-      <created>1667934203772</created>
-      <option name="number" value="00005" />
-      <option name="presentableId" value="LOCAL-00005" />
-      <option name="project" value="LOCAL" />
-      <updated>1667934203772</updated>
+      <workItem from="1674938594908" duration="10400000" />
     </task>
     <task id="LOCAL-00006" summary="no bug">
       <created>1667936959507</created>
@@ -572,7 +565,14 @@
       <option name="project" value="LOCAL" />
       <updated>1674944436958</updated>
     </task>
-    <option name="localTasksCounter" value="54" />
+    <task id="LOCAL-00054" summary="rewritten model">
+      <created>1674956515297</created>
+      <option name="number" value="00054" />
+      <option name="presentableId" value="LOCAL-00054" />
+      <option name="project" value="LOCAL" />
+      <updated>1674956515297</updated>
+    </task>
+    <option name="localTasksCounter" value="55" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -597,7 +597,6 @@
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
-    <MESSAGE value="created model version remastered_model.py" />
     <MESSAGE value="Et will generate Et'" />
     <MESSAGE value="ablation study: No E_t_prime" />
     <MESSAGE value="fixed a bug in e_t_prime" />
@@ -622,7 +621,8 @@
     <MESSAGE value="remaster model for hyper-perameter study" />
     <MESSAGE value="abtest rewritten" />
     <MESSAGE value="ab3" />
-    <option name="LAST_COMMIT_MESSAGE" value="ab3" />
+    <MESSAGE value="rewritten model" />
+    <option name="LAST_COMMIT_MESSAGE" value="rewritten model" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -662,21 +662,6 @@
           <line>136</line>
           <option name="timeStamp" value="49" />
         </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/models/softmax_LSTM_ddim.py</url>
-          <line>241</line>
-          <option name="timeStamp" value="52" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/models/LSTM_ddim.py</url>
-          <line>328</line>
-          <option name="timeStamp" value="62" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/models/LSTM_ddim.py</url>
-          <line>345</line>
-          <option name="timeStamp" value="63" />
-        </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
         <breakpoint type="python-exception">
@@ -697,7 +682,7 @@
     <SUITE FILE_PATH="coverage/ddim_medskim$medskim.coverage" NAME="medskim Coverage Results" MODIFIED="1667740649814" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
     <SUITE FILE_PATH="coverage/ddim_medskim$LSTM_ddim.coverage" NAME="LSTM_ddim Coverage Results" MODIFIED="1674956005963" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
     <SUITE FILE_PATH="coverage/ddim_medskim$helloworld.coverage" NAME="helloworld Coverage Results" MODIFIED="1667052055792" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$remastered_model.coverage" NAME="remastered_model Coverage Results" MODIFIED="1674956009439" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$remastered_model.coverage" NAME="remastered_model Coverage Results" MODIFIED="1674964503541" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$test_model.coverage" NAME="test_model Coverage Results" MODIFIED="1670897826250" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$ab_test_model.coverage" NAME="ab_test_model Coverage Results" MODIFIED="1674922701566" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$embGen_test_model.coverage" NAME="embGen_test_model Coverage Results" MODIFIED="1673981586319" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
