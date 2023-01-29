@@ -267,17 +267,17 @@ def train(args):
             #     pred = pred/tau_schedule[epoch_id]
             #     pred_v2 = pred_v2/tau_schedule[epoch_id]
 
-            # DF_loss = Loss_func_diff(diff_noise, noise) * args.lambda_DF_loss
+            DF_loss = Loss_func_diff(diff_noise, noise) * args.lambda_DF_loss
             # KL_loss = Loss_func_h(h_res.log(), h_gen_v2) * args.lambda_KL_loss
             CE_loss = loss_func_pred(pred, labels)
-            # CE_gen_loss = loss_func_pred(pred_v2, labels) * args.lambda_CE_gen_loss
-            # loss = DF_loss + CE_loss + CE_gen_loss
-            loss = CE_loss
+            CE_gen_loss = loss_func_pred(pred_v2, labels) * args.lambda_CE_gen_loss
+            loss = DF_loss + CE_loss + CE_gen_loss
+            # loss = CE_loss
             loss.backward()
             total_loss += (loss.item() / labels.size(0)) * args.batch_size
-            # total_DF_loss += (DF_loss.item() / labels.size(0)) * args.batch_size
+            total_DF_loss += (DF_loss.item() / labels.size(0)) * args.batch_size
             total_CE_loss += (CE_loss.item() / labels.size(0)) * args.batch_size
-            # total_CE_gen_loss += (CE_gen_loss.item() / labels.size(0)) * args.batch_size
+            total_CE_gen_loss += (CE_gen_loss.item() / labels.size(0)) * args.batch_size
             # total_KL_loss += (KL_loss.item() / labels.size(0)) * args.batch_size
             if args.max_grad_norm > 0:
                 nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)

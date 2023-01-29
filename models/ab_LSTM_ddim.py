@@ -34,6 +34,8 @@ class classifyer(nn.Module):
         return h
 
 
+
+
 class RNNdiff(nn.Module):
 
     def __init__(self, config, vocab_size, d_model, h_model, dropout, dropout_emb, device):
@@ -143,68 +145,65 @@ class RNNdiff(nn.Module):
         #         alpha1 = attn[:,:,0:1]
         #         alpha2 = attn[:,:,1:2]
         #         bar_e_k[:, i:i+1,:] = e_k * alpha1 + w_h_k_prev * alpha2
-        #
-        #
-        # ##########diff start
-        # diffusion_time_t = torch.randint(
-        #     low=0, high=self.config.diffusion.num_diffusion_timesteps, size=[visit_embedding.shape[0], ]).to(
-        #     self.device)
-        #
-        # alpha = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t).view(-1, 1, 1)
-        #
-        # normal_noise = torch.randn_like(bar_e_k)
-        #
-        # e_t_prime_b_first_with_noise = bar_e_k * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
-        #
-        # predicted_noise = self.diffusion(e_t_prime_b_first_with_noise, timesteps=diffusion_time_t)
-        #
-        # noise_loss = normal_noise - predicted_noise
-        #
-        # GEN_E_t = bar_e_k + noise_loss
-        # ####### diff end
-        #
-        # for i in range(visit_size):
-        #     E_gen_t = GEN_E_t[:, i:i + 1, :].permute(1, 0, 2)
-        #
-        #     # if i == 0:
-        #     #     E_gen_t_prime = E_gen_t.clone()
-        #     # else:
-        #     #     gen_attenOut, _ = self.cross_attention(E_gen_t.clone(), hidden_state_all_visit_generated[:, 0:i, :].clone().permute(1, 0, 2), hidden_state_all_visit_generated[:, 0:i, :].clone().permute(1, 0, 2))
-        #     #     gen_attenOut = self.fc(gen_attenOut)
-        #     #     gen_attenOut = self.dropout(gen_attenOut)
-        #     #     E_gen_t += gen_attenOut
-        #     #     E_gen_t_prime = self.layer_norm(E_gen_t.clone())
-        #     # E_gen_t_prime_all[:, i:i + 1, :] = E_gen_t_prime.permute(1, 0, 2)
-        #
-        #     # if i ==0:
-        #     #     _, (seq_h, seq_c) = self.lstm(E_gen_t_prime.clone())
-        #     # else:
-        #     #     _, (seq_h, seq_c) = self.lstm(E_gen_t_prime.clone(),
-        #     #                               (hidden_state_all_visit_generated[:, i-1: i, :].clone().permute(1, 0, 2), c_all_visit_generated[:, i-1: i, :].clone().permute(1, 0, 2)))
-        #     if i ==0:
-        #         _, (seq_h, seq_c) = self.lstm(E_gen_t.clone())
-        #     else:
-        #         _, (seq_h, seq_c) = self.lstm(E_gen_t.clone(),
-        #                                   (hidden_state_all_visit_generated[:, i-1: i, :].clone().permute(1, 0, 2), c_all_visit_generated[:, i-1: i, :].clone().permute(1, 0, 2)))
-        #     hidden_state_all_visit_generated[:, i:i + 1, :] = seq_h.permute(1, 0, 2)
-        #     c_all_visit_generated[:, i:i + 1, :] = seq_c.permute(1, 0, 2)
-        #
+
+
+        ##########diff start
+        diffusion_time_t = torch.randint(
+            low=0, high=self.config.diffusion.num_diffusion_timesteps, size=[visit_embedding.shape[0], ]).to(
+            self.device)
+
+        alpha = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t).view(-1, 1, 1)
+
+        normal_noise = torch.randn_like(visit_embedding)
+
+        e_t_prime_b_first_with_noise = visit_embedding * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
+
+        predicted_noise = self.diffusion(e_t_prime_b_first_with_noise, timesteps=diffusion_time_t)
+
+        noise_loss = normal_noise - predicted_noise
+
+        GEN_E_t = visit_embedding + noise_loss
+        ####### diff end
+
+        for i in range(visit_size):
+            E_gen_t = GEN_E_t[:, i:i + 1, :].permute(1, 0, 2)
+
+            # if i == 0:
+            #     E_gen_t_prime = E_gen_t.clone()
+            # else:
+            #     gen_attenOut, _ = self.cross_attention(E_gen_t.clone(), hidden_state_all_visit_generated[:, 0:i, :].clone().permute(1, 0, 2), hidden_state_all_visit_generated[:, 0:i, :].clone().permute(1, 0, 2))
+            #     gen_attenOut = self.fc(gen_attenOut)
+            #     gen_attenOut = self.dropout(gen_attenOut)
+            #     E_gen_t += gen_attenOut
+            #     E_gen_t_prime = self.layer_norm(E_gen_t.clone())
+            # E_gen_t_prime_all[:, i:i + 1, :] = E_gen_t_prime.permute(1, 0, 2)
+
+            # if i ==0:
+            #     _, (seq_h, seq_c) = self.lstm(E_gen_t_prime.clone())
+            # else:
+            #     _, (seq_h, seq_c) = self.lstm(E_gen_t_prime.clone(),
+            #                               (hidden_state_all_visit_generated[:, i-1: i, :].clone().permute(1, 0, 2), c_all_visit_generated[:, i-1: i, :].clone().permute(1, 0, 2)))
+            if i ==0:
+                _, (seq_h, seq_c) = self.lstm(E_gen_t.clone())
+            else:
+                _, (seq_h, seq_c) = self.lstm(E_gen_t.clone(),
+                                          (hidden_state_all_visit_generated[:, i-1: i, :].clone().permute(1, 0, 2), c_all_visit_generated[:, i-1: i, :].clone().permute(1, 0, 2)))
+            hidden_state_all_visit_generated[:, i:i + 1, :] = seq_h.permute(1, 0, 2)
+            c_all_visit_generated[:, i:i + 1, :] = seq_c.permute(1, 0, 2)
+
 
         for i in range(visit_size):
 
             hidden_state_softmax_res[:, i:i+1, :] = self.classifyer(hidden_state_all_visit[:, i:i + 1, :])
-            # hidden_state_softmax_res_generated[:, i:i+1, :] = self.classifyer(hidden_state_all_visit_generated[:, i:i + 1, :])
+            hidden_state_softmax_res_generated[:, i:i+1, :] = self.classifyer(hidden_state_all_visit_generated[:, i:i + 1, :])
 
         final_prediction = hidden_state_softmax_res[:, -1, :]
-        # final_prediction_generated = hidden_state_softmax_res_generated[:, -1, :]
+        final_prediction_generated = hidden_state_softmax_res_generated[:, -1, :]
 
         # final_prediction = self.classifyer(hidden_state_all_visit[:, visit_size-1:visit_size, :]).squeeze()
         # final_prediction_generated = self.classifyer(hidden_state_all_visit[:, visit_size-1:visit_size, :]).squeeze()
-        #
-        # return hidden_state_softmax_res, hidden_state_softmax_res_generated, \
-        #        final_prediction, final_prediction_generated, \
-        #        normal_noise, predicted_noise
 
         return hidden_state_softmax_res, hidden_state_softmax_res_generated, \
-               final_prediction,_,_,_
+               final_prediction, final_prediction_generated, \
+               normal_noise, predicted_noise
 
