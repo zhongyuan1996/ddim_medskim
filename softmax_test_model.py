@@ -324,9 +324,9 @@ def train(args):
             global_step += 1
 
         model.eval()
-        train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa, tr_loss,_,_,_,_ = eval_metric(train_dataloader,
+        train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa, tr_loss,_,_,_,_,_,_ = eval_metric(train_dataloader,
                                                                                                  model)
-        dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa, d_loss,_,_,_,_ = eval_metric(dev_dataloader, model)
+        dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa, d_loss,_,_,_,_,_,_ = eval_metric(dev_dataloader, model)
         test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss, h_t, gen_h_t, alpha1s, alpha2s, t_label,t_pred = eval_metric(test_dataloader, model)
         scheduler.step(d_loss)
         print('-' * 71)
