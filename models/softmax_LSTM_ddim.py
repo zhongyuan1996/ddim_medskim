@@ -86,6 +86,7 @@ class RNNdiff(nn.Module):
         self.w_hk = nn.Linear(h_model,d_model)
         self.w1 = nn.Linear(2*h_model, 64)
         self.w2 = nn.Linear(64,2)
+        self.softmax = torch.nn.Softmax(dim=-1)
 
 
     def before(self, input_seqs, seq_time_step):
@@ -158,7 +159,7 @@ class RNNdiff(nn.Module):
             else:
                 e_k = visit_embedding[:, 0:1, :]
                 w_h_k_prev = self.w_hk(hidden_state_all_visit[:,i-1:i,:])
-                attn = self.w2(self.tanh(self.w1(torch.cat((e_k,w_h_k_prev),dim=-1))))
+                attn = self.softmax(self.w2(self.tanh(self.w1(torch.cat((e_k,w_h_k_prev),dim=-1)))))
                 alpha1 = attn[:,:,0:1]
                 alpha2 = attn[:,:,1:2]
                 bar_e_k[:, i:i+1,:] = e_k * alpha1 + w_h_k_prev * alpha2

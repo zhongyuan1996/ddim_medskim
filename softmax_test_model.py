@@ -397,8 +397,8 @@ def train(args):
             pred_path = os.path.join(args.save_dir, pred_fileName)
 
 
-            np.savetxt(softmax_path, h_t, delimiter=',')
-            np.savetxt(gen_softmax_path, gen_h_t, delimiter=',')
+            # np.savetxt(softmax_path, h_t, delimiter=',')
+            # np.savetxt(gen_softmax_path, gen_h_t, delimiter=',')
             np.savetxt(alpha1_path, alpha1s, delimiter=',')
             np.savetxt(alpha2_path, alpha2s, delimiter=',')
             np.savetxt(label_path, t_label, delimiter=',')
