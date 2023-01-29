@@ -36,18 +36,26 @@ def eval_metric(eval_set, model):
         y_score = np.array([])
         h_ts = np.array([])
         h_t_gens = np.array([])
+        alpha1s = np.array([])
+        alpha2s = np.array([])
 
         for i, data in enumerate(eval_set):
             ehr, time_step, labels = data
-            h_t,h_t_gen,final_prediction,_,_,_ = model(ehr, time_step)
+            h_t,h_t_gen,final_prediction,_,_,_,alpha1,alpha2 = model(ehr, time_step)
 
             h_t = torch.flatten(h_t, start_dim=1)
             h_t_gen = torch.flatten(h_t_gen, start_dim=1)
+            alpha1 = torch.flatten(alpha1, start_dim=1)
+            alpha2 = torch.flatten(alpha2, start_dim=1)
+
 
             scores = torch.softmax(final_prediction, dim=-1)
             scores = scores.data.cpu().numpy()
             h_t = h_t.data.cpu().numpy()
             h_t_gen = h_t_gen.data.cpu().numpy()
+            alpha1 = alpha1.data.cpu().numpy()
+            alpha2 = alpha2.data.cpu().numpy()
+
 
             labels = labels.data.cpu().numpy()
             labels = labels.argmax(1)
@@ -67,6 +75,16 @@ def eval_metric(eval_set, model):
             except ValueError:
                 h_t_gens = h_t_gen
 
+            try:
+                alpha1s = np.concatenate((alpha1s, alpha1), axis=0)
+            except ValueError:
+                alpha1s = alpha1
+
+            try:
+                alpha2s = np.concatenate((alpha2s, alpha2), axis=0)
+            except ValueError:
+                alpha2s = alpha2
+
 
         accuary = accuracy_score(y_true, y_pred)
         precision = precision_score(y_true, y_pred)
@@ -77,7 +95,7 @@ def eval_metric(eval_set, model):
         pr_auc = auc(lr_recall, lr_precision)
         kappa = cohen_kappa_score(y_true, y_pred)
         loss = log_loss(y_true, y_pred)
-    return accuary, precision, recall, f1, roc_auc, pr_auc, kappa, loss, h_ts, h_t_gens , y_true, y_pred
+    return accuary, precision, recall, f1, roc_auc, pr_auc, kappa, loss, h_ts, h_t_gens, alpha1s, alpha2s , y_true, y_pred
 
 def main():
     parser = argparse.ArgumentParser()
@@ -261,7 +279,7 @@ def train(args):
             ehr, time_step, labels = data
 
             optim.zero_grad()
-            h_res, h_gen_v2, pred, pred_v2, noise, diff_noise = model(ehr, time_step)
+            h_res, h_gen_v2, pred, pred_v2, noise, diff_noise,_,_ = model(ehr, time_step)
 
             # if args.temperature == 'temperature':
             #     pred = pred/tau_schedule[epoch_id]
@@ -309,7 +327,7 @@ def train(args):
         train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa, tr_loss,_,_,_,_ = eval_metric(train_dataloader,
                                                                                                  model)
         dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa, d_loss,_,_,_,_ = eval_metric(dev_dataloader, model)
-        test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss, h_t, gen_h_t, t_label,t_pred = eval_metric(test_dataloader, model)
+        test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss, h_t, gen_h_t, alpha1s, alpha2s, t_label,t_pred = eval_metric(test_dataloader, model)
         scheduler.step(d_loss)
         print('-' * 71)
         print('| step {:5} | train_acc {:7.4f} | dev_acc {:7.4f} | test_acc {:7.4f} '.format(global_step,
@@ -363,6 +381,8 @@ def train(args):
 
             softmaxres_fileName = 'h_t_epoch_' + str(epoch_id) + '.csv'
             gen_softmaxres_gen_fileName = 'gen_h_t_epoch_' + str(epoch_id) + '.csv'
+            alpha1_filename = 'alpha1_epoch_'+ str(epoch_id) + '.csv'
+            alpha2_filename = 'alpha2_epoch_'+ str(epoch_id) + '.csv'
 
             label_fileName = 'label_epoch_' + str(epoch_id) + '.csv'
             pred_fileName = 'pred_epoch_' + str(epoch_id) + '.csv'
@@ -370,12 +390,17 @@ def train(args):
             softmax_path = os.path.join(args.save_dir, softmaxres_fileName)
             gen_softmax_path = os.path.join(args.save_dir, gen_softmaxres_gen_fileName)
 
+            alpha1_path = os.path.join(args.save_dir, alpha1_filename)
+            alpha2_path = os.path.join(args.save_dir, alpha2_filename)
+
             label_path = os.path.join(args.save_dir, label_fileName)
             pred_path = os.path.join(args.save_dir, pred_fileName)
 
 
             np.savetxt(softmax_path, h_t, delimiter=',')
             np.savetxt(gen_softmax_path, gen_h_t, delimiter=',')
+            np.savetxt(alpha1_path, alpha1s, delimiter=',')
+            np.savetxt(alpha2_path, alpha2s, delimiter=',')
             np.savetxt(label_path, t_label, delimiter=',')
             np.savetxt(pred_path, t_pred, delimiter=',')
 

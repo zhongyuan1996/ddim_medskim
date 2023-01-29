@@ -120,6 +120,8 @@ class RNNdiff(nn.Module):
         hidden_state_softmax_res = torch.zeros(batch_size, visit_size, 2).to(self.device)
         hidden_state_softmax_res_generated = torch.zeros(batch_size, visit_size, 2).to(self.device)
 
+        alpha1s =torch.zeros(batch_size, visit_size,1).to(self.device)
+        alpha2s = torch.zeros(batch_size, visit_size, 1).to(self.device)
 
         for i in range(visit_size):
             e_t = visit_embedding[:, i:i + 1, :].permute(1, 0, 2)
@@ -160,6 +162,8 @@ class RNNdiff(nn.Module):
                 alpha1 = attn[:,:,0:1]
                 alpha2 = attn[:,:,1:2]
                 bar_e_k[:, i:i+1,:] = e_k * alpha1 + w_h_k_prev * alpha2
+                alpha1s[:,i:i+1,:] = alpha1
+                alpha2s[:,i:i+1,:] = alpha2
 
 
         ##########diff start
@@ -218,7 +222,10 @@ class RNNdiff(nn.Module):
         # final_prediction = self.classifyer(hidden_state_all_visit[:, visit_size-1:visit_size, :]).squeeze()
         # final_prediction_generated = self.classifyer(hidden_state_all_visit[:, visit_size-1:visit_size, :]).squeeze()
 
-        return hidden_state_all_visit, hidden_state_all_visit_generated, \
+        h_t = hidden_state_all_visit[:,49:50,:]
+        h_t_gen = hidden_state_all_visit_generated[:, 49:50, :]
+
+        return h_t, h_t_gen, \
                final_prediction, final_prediction_generated, \
-               normal_noise, predicted_noise
+               normal_noise, predicted_noise, alpha1s,alpha2s
 

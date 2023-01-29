@@ -4,10 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="ab3">
+    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="ab2">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ab_test_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/ab_test_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/ab_LSTM_ddim.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/ab_LSTM_ddim.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/softmax_LSTM_ddim.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/softmax_LSTM_ddim.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/softmax_test_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/softmax_test_model.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -57,7 +57,7 @@
       <recent name="C:\Users\yfz5556\PycharmProjects\ddim_medskim" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.ab_test_model">
+  <component name="RunManager" selected="Python.softmax_test_model">
     <configuration name="LSTM_ddim" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="ddim_medskim" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -170,10 +170,10 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.softmax_test_model" />
         <item itemvalue="Python.ab_test_model" />
         <item itemvalue="Python.remastered_model" />
         <item itemvalue="Python.LSTM_ddim" />
-        <item itemvalue="Python.softmax_test_model" />
         <item itemvalue="Python.softmax_LSTM_ddim" />
       </list>
     </recent_temporary>
@@ -228,14 +228,7 @@
       <workItem from="1674751652497" duration="7249000" />
       <workItem from="1674775304398" duration="7822000" />
       <workItem from="1674855730889" duration="4976000" />
-      <workItem from="1674938594908" duration="15175000" />
-    </task>
-    <task id="LOCAL-00008" summary="eval fixed">
-      <created>1668355127644</created>
-      <option name="number" value="00008" />
-      <option name="presentableId" value="LOCAL-00008" />
-      <option name="project" value="LOCAL" />
-      <updated>1668355127644</updated>
+      <workItem from="1674938594908" duration="18232000" />
     </task>
     <task id="LOCAL-00009" summary="temp and gumbel added">
       <created>1669224920695</created>
@@ -573,7 +566,14 @@
       <option name="project" value="LOCAL" />
       <updated>1675005648378</updated>
     </task>
-    <option name="localTasksCounter" value="57" />
+    <task id="LOCAL-00057" summary="ab2">
+      <created>1675014221072</created>
+      <option name="number" value="00057" />
+      <option name="presentableId" value="LOCAL-00057" />
+      <option name="project" value="LOCAL" />
+      <updated>1675014221072</updated>
+    </task>
+    <option name="localTasksCounter" value="58" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -614,7 +614,6 @@
     <MESSAGE value="fixing attention" />
     <MESSAGE value="ab1" />
     <MESSAGE value="rerun hf and amnesia" />
-    <MESSAGE value="ab2" />
     <MESSAGE value="result before softmax" />
     <MESSAGE value="h_t-1" />
     <MESSAGE value="getting e_t and E_t" />
@@ -623,7 +622,8 @@
     <MESSAGE value="abtest rewritten" />
     <MESSAGE value="rewritten model" />
     <MESSAGE value="ab3" />
-    <option name="LAST_COMMIT_MESSAGE" value="ab3" />
+    <MESSAGE value="ab2" />
+    <option name="LAST_COMMIT_MESSAGE" value="ab2" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -689,7 +689,7 @@
     <SUITE FILE_PATH="coverage/ddim_medskim$embGen_test_model.coverage" NAME="embGen_test_model Coverage Results" MODIFIED="1673981586319" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$seeData.coverage" NAME="seeData Coverage Results" MODIFIED="1674775437099" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$softmax_LSTM_ddim.coverage" NAME="softmax_LSTM_ddim Coverage Results" MODIFIED="1674778103666" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$softmax_test_model.coverage" NAME="softmax_test_model Coverage Results" MODIFIED="1674778107490" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$softmax_test_model.coverage" NAME="softmax_test_model Coverage Results" MODIFIED="1675018685868" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$diffUtil.coverage" NAME="diffUtil Coverage Results" MODIFIED="1667527925286" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/utils" />
   </component>
 </project>
