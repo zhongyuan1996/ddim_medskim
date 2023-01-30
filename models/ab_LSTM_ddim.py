@@ -155,52 +155,52 @@ class RNNdiff(nn.Module):
 
 #ab2
 
-        # for i in range(visit_size):
-        #     if i == 0:
-        #         bar_e_k[:, 0:1,:] = visit_embedding[:, 0:1, :]
-        #     else:
-        #         e_k = visit_embedding[:, 0:1, :]
-        #         w_h_k_prev = self.w_hk(hidden_state_all_visit[:,i-1:i,:])
-        #         # attn = self.softmax(self.w2(self.tanh(self.w1(torch.cat((e_k,w_h_k_prev),dim=-1)))))
-        #         # alpha1 = attn[:,:,0:1]
-        #         # alpha2 = attn[:,:,1:2]
-        #         # bar_e_k[:, i:i+1,:] = e_k * alpha1 + w_h_k_prev * alpha2
-        #         bar_e_k[:, i:i+1,:] = e_k * 0.5 + w_h_k_prev * 0.5
+        for i in range(visit_size):
+            if i == 0:
+                bar_e_k[:, 0:1,:] = visit_embedding[:, 0:1, :]
+            else:
+                e_k = visit_embedding[:, 0:1, :]
+                w_h_k_prev = self.w_hk(hidden_state_all_visit[:,i-1:i,:])
+                # attn = self.softmax(self.w2(self.tanh(self.w1(torch.cat((e_k,w_h_k_prev),dim=-1)))))
+                # alpha1 = attn[:,:,0:1]
+                # alpha2 = attn[:,:,1:2]
+                # bar_e_k[:, i:i+1,:] = e_k * alpha1 + w_h_k_prev * alpha2
+                bar_e_k[:, i:i+1,:] = e_k * 0.5 + w_h_k_prev * 0.5
 #ab1
         # use visit embedding
 
-        diffusion_time_t = torch.randint(
-            low=0, high=self.config.diffusion.num_diffusion_timesteps, size=[visit_embedding.shape[0], ]).to(
-            self.device)
-
-        alpha = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t).view(-1, 1, 1)
-
-        normal_noise = torch.randn_like(visit_embedding)
-
-        e_t_prime_b_first_with_noise = visit_embedding * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
-
-        predicted_noise = self.diffusion(e_t_prime_b_first_with_noise, timesteps=diffusion_time_t)
-
-        noise_loss = normal_noise - predicted_noise
-
-        GEN_E_t = visit_embedding + noise_loss
-
-        #########diff start
         # diffusion_time_t = torch.randint(
         #     low=0, high=self.config.diffusion.num_diffusion_timesteps, size=[visit_embedding.shape[0], ]).to(
         #     self.device)
         #
         # alpha = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t).view(-1, 1, 1)
         #
-        # normal_noise = torch.randn_like(bar_e_k)
+        # normal_noise = torch.randn_like(visit_embedding)
         #
-        # e_t_prime_b_first_with_noise = bar_e_k * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
+        # e_t_prime_b_first_with_noise = visit_embedding * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
         #
         # predicted_noise = self.diffusion(e_t_prime_b_first_with_noise, timesteps=diffusion_time_t)
         #
         # noise_loss = normal_noise - predicted_noise
         #
-        # GEN_E_t = bar_e_k + noise_loss
+        # GEN_E_t = visit_embedding + noise_loss
+
+        #########diff start
+        diffusion_time_t = torch.randint(
+            low=0, high=self.config.diffusion.num_diffusion_timesteps, size=[visit_embedding.shape[0], ]).to(
+            self.device)
+
+        alpha = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t).view(-1, 1, 1)
+
+        normal_noise = torch.randn_like(bar_e_k)
+
+        e_t_prime_b_first_with_noise = bar_e_k * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
+
+        predicted_noise = self.diffusion(e_t_prime_b_first_with_noise, timesteps=diffusion_time_t)
+
+        noise_loss = normal_noise - predicted_noise
+
+        GEN_E_t = bar_e_k + noise_loss
         ###### diff end
 
         for i in range(visit_size):
