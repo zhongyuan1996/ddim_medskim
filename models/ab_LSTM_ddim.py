@@ -169,39 +169,39 @@ class RNNdiff(nn.Module):
 #ab1
         # use visit embedding
 
-        diffusion_time_t = torch.randint(
-            low=0, high=self.config.diffusion.num_diffusion_timesteps, size=[visit_embedding.shape[0], ]).to(
-            self.device)
-
-        alpha = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t).view(-1, 1, 1)
-
-        normal_noise = torch.randn_like(visit_embedding)
-
-        e_t_prime_b_first_with_noise = visit_embedding * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
-
-        predicted_noise = self.diffusion(e_t_prime_b_first_with_noise, timesteps=diffusion_time_t)
-
-        noise_loss = normal_noise - predicted_noise
-
-        GEN_E_t = visit_embedding + noise_loss
-
-        ##########diff start
         # diffusion_time_t = torch.randint(
         #     low=0, high=self.config.diffusion.num_diffusion_timesteps, size=[visit_embedding.shape[0], ]).to(
         #     self.device)
         #
         # alpha = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t).view(-1, 1, 1)
         #
-        # normal_noise = torch.randn_like(bar_e_k)
+        # normal_noise = torch.randn_like(visit_embedding)
         #
-        # e_t_prime_b_first_with_noise = bar_e_k * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
+        # e_t_prime_b_first_with_noise = visit_embedding * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
         #
         # predicted_noise = self.diffusion(e_t_prime_b_first_with_noise, timesteps=diffusion_time_t)
         #
         # noise_loss = normal_noise - predicted_noise
         #
-        # GEN_E_t = bar_e_k + noise_loss
-        ####### diff end
+        # GEN_E_t = visit_embedding + noise_loss
+
+        #########diff start
+        diffusion_time_t = torch.randint(
+            low=0, high=self.config.diffusion.num_diffusion_timesteps, size=[visit_embedding.shape[0], ]).to(
+            self.device)
+
+        alpha = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t).view(-1, 1, 1)
+
+        normal_noise = torch.randn_like(bar_e_k)
+
+        e_t_prime_b_first_with_noise = bar_e_k * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
+
+        predicted_noise = self.diffusion(e_t_prime_b_first_with_noise, timesteps=diffusion_time_t)
+
+        noise_loss = normal_noise - predicted_noise
+
+        GEN_E_t = bar_e_k + noise_loss
+        ###### diff end
 
         for i in range(visit_size):
             E_gen_t = GEN_E_t[:, i:i + 1, :].permute(1, 0, 2)
