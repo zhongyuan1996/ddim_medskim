@@ -6,8 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="ab1">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ab_test_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/ab_test_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/ab_LSTM_ddim.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/ab_LSTM_ddim.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -228,14 +226,7 @@
       <workItem from="1674751652497" duration="7249000" />
       <workItem from="1674775304398" duration="7822000" />
       <workItem from="1674855730889" duration="4976000" />
-      <workItem from="1674938594908" duration="24227000" />
-    </task>
-    <task id="LOCAL-00013" summary="learning rate decay">
-      <created>1669788491515</created>
-      <option name="number" value="00013" />
-      <option name="presentableId" value="LOCAL-00013" />
-      <option name="project" value="LOCAL" />
-      <updated>1669788491515</updated>
+      <workItem from="1674938594908" duration="24999000" />
     </task>
     <task id="LOCAL-00014" summary="learning rate decay">
       <created>1669788531838</created>
@@ -573,7 +564,14 @@
       <option name="project" value="LOCAL" />
       <updated>1675040492393</updated>
     </task>
-    <option name="localTasksCounter" value="62" />
+    <task id="LOCAL-00062" summary="ab1">
+      <created>1675044390457</created>
+      <option name="number" value="00062" />
+      <option name="presentableId" value="LOCAL-00062" />
+      <option name="project" value="LOCAL" />
+      <updated>1675044390457</updated>
+    </task>
+    <option name="localTasksCounter" value="63" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
