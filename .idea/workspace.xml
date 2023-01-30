@@ -4,11 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="ht and alphas">
+    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="softmax for alphas, ab2: attention = 0.5">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/LSTM_ddim.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/LSTM_ddim.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/models/ab_LSTM_ddim.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/ab_LSTM_ddim.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/softmax_LSTM_ddim.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/softmax_LSTM_ddim.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -229,14 +227,7 @@
       <workItem from="1674751652497" duration="7249000" />
       <workItem from="1674775304398" duration="7822000" />
       <workItem from="1674855730889" duration="4976000" />
-      <workItem from="1674938594908" duration="20191000" />
-    </task>
-    <task id="LOCAL-00011" summary="temperature option set">
-      <created>1669326276258</created>
-      <option name="number" value="00011" />
-      <option name="presentableId" value="LOCAL-00011" />
-      <option name="project" value="LOCAL" />
-      <updated>1669326276258</updated>
+      <workItem from="1674938594908" duration="21650000" />
     </task>
     <task id="LOCAL-00012" summary="Roll back classifyer to classify all hiddenstates">
       <created>1669484323693</created>
@@ -574,7 +565,14 @@
       <option name="project" value="LOCAL" />
       <updated>1675019063707</updated>
     </task>
-    <option name="localTasksCounter" value="60" />
+    <task id="LOCAL-00060" summary="softmax for alphas, ab2: attention = 0.5">
+      <created>1675029954102</created>
+      <option name="number" value="00060" />
+      <option name="presentableId" value="LOCAL-00060" />
+      <option name="project" value="LOCAL" />
+      <updated>1675029954102</updated>
+    </task>
+    <option name="localTasksCounter" value="61" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -599,7 +597,6 @@
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
-    <MESSAGE value="ablation study: No E_t_prime" />
     <MESSAGE value="fixed a bug in e_t_prime" />
     <MESSAGE value="restored original og medskim" />
     <MESSAGE value="add kappaa to og medskim" />
@@ -624,7 +621,8 @@
     <MESSAGE value="ab3" />
     <MESSAGE value="ab2" />
     <MESSAGE value="ht and alphas" />
-    <option name="LAST_COMMIT_MESSAGE" value="ht and alphas" />
+    <MESSAGE value="softmax for alphas, ab2: attention = 0.5" />
+    <option name="LAST_COMMIT_MESSAGE" value="softmax for alphas, ab2: attention = 0.5" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
