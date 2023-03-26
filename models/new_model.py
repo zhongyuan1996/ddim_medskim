@@ -231,8 +231,8 @@ class TargetDiff(nn.Module):
 
         final_prediction = torch.unflatten(self.voting_layer(torch.flatten(final_prediction, start_dim=-2, end_dim=-1)),
                                            dim=-1, sizes=(1, 2))
-
-        return final_prediction.squeeze(-2)
+        final_prediction = final_prediction.squeeze(-2)
+        return final_prediction
 
 
         #put all the visits into the classifier
