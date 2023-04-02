@@ -83,7 +83,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
     parser.add_argument('--seed', default=1234, type=int, help='seed')
-    parser.add_argument('-bs', '--batch_size', default=2, type=int)
+    parser.add_argument('-bs', '--batch_size', default=8, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
@@ -117,11 +117,11 @@ def main():
     parser.add_argument("--lambda_DF_loss", type=float, default=0.1, help="scale of diffusion model loss")
     parser.add_argument("--lambda_CE_gen_loss", type=float, default=0.5, help="scale of generated sample loss")
     parser.add_argument("--lambda_KL_loss", type=float, default=0.01, help="scale of hidden state KL loss")
-    parser.add_argument("--num_visit_chosen", type=int, default=3, help="number of visit chosen to generate")
+    parser.add_argument("--num_visit_chosen", type=int, default=1, help="number of visit chosen to generate")
     parser.add_argument("--num_patients_gen", type=int, default=5, help="number of patients to generate")
     parser.add_argument("--patience", type=int, default=5, help="learning rate patience")
     parser.add_argument("--factor", type=float, default=0.2, help="learning rate factor")
-    parser.add_argument("--eta", type=float, default=0.05, help="noise before diffusion")
+    parser.add_argument("--eta", type=float, default=0.01, help="noise before diffusion")
 
     args = parser.parse_args()
     if args.mode == 'train':
