@@ -72,7 +72,7 @@ class Attention(nn.Module):
 
 class TargetDiff(nn.Module):
 
-    def __init__(self, config, vocab_size, d_model, h_model, dropout, dropout_emb, device, num_visit_chosen = 3, num_patients_gen = 5, eta = 0.05):
+    def __init__(self, config, vocab_size, d_model, h_model, dropout, dropout_emb, device, num_visit_chosen = 3, num_patients_gen = 5, eta = 0.05, info_control = 0.9):
         super().__init__()
         self.config = config
         self.vocab_size = vocab_size
@@ -82,16 +82,15 @@ class TargetDiff(nn.Module):
         self.num_visit_chosen = num_visit_chosen
         self.num_patients_gen = num_patients_gen
         self.eta = eta
+        self.ic = info_control
         self.model_var_type = self.config.model.var_type
         self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         # self.cross_attention = nn.MultiheadAttention(d_model, 8, batch_first=False)
         self.self_attention = nn.MultiheadAttention(d_model, 8, batch_first=True)
 
-        # self.self_attention = Attention(d_model, 4, dropout=0.1)
-
         self.lstm = nn.LSTM(d_model, h_model, num_layers=2, batch_first=True, dropout=dropout)
-        self.LRnn = nn.RNN(d_model, h_model, num_layers=2, batch_first=True, dropout=dropout)
-        self.RRnn = nn.RNN(d_model, h_model, num_layers=2, batch_first=True, dropout=dropout)
+        self.LRnn = nn.LSTM(d_model, h_model, num_layers=2, batch_first=True, dropout=dropout)
+        self.RRnn = nn.LSTM(d_model, h_model, num_layers=2, batch_first=True, dropout=dropout)
         self.diffusion = UNetModel(in_channels=self.num_visit_chosen, model_channels=128,
                                    out_channels=self.num_visit_chosen, num_res_blocks=2,
                                    attention_resolutions=[16, ])
@@ -108,7 +107,7 @@ class TargetDiff(nn.Module):
 
         if self.model_var_type == "fixedlarge":
             self.logvar = betas.log()
-        self.classifyer = classifyer(h_model)
+        self.classifyer = classifyer(h_model*2)
         # self.embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.target_embedding = nn.Embedding(1, d_model)
         self.emb_dropout = nn.Dropout(dropout_emb)
@@ -126,7 +125,7 @@ class TargetDiff(nn.Module):
         self.softmax = torch.nn.Softmax(dim=-1)
         self.attn_softmax = torch.nn.Softmax(dim=-1)
 
-        self.visit_attention_layer = nn.Linear(d_model, 1)
+        self.visit_attention_layer = nn.Linear(d_model * 2, 1)
         self.voting_layer = nn.Linear((1+self.num_patients_gen)*2, 2)
         self.aggregate_hl_hr_vi = nn.Linear(3 * d_model, d_model)
 
@@ -152,103 +151,120 @@ class TargetDiff(nn.Module):
 
 
         #maybe add attention on code selection to reduce dimension
+        #changed transformer hidden states to LSTM
+        #visit_attention_output, visit_attention_weights = self.self_attention(visit_embedding, visit_embedding, visit_embedding)
+        L_h, L_c = self.LRnn(time_aware_visit_embedding)
+        R_h, R_c = self.RRnn(torch.flip(time_aware_visit_embedding, dims=[1]))
+        LR_h = torch.cat((L_h, R_h), dim=-1)
 
-        visit_attention_output, _ = self.self_attention(visit_embedding, visit_embedding, visit_embedding)
+        visit_attention = self.softmax(self.visit_attention_layer(LR_h).squeeze(-1))
 
         #maybe consider time information in generating visit attention
 
-        visit_attention = self.visit_attention_layer(visit_attention_output).squeeze(-1)
+        #visit_attention = self.softmax(self.visit_attention_layer(visit_attention_output)).squeeze(-1)
 
-        #choose k-visits by highest attention
+        attention_list = visit_attention.clone().tolist()
+        selected_indices = []
+        for i in range(batch_size):
+            top_pct_indices, agg_pct, id = [], 0.0, 0
+            idx_a = [(idx, a) for idx, a in enumerate(attention_list[i])]
+            idx_a.sort(key=lambda x: x[1], reverse=True)
+            while agg_pct < self.ic:
+                top_pct_indices.append(idx_a[id][0])
+                agg_pct += idx_a[id][1]
+                id += 1
+            selected_indices.append(set(top_pct_indices))
+
+
+        #choose the top by highest attention
 
         _, indices = torch.topk(visit_attention, self.num_visit_chosen, dim=-1)
 
-        #add nosie to the top visits
+        #add nosie to the top visit
 
-        # all_topk = torch.zeros(batch_size, self.num_visit_chosen, self.d_model).to(self.device)
+        top_visit = torch.stack([torch.index_select(visit_embedding[patient], 0, indices[patient]) for patient, ind in zip(range(batch_size), indices)],dim=0)
 
-        selected_visit = torch.stack([torch.index_select(visit_embedding[patient], 0, indices[patient]) for patient, ind in zip(range(batch_size), indices)],dim=0)
-
-        selected_visit_with_noise = selected_visit + self.eta * torch.randn_like(selected_visit)
-
-        h, c = self.lstm(time_aware_visit_embedding)
+        top_visit_with_noise = top_visit + self.eta * torch.randn_like(top_visit)
 
         for i in range(visit_size):
 
-            og_pred = self.classifyer(h[:, i:i + 1, :])
+            og_pred = self.classifyer(LR_h[:, i:i + 1, :])
 
         final_prediction = og_pred
 
         for i in range(self.num_patients_gen):
             diffusion_time_t = torch.randint(
-                low=0, high=self.config.diffusion.num_diffusion_timesteps, size=[selected_visit_with_noise.shape[0], ]).to(
+                low=0, high=self.config.diffusion.num_diffusion_timesteps, size=[top_visit_with_noise.shape[0], ]).to(
                 self.device)
 
             alpha = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t).view(-1, 1, 1)
 
-            normal_noise = torch.randn_like(selected_visit_with_noise)
+            normal_noise = torch.randn_like(top_visit_with_noise)
 
-            topk_with_noise = selected_visit_with_noise * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
+            topk_with_noise = top_visit_with_noise * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
 
             predicted_noise = self.diffusion(topk_with_noise, timesteps=diffusion_time_t)
 
             noise_loss = normal_noise - predicted_noise
 
-            generated_top_visits = selected_visit_with_noise + noise_loss #tensor(batch_size, num_visit_chosen:1, d_model:256)
+            generated_top_visits = top_visit_with_noise + noise_loss #tensor(batch_size, num_visit_chosen:1, d_model:256)
 
-            temp_patients = visit_embedding.clone()
+            temp_patients = time_aware_visit_embedding.clone()
 
             for patient in range(batch_size):
                 for i, visit in enumerate(indices[patient]):
                     temp_patients[patient][visit] = generated_top_visits[patient][i]
 
-            # h_L, c_L = self.LRnn(torch.flip(temp_patients,dims = [1]))
-            # h_R, c_R = self.RRnn(temp_patients)
-            #
-            # for patient in range(batch_size):
-            #     diffusion_time_t = torch.randint(
-            #         low=0, high=self.config.diffusion.num_diffusion_timesteps, size=[1, ]).to(
-            #         self.device)
-            #     alpha = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t).view(-1, 1, 1)
-            #
-            #     for visit in range(visit_size):
-            #
-            #         if visit != indices[patient][0] and visit !=0 and visit != visit_size-1:
-            #
-            #             normal_noise = torch.randn_like(temp_patients[patient][visit])
-            #             h_LR_og = self.aggregate_hl_hr_vi(torch.cat([temp_patients[patient][visit],h_L[patient][visit-1],h_R[patient][visit+1]],dim=-1))
-            #             h_LR_og_with_noise = h_LR_og * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
-            #             predicted_noise = self.diffusion(h_LR_og_with_noise, timesteps=diffusion_time_t)
-            #             noise_loss = normal_noise - predicted_noise
-            #             temp_patients[patient][visit] = h_LR_og + noise_loss
-            #
-            #         elif visit != indices[patient][0] and visit ==0:
-            #
-            #             normal_noise = torch.randn_like(temp_patients[patient][visit])
-            #             h_LR_og = self.aggregate_hl_hr_vi(torch.cat([temp_patients[patient][visit],torch.zeros_like(h_R[patient][visit+1]),h_R[patient][visit+1]],dim=-1))
-            #             h_LR_og_with_noise = h_LR_og * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
-            #             predicted_noise = self.diffusion(h_LR_og_with_noise, timesteps=diffusion_time_t)
-            #             noise_loss = normal_noise - predicted_noise
-            #             temp_patients[patient][visit] = h_LR_og + noise_loss
-            #
-            #         elif visit != indices[patient][0] and visit == visit_size-1:
-            #
-            #             normal_noise = torch.randn_like(temp_patients[patient][visit])
-            #             h_LR_og = self.aggregate_hl_hr_vi(torch.cat([temp_patients[patient][visit],h_L[patient][visit-1],torch.zeros_like(h_L[patient][visit-1])],dim=-1))
-            #             h_LR_og_with_noise = h_LR_og * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
-            #             predicted_noise = self.diffusion(h_LR_og_with_noise, timesteps=diffusion_time_t)
-            #             noise_loss = normal_noise - predicted_noise
-            #             temp_patients[patient][visit] = h_LR_og + noise_loss
-            #
-            #         else:
-            #             continue
+            L_h, _ = self.LRnn(temp_patients.clone())
+            R_h, _ = self.RRnn(torch.flip(temp_patients.clone(), dims=[1]))
 
-            temp_patients = temp_patients + time_embedding
+            for patient in range(batch_size):
+                diffusion_time_t = torch.randint(
+                    low=0, high=self.config.diffusion.num_diffusion_timesteps, size=[1, ]).to(
+                    self.device)
+                alpha = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t).view(-1, 1, 1)
 
-            temp_h, temp_c = self.lstm(temp_patients)
+                for visit in selected_indices[patient]:
+
+                    if visit != indices[patient][0] and visit != 0 and visit != visit_size-1:
+
+                        normal_noise = torch.randn_like(temp_patients[patient][visit])
+                        h_LR_og = self.aggregate_hl_hr_vi(torch.cat([temp_patients[patient][visit],L_h[patient][visit-1],R_h[patient][visit+1]], dim=-1))
+                        h_LR_og_with_noise = h_LR_og * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
+                        predicted_noise = self.diffusion(h_LR_og_with_noise, timesteps=diffusion_time_t)
+                        noise_loss = normal_noise - predicted_noise
+                        temp_patients[patient][visit] = h_LR_og + noise_loss
+
+                    elif visit != indices[patient][0] and visit ==0:
+
+                        normal_noise = torch.randn_like(temp_patients[patient][visit])
+                        h_LR_og = self.aggregate_hl_hr_vi(torch.cat([temp_patients[patient][visit],torch.zeros_like(R_h[patient][visit+1]),R_h[patient][visit+1]],dim=-1))
+                        h_LR_og_with_noise = h_LR_og * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
+                        predicted_noise = self.diffusion(h_LR_og_with_noise, timesteps=diffusion_time_t)
+                        noise_loss = normal_noise - predicted_noise
+                        temp_patients[patient][visit] = h_LR_og + noise_loss
+
+                    elif visit != indices[patient][0] and visit == visit_size-1:
+
+                        normal_noise = torch.randn_like(temp_patients[patient][visit])
+                        h_LR_og = self.aggregate_hl_hr_vi(torch.cat([temp_patients[patient][visit],L_h[patient][visit-1],torch.zeros_like(L_h[patient][visit-1])],dim=-1))
+                        h_LR_og_with_noise = h_LR_og * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
+                        predicted_noise = self.diffusion(h_LR_og_with_noise, timesteps=diffusion_time_t)
+                        noise_loss = normal_noise - predicted_noise
+                        temp_patients[patient][visit] = h_LR_og + noise_loss
+
+                    else:
+                        continue
+
+            # temp_patients = temp_patients + time_embedding
+
+            # temp_h, temp_c = self.lstm(temp_patients)
+            temp_L_h, _ = self.LRnn(temp_patients.clone())
+            temp_R_h, _ = self.RRnn(torch.flip(temp_patients.clone(), dims=[1]))
+            temp_LR_h = torch.cat((temp_L_h, temp_R_h), dim=-1)
 
             for i in range(visit_size):
-                temp_pred = self.classifyer(temp_h[:, i:i + 1, :])
+                temp_pred = self.classifyer(temp_LR_h[:, i:i + 1, :])
 
             final_prediction = torch.cat((final_prediction, temp_pred), dim=1)
 
