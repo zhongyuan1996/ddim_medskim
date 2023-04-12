@@ -9,11 +9,13 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from torch.optim import *
 from sklearn.metrics import precision_recall_curve, auc
 from models.og_dataset import *
-# from models.adacare import *
-from models.adacare_with_diff import *
+from models.baseline import *
+from models.leap_lstm import LeapLSTM
+from models.skim_rnn import SkimRNN
+from models.skiplstm import SkipLSTM
 from utils.utils import check_path, export_config, bool_flag
 
-def eval_metric(eval_set, model, device):
+def eval_metric(eval_set, model):
     model.eval()
     with torch.no_grad():
         y_true = np.array([])
@@ -21,7 +23,7 @@ def eval_metric(eval_set, model, device):
         y_score = np.array([])
         for i, data in enumerate(eval_set):
             labels, ehr, mask, txt, mask_txt, lengths, time_step, code_mask = data
-            logits = model(ehr, device)
+            logits = model(ehr, mask, lengths, time_step, code_mask)
             scores = torch.softmax(logits, dim=-1)
             scores = scores.data.cpu().numpy()
             labels = labels.data.cpu().numpy()
@@ -47,7 +49,7 @@ def main():
     parser.add_argument('--seed', default=0, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
-    parser.add_argument('--encoder', default='hita', choices=['hita', 'lsan', 'lstm', 'sand', 'gruself', 'timeline', 'retain', 'retainex'])
+    parser.add_argument('--encoder', default='hita', choices=['hita', 'lsan', 'lstm', 'sand', 'gruself', 'timeline', 'retain', 'retainex', 'LeapLSTM', 'skimrnn', 'skiprnn','TLSTM'])
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
     parser.add_argument('--dropout_emb', default=0.1, type=float, help='dropout rate of embedding layers')
@@ -69,7 +71,7 @@ def main():
     parser.add_argument('--warmup_steps', default=200, type=int)
     parser.add_argument('--n_epochs', default=30, type=int)
     parser.add_argument('--log_interval', default=20, type=int)
-    parser.add_argument('--mode', default='train', choices=['train', 'eval', 'pred'], help='run training or evaluation')
+    parser.add_argument('--mode', default='train', choices=['train', 'eval', 'pred','gen'], help='run training or evaluation')
     parser.add_argument('--save_dir', default='./saved_models/', help='model output directory')
     args = parser.parse_args()
     if args.mode == 'train':
@@ -136,8 +138,43 @@ def train(args):
     dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
     test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
 
-    model = AdaCare(pad_id,device = device, hidden_dim=256, kernel_size=2, kernel_num=64, input_dim=256, output_dim=1, dropout=0.5, r_v=4,
-                 r_c=4, activation='sigmoid')
+    if args.encoder == 'hita':
+        model = HitaNet(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
+                                 args.max_len)
+    elif args.encoder == 'lstm':
+        model = LSTM_encoder(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
+                                 args.max_len)
+    elif args.encoder == 'lsan':
+        model = LSAN(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
+                                 args.max_len)
+    elif args.encoder == 'gruself':
+        model = GRUSelf(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
+                            args.max_len)
+    elif args.encoder == 'timeline':
+        model = Timeline(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
+                            args.max_len)
+    elif args.encoder == 'sand':
+        model = SAND(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
+                            args.max_len)
+    elif args.encoder == 'retain':
+        model = Retain(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
+                            args.max_len)
+    elif args.encoder == 'retainex':
+        model = RetainEx(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
+                            args.max_len)
+    elif args.encoder == 'LeapLSTM':
+        model = LeapLSTM(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
+                            args.max_len)
+    elif args.encoder == 'skimrnn':
+        model = SkimRNN(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
+                            args.max_len)
+    elif args.encoder == 'TLSTM':
+        model = TLSTM(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
+                            args.max_len)
+    elif args.encoder == 'skiprnn':
+        model = SkipLSTM(pad_id, args.d_model, args.d_model, 1)
+    else:
+        raise ValueError('Invalid encoder')
     model.to(device)
 
     no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
@@ -170,7 +207,7 @@ def train(args):
         for i, data in enumerate(train_dataloader):
             labels, ehr, mask, txt, mask_txt, lengths, time_step, code_mask = data
             optim.zero_grad()
-            outputs = model(ehr, device)
+            outputs = model(ehr, mask, lengths, time_step, code_mask)
             loss = loss_func(outputs, labels)
             loss.backward()
             total_loss += (loss.item() / labels.size(0)) * args.batch_size
@@ -188,9 +225,9 @@ def train(args):
             global_step += 1
 
         model.eval()
-        train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa = eval_metric(train_dataloader, model, device)
-        dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa = eval_metric(dev_dataloader, model, device)
-        test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa = eval_metric(test_dataloader, model, device)
+        train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa = eval_metric(train_dataloader, model)
+        dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa = eval_metric(dev_dataloader, model)
+        test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa = eval_metric(test_dataloader, model)
         print('-' * 71)
         print('| step {:5} | train_acc {:7.4f} | dev_acc {:7.4f} | test_acc {:7.4f} '.format(global_step,
                                                                                              train_acc,
@@ -219,6 +256,10 @@ def train(args):
                                                                                              tr_pr_auc,
                                                                                              d_pr_auc,
                                                                                              t_pr_auc))
+        print('| step {:5} | train_kappa {:7.4f} | dev_kappa {:7.4f} | test_kappa {:7.4f} '.format(global_step,
+                                                                                             tr_kappa,
+                                                                                             d_kappa,
+                                                                                             t_kappa))
         print('-' * 71)
 
         if d_f1 >= best_dev_auc:
@@ -287,7 +328,7 @@ def pred(args):
     dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
     test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
     # dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc = eval_metric(dev_dataloader, model)
-    test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa = eval_metric(test_dataloader, model, device)
+    test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa = eval_metric(test_dataloader, model)
     log_path = os.path.join(args.save_dir, 'result.csv')
     with open(log_path, 'w') as fout:
         fout.write('test_auc,test_f1,test_pre,test_recall,test_pr_auc,test_kappa\n')
@@ -299,7 +340,7 @@ def pred(args):
         y_score = np.array([])
         for i, data in enumerate(test_dataloader):
             labels, ehr, mask, txt, mask_txt, lengths, time_step, code_mask = data
-            logits = model(ehr, device)
+            logits = model(ehr, mask, lengths, time_step, code_mask)
             scores = torch.softmax(logits, dim=-1)
             scores = scores.data.cpu().numpy()
             labels = labels.data.cpu().numpy()

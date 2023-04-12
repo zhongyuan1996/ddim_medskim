@@ -9,7 +9,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from torch.optim import *
 from sklearn.metrics import precision_recall_curve, auc
 from models.og_dataset import *
-from models.baseline import *
+from models.baseline_with_diff import *
 from models.leap_lstm import LeapLSTM
 from models.skim_rnn import SkimRNN
 from models.skiplstm import SkipLSTM
@@ -49,7 +49,7 @@ def main():
     parser.add_argument('--seed', default=0, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
-    parser.add_argument('--encoder', default='hita', choices=['hita', 'lsan', 'lstm', 'sand', 'gruself', 'timeline', 'retain', 'retainex', 'LeapLSTM', 'skimrnn', 'skiprnn','TLSTM'])
+    parser.add_argument('--encoder', default='retainex', choices=['hita', 'lsan', 'lstm', 'sand', 'gruself', 'timeline', 'retain', 'retainex', 'LeapLSTM', 'skimrnn', 'skiprnn','TLSTM', 'LSTM_ehrGAN'])
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
     parser.add_argument('--dropout_emb', default=0.1, type=float, help='dropout rate of embedding layers')
@@ -140,39 +140,41 @@ def train(args):
 
     if args.encoder == 'hita':
         model = HitaNet(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
-                                 args.max_len)
+                                 args.max_len, device)
     elif args.encoder == 'lstm':
         model = LSTM_encoder(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
-                                 args.max_len)
+                                 args.max_len, device)
     elif args.encoder == 'lsan':
         model = LSAN(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
-                                 args.max_len)
+                                 args.max_len, device)
     elif args.encoder == 'gruself':
         model = GRUSelf(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
-                            args.max_len)
+                            args.max_len, device)
     elif args.encoder == 'timeline':
         model = Timeline(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
-                            args.max_len)
+                            args.max_len, device)
     elif args.encoder == 'sand':
         model = SAND(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
-                            args.max_len)
+                            args.max_len, device)
     elif args.encoder == 'retain':
         model = Retain(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
-                            args.max_len)
+                            args.max_len, device)
     elif args.encoder == 'retainex':
         model = RetainEx(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
-                            args.max_len)
+                            args.max_len, device)
     elif args.encoder == 'LeapLSTM':
         model = LeapLSTM(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
                             args.max_len)
     elif args.encoder == 'skimrnn':
         model = SkimRNN(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
-                            args.max_len)
+                            args.max_len, device)
     elif args.encoder == 'TLSTM':
         model = TLSTM(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
-                            args.max_len)
+                            args.max_len, device)
     elif args.encoder == 'skiprnn':
         model = SkipLSTM(pad_id, args.d_model, args.d_model, 1)
+    elif args.encoder == 'LSTM_ehrGAN':
+        model = LSTM_ehrGAN(pad_id, args.d_model, args.d_model, args.dropout, args.dropout_emb)
     else:
         raise ValueError('Invalid encoder')
     model.to(device)
@@ -208,6 +210,7 @@ def train(args):
             labels, ehr, mask, txt, mask_txt, lengths, time_step, code_mask = data
             optim.zero_grad()
             outputs = model(ehr, mask, lengths, time_step, code_mask)
+            # outputs = model(ehr, time_step)
             loss = loss_func(outputs, labels)
             loss.backward()
             total_loss += (loss.item() / labels.size(0)) * args.batch_size
