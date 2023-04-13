@@ -4,16 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="generate 90% attention">
-      <change afterPath="$PROJECT_DIR$/medskim.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/models/adacare_with_diff.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/models/baseline_with_diff.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/models/medskim_with_diff.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/og_baseline.py" afterDir="false" />
+    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="baselines with diffusion">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/adacare.py" beforeDir="false" afterPath="$PROJECT_DIR$/adacare.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baseline.py" beforeDir="false" afterPath="$PROJECT_DIR$/baseline.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/seeData.py" beforeDir="false" afterPath="$PROJECT_DIR$/seeData.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -248,14 +240,7 @@
       <workItem from="1679765606030" duration="28942000" />
       <workItem from="1680978590093" duration="96000" />
       <workItem from="1680978749479" duration="25647000" />
-      <workItem from="1681306300565" duration="15120000" />
-    </task>
-    <task id="LOCAL-00019" summary="Et will generate Et'">
-      <created>1671044529820</created>
-      <option name="number" value="00019" />
-      <option name="presentableId" value="LOCAL-00019" />
-      <option name="project" value="LOCAL" />
-      <updated>1671044529820</updated>
+      <workItem from="1681306300565" duration="16314000" />
     </task>
     <task id="LOCAL-00020" summary="ablation study: No E_t_prime">
       <created>1672519250512</created>
@@ -593,7 +578,14 @@
       <option name="project" value="LOCAL" />
       <updated>1680794952270</updated>
     </task>
-    <option name="localTasksCounter" value="68" />
+    <task id="LOCAL-00068" summary="baselines with diffusion">
+      <created>1681341387412</created>
+      <option name="number" value="00068" />
+      <option name="presentableId" value="LOCAL-00068" />
+      <option name="project" value="LOCAL" />
+      <updated>1681341387412</updated>
+    </task>
+    <option name="localTasksCounter" value="69" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -618,7 +610,6 @@
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
-    <MESSAGE value="ablation: no ddpm" />
     <MESSAGE value="softmax gen" />
     <MESSAGE value="e_t, h_t for no ddpm embedding gen" />
     <MESSAGE value="LSTM only" />
@@ -643,7 +634,8 @@
     <MESSAGE value="generate with 1 top and left and right" />
     <MESSAGE value="generate with 1 top with left and right disabled" />
     <MESSAGE value="generate 90% attention" />
-    <option name="LAST_COMMIT_MESSAGE" value="generate 90% attention" />
+    <MESSAGE value="baselines with diffusion" />
+    <option name="LAST_COMMIT_MESSAGE" value="baselines with diffusion" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

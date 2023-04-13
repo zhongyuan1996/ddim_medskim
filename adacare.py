@@ -219,6 +219,10 @@ def train(args):
                                                                                              tr_pr_auc,
                                                                                              d_pr_auc,
                                                                                              t_pr_auc))
+        print('| step {:5} | train_kappa {:7.4f} | dev_kappa {:7.4f} | test_kappa {:7.4f} '.format(global_step,
+                                                                                          tr_kappa,
+                                                                                          d_kappa,
+                                                                                          t_kappa))
         print('-' * 71)
 
         if d_f1 >= best_dev_auc:
