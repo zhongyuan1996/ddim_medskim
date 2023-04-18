@@ -155,12 +155,13 @@ class HitaNet(nn.Module):
         self.layer_norm = nn.LayerNorm(d_model)
         self.output_mlp = nn.Sequential(nn.Linear(d_model, 2))
 #####################################
+        self.diff_channel = max_pos
         self.device = device
         with open(os.path.join("configs/", 'ehr.yml'), "r") as f:
             config = yaml.safe_load(f)
         self.config = dict2namespace(config)
-        self.diffusion = UNetModel(in_channels=50, model_channels=128,
-                                   out_channels=50, num_res_blocks=2,
+        self.diffusion = UNetModel(in_channels=self.diff_channel, model_channels=128,
+                                   out_channels=self.diff_channel, num_res_blocks=2,
                                    attention_resolutions=[16, ])
         betas = get_beta_schedule(beta_schedule=self.config.diffusion.beta_schedule,
                                   beta_start=self.config.diffusion.beta_start,
@@ -279,12 +280,13 @@ class LSAN(nn.Module):
         self.local_conv_layer = nn.Conv1d(in_channels=d_model, out_channels=d_model, kernel_size=3,
                                           padding=1)
         #####################################
+        self.diff_channel = max_pos
         self.device = device
         with open(os.path.join("configs/", 'ehr.yml'), "r") as f:
             config = yaml.safe_load(f)
         self.config = dict2namespace(config)
-        self.diffusion = UNetModel(in_channels=50, model_channels=128,
-                                   out_channels=50, num_res_blocks=2,
+        self.diffusion = UNetModel(in_channels=self.diff_channel, model_channels=128,
+                                   out_channels=self.diff_channel, num_res_blocks=2,
                                    attention_resolutions=[16, ])
         betas = get_beta_schedule(beta_schedule=self.config.diffusion.beta_schedule,
                                   beta_start=self.config.diffusion.beta_start,
@@ -367,12 +369,13 @@ class LSTM_encoder(nn.Module):
         self.pooler = MaxPoolLayer()
         self.rnns = nn.LSTM(d_model, d_model, num_layers, bidirectional=False, batch_first=True, dropout=dropout)
         #####################################
+        self.diff_channel = max_pos
         self.device = device
         with open(os.path.join("configs/", 'ehr.yml'), "r") as f:
             config = yaml.safe_load(f)
         self.config = dict2namespace(config)
-        self.diffusion = UNetModel(in_channels=50, model_channels=128,
-                                   out_channels=50, num_res_blocks=2,
+        self.diffusion = UNetModel(in_channels=self.diff_channel, model_channels=128,
+                                   out_channels=self.diff_channel, num_res_blocks=2,
                                    attention_resolutions=[16, ])
         betas = get_beta_schedule(beta_schedule=self.config.diffusion.beta_schedule,
                                   beta_start=self.config.diffusion.beta_start,
@@ -442,12 +445,13 @@ class GRUSelf(nn.Module):
         self.gru = nn.GRU(d_model, d_model, num_layers=num_layers, batch_first=True, bidirectional=False)
         self.weight_layer = nn.Linear(d_model, 1)
         #####################################
+        self.diff_channel = max_pos
         self.device = device
         with open(os.path.join("configs/", 'ehr.yml'), "r") as f:
             config = yaml.safe_load(f)
         self.config = dict2namespace(config)
-        self.diffusion = UNetModel(in_channels=50, model_channels=128,
-                                   out_channels=50, num_res_blocks=2,
+        self.diffusion = UNetModel(in_channels=self.diff_channel, model_channels=128,
+                                   out_channels=self.diff_channel, num_res_blocks=2,
                                    attention_resolutions=[16, ])
         betas = get_beta_schedule(beta_schedule=self.config.diffusion.beta_schedule,
                                   beta_start=self.config.diffusion.beta_start,
@@ -529,12 +533,13 @@ class Timeline(nn.Module):
         self.WK1 = nn.Linear(d_model, d_model, bias=False)
         self.embed_drop = nn.Dropout(p=dropout_emb)
         #####################################
+        self.diff_channel = max_pos
         self.device = device
         with open(os.path.join("configs/", 'ehr.yml'), "r") as f:
             config = yaml.safe_load(f)
         self.config = dict2namespace(config)
-        self.diffusion = UNetModel(in_channels=50, model_channels=128,
-                                   out_channels=50, num_res_blocks=2,
+        self.diffusion = UNetModel(in_channels=self.diff_channel, model_channels=128,
+                                   out_channels=self.diff_channel, num_res_blocks=2,
                                    attention_resolutions=[16, ])
         betas = get_beta_schedule(beta_schedule=self.config.diffusion.beta_schedule,
                                   beta_start=self.config.diffusion.beta_start,
@@ -627,12 +632,13 @@ class TLSTM(nn.Module):
         self.output_mlp = nn.Sequential(nn.Linear(d_model, 2))
         self.pooler = MaxPoolLayer()
         #####################################
+        self.diff_channel = max_pos
         self.device = device
         with open(os.path.join("configs/", 'ehr.yml'), "r") as f:
             config = yaml.safe_load(f)
         self.config = dict2namespace(config)
-        self.diffusion = UNetModel(in_channels=50, model_channels=128,
-                                   out_channels=50, num_res_blocks=2,
+        self.diffusion = UNetModel(in_channels=self.diff_channel, model_channels=128,
+                                   out_channels=self.diff_channel, num_res_blocks=2,
                                    attention_resolutions=[16, ])
         betas = get_beta_schedule(beta_schedule=self.config.diffusion.beta_schedule,
                                   beta_start=self.config.diffusion.beta_start,
@@ -725,12 +731,13 @@ class SAND(nn.Module):
         self.layer_norm = nn.LayerNorm(d_model)
 
         #####################################
+        self.diff_channel = max_pos
         self.device = device
         with open(os.path.join("configs/", 'ehr.yml'), "r") as f:
             config = yaml.safe_load(f)
         self.config = dict2namespace(config)
-        self.diffusion = UNetModel(in_channels=50, model_channels=128,
-                                   out_channels=50, num_res_blocks=2,
+        self.diffusion = UNetModel(in_channels=self.diff_channel, model_channels=128,
+                                   out_channels=self.diff_channel, num_res_blocks=2,
                                    attention_resolutions=[16, ])
         betas = get_beta_schedule(beta_schedule=self.config.diffusion.beta_schedule,
                                   beta_start=self.config.diffusion.beta_start,
@@ -817,12 +824,13 @@ class Retain(nn.Module):
 
         self.visit_hidden_size = d_model
         #####################################
+        self.diff_channel = max_pos
         self.device = device
         with open(os.path.join("configs/", 'ehr.yml'), "r") as f:
             config = yaml.safe_load(f)
         self.config = dict2namespace(config)
-        self.diffusion = UNetModel(in_channels=50, model_channels=128,
-                                   out_channels=50, num_res_blocks=2,
+        self.diffusion = UNetModel(in_channels=self.diff_channel, model_channels=128,
+                                   out_channels=self.diff_channel, num_res_blocks=2,
                                    attention_resolutions=[16, ])
         betas = get_beta_schedule(beta_schedule=self.config.diffusion.beta_schedule,
                                   beta_start=self.config.diffusion.beta_start,
@@ -884,7 +892,7 @@ class Retain(nn.Module):
 
 
 class RetainEx(nn.Module):
-    def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos, device):
+    def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos, device, max_visit_len):
         super().__init__()
         self.embbedding1 = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.embbedding2 = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
@@ -898,12 +906,13 @@ class RetainEx(nn.Module):
         self.drop_out = nn.Dropout(dropout)
         self.output_layer = nn.Linear(d_model, 2)
         #####################################
+        self.diff_channel = max_pos
         self.device = device
         with open(os.path.join("configs/", 'ehr.yml'), "r") as f:
             config = yaml.safe_load(f)
         self.config = dict2namespace(config)
-        self.diffusion = UNetModel(in_channels=50, model_channels=128,
-                                   out_channels=50, num_res_blocks=2,
+        self.diffusion = UNetModel(in_channels=self.diff_channel, model_channels=128,
+                                   out_channels=self.diff_channel, num_res_blocks=2,
                                    attention_resolutions=[16, ])
         betas = get_beta_schedule(beta_schedule=self.config.diffusion.beta_schedule,
                                   beta_start=self.config.diffusion.beta_start,
@@ -1096,48 +1105,6 @@ class classifyer(nn.Module):
         h = self.relu(self.layer2(h))
         h = self.out(self.drop(h))
         return h
-
-# class generator(nn.Module):
-#     def
-
-class LSTM_ehrGAN(nn.Module):
-    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, num_layers = 1, m = 0):
-        super().__init__()
-        self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
-        self.dropout = nn.Dropout(dropout)
-        self.emb_dropout = nn.Dropout(dropout_emb)
-        self.lstm = nn.LSTM(d_model, h_model, num_layers, bidirectional=False, batch_first=True, dropout=dropout)
-        self.m = m
-        self.tanh = nn.Tanh()
-        self.time_layer = nn.Linear(1, 64)
-        self.time_updim = nn.Linear(64, d_model)
-        self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
-        self.relu = nn.ReLU()
-
-    def before(self, input_seqs, seq_time_step):
-
-        #time embedding
-        seq_time_step = seq_time_step.unsqueeze(2) / 180
-        time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
-        time_encoding = self.time_updim(time_feature)
-        #visit_embedding e_t
-        visit_embedding = self.initial_embedding(input_seqs)
-        visit_embedding = self.emb_dropout(visit_embedding)
-        visit_embedding = self.relu(visit_embedding)
-
-        visit_embedding = visit_embedding.sum(-2) + time_encoding
-        return visit_embedding
-
-    def forward(self, input_seqs, seq_time_step):
-
-        og_v = self.before(input_seqs, seq_time_step)
-        og_h, _ = self.lstm(og_v)
-        z = torch.randn_like(og_h)
-        mask = torch.randn_like(z) < self.m
-        tilde_h = og_h * (~mask) + mask * z
-
-
-        return
 
 if __name__ == '__main__':
     y_true = np.array([])

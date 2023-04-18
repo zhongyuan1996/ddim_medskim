@@ -57,8 +57,8 @@ class Selected(nn.Module):
         with open(os.path.join("configs/", 'ehr.yml'), "r") as f:
             config = yaml.safe_load(f)
         self.config = dict2namespace(config)
-        self.diffusion = UNetModel(in_channels=50, model_channels=128,
-                                   out_channels=50, num_res_blocks=2,
+        self.diffusion = UNetModel(in_channels=15, model_channels=128,
+                                   out_channels=15, num_res_blocks=2,
                                    attention_resolutions=[16, ])
         betas = get_beta_schedule(beta_schedule=self.config.diffusion.beta_schedule,
                                   beta_start=self.config.diffusion.beta_start,
