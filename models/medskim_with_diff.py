@@ -19,7 +19,7 @@ def dict2namespace(config):
     return namespace
 
 class Selected(nn.Module):
-    def __init__(self, vocab_size, d_model, dropout, dropout_emb, device):
+    def __init__(self, vocab_size, d_model, dropout, dropout_emb, device, max_len):
         super().__init__()
         self.vocab_size = vocab_size
         self.d_model = d_model
@@ -53,12 +53,13 @@ class Selected(nn.Module):
         self.step_linear = nn.Sequential(nn.Linear(d_model, d_model), nn.ReLU(), nn.LayerNorm(d_model))
         self.global_att = nn.Sequential(nn.Linear(2 * d_model + 64, d_model), nn.Tanh(), nn.Linear(d_model, 1))
         #####################################
+        self.diff_channel = max_len
         self.device = device
         with open(os.path.join("configs/", 'ehr.yml'), "r") as f:
             config = yaml.safe_load(f)
         self.config = dict2namespace(config)
-        self.diffusion = UNetModel(in_channels=15, model_channels=128,
-                                   out_channels=15, num_res_blocks=2,
+        self.diffusion = UNetModel(in_channels=self.diff_channel, model_channels=128,
+                                   out_channels=self.diff_channel, num_res_blocks=2,
                                    attention_resolutions=[16, ])
         betas = get_beta_schedule(beta_schedule=self.config.diffusion.beta_schedule,
                                   beta_start=self.config.diffusion.beta_start,

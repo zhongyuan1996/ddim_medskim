@@ -128,7 +128,7 @@ class Recalibration(nn.Module):
 
 class AdaCare(nn.Module):
     def __init__(self, vocab_size, device, hidden_dim=128, kernel_size=2, kernel_num=64, input_dim=128, output_dim=1, dropout=0.5, r_v=4,
-                 r_c=4, activation='sigmoid'):
+                 r_c=4, activation='sigmoid', max_len = 50):
         super(AdaCare, self).__init__()
         self.embedding = nn.Embedding(vocab_size + 1, hidden_dim, padding_idx=-1)
         self.hidden_dim = hidden_dim
@@ -157,12 +157,13 @@ class AdaCare(nn.Module):
         self.pooler = MaxPoolLayer()
 
         #####################################
+        self.diff_channel = max_len
         self.device = device
         with open(os.path.join("configs/", 'ehr.yml'), "r") as f:
             config = yaml.safe_load(f)
         self.config = dict2namespace(config)
-        self.diffusion = UNetModel(in_channels=15, model_channels=128,
-                                   out_channels=15, num_res_blocks=2,
+        self.diffusion = UNetModel(in_channels=self.diff_channel, model_channels=128,
+                                   out_channels=self.diff_channel, num_res_blocks=2,
                                    attention_resolutions=[16, ])
         betas = get_beta_schedule(beta_schedule=self.config.diffusion.beta_schedule,
                                   beta_start=self.config.diffusion.beta_start,
