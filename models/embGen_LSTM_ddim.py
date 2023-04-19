@@ -2,7 +2,7 @@ import math
 import torch
 import numpy as np
 import torch.nn as nn
-from models.diffusion import diffModel
+
 from utils.diffUtil import get_beta_schedule
 from models.unet import *
 torch.autograd.set_detect_anomaly(True)
@@ -22,16 +22,9 @@ class classifyer(nn.Module):
         h = self.relu(self.layer1(h))
         h = self.relu(self.layer2(h))
         h = self.out(self.drop(h))
-        # if self.temperature == 'none':
-        #     h = self.softmax(h)
-        # elif self.temperature == 'temperature':
-        #
-        #     h = self.softmax(h/self.tau)
-        #
-        # elif self.temperature == 'gumbel':
-        #     h = nn.functional.gumbel_softmax(h, tau=self.tau)
 
         return h
+
 
 
 class RNNdiff(nn.Module):
@@ -46,12 +39,10 @@ class RNNdiff(nn.Module):
         self.model_var_type = self.config.model.var_type
         self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.cross_attention = nn.MultiheadAttention(d_model, 8, batch_first=False)
-        # CrossAttentionBlock(d_model, 2, drop=0.1, attn_drop=0.1)
-        self.lstm = nn.LSTM(d_model, h_model, num_layers=1, batch_first=False, dropout=dropout)
 
-        # self.diffusion = diffModel(self.config)
-        self.diffusion = UNetModel(in_channels=50, model_channels=128,
-                                   out_channels=50, num_res_blocks=2,
+        self.lstm = nn.LSTM(d_model, h_model, num_layers=1, batch_first=False, dropout=dropout)
+        self.diffusion = UNetModel(in_channels=15, model_channels=128,
+                                   out_channels=15, num_res_blocks=2,
                                    attention_resolutions=[16, ])
         betas = get_beta_schedule(beta_schedule=self.config.diffusion.beta_schedule,
                                   beta_start=self.config.diffusion.beta_start,
@@ -60,14 +51,6 @@ class RNNdiff(nn.Module):
         betas = self.betas = torch.from_numpy(betas).float().to(self.device)
         self.diffusion_num_timesteps = betas.shape[0]
 
-        # alphas = 1.0 - betas
-        # alphas_cumprod = alphas.cumprod(dim=0)
-        # alphas_cumprod_prev = torch.cat(
-        #     [torch.ones(1).to(device), alphas_cumprod[:-1]], dim=0
-        # )
-        # posterior_variance = (
-        #         betas * (1.0 - alphas_cumprod_prev) / (1.0 - alphas_cumprod)
-        # )
         if self.model_var_type == "fixedlarge":
             self.logvar = betas.log()
         self.classifyer = classifyer(h_model)
@@ -78,6 +61,15 @@ class RNNdiff(nn.Module):
         self.tanh = nn.Tanh()
         self.time_layer = nn.Linear(1, 64)
         self.time_updim = nn.Linear(64, d_model)
+        self.dropout = nn.Dropout(dropout)
+        self.fc = nn.Linear(d_model, d_model, bias=False)
+        self.layer_norm = nn.LayerNorm(d_model)
+
+        self.w_hk = nn.Linear(h_model,d_model)
+        self.w1 = nn.Linear(2*h_model, 64)
+        self.w2 = nn.Linear(64,2)
+        self.softmax = torch.nn.Softmax(dim=-1)
+
 
     def before(self, input_seqs, seq_time_step):
 
@@ -100,81 +92,92 @@ class RNNdiff(nn.Module):
         visit_embedding = self.before(input_seqs, seq_time_step)
 
         e_t_prime_all = torch.zeros_like(visit_embedding)
-        E_t_prime_all = torch.zeros_like(e_t_prime_all)
+        E_gen_t_prime_all = torch.zeros_like(e_t_prime_all)
         #ht and et'
         hidden_state_all_visit = torch.zeros(batch_size, visit_size, self.h_model).to(self.device)
         hidden_state_all_visit_generated = torch.zeros(batch_size, visit_size, self.h_model).to(self.device)
 
+        c_all_visit = torch.zeros(batch_size, visit_size, self.h_model).to(self.device)
+        c_all_visit_generated = torch.zeros(batch_size, visit_size, self.h_model).to(self.device)
+
         hidden_state_softmax_res = torch.zeros(batch_size, visit_size, 2).to(self.device)
         hidden_state_softmax_res_generated = torch.zeros(batch_size, visit_size, 2).to(self.device)
 
-        seq_h = visit_embedding.new_zeros((1,batch_size, self.h_model))
-        #size seq_h = [1,32,256] here
-        seq_c = visit_embedding.new_zeros((1,batch_size, self.h_model))
-
-        # seq_h_gen = visit_embedding.new_zeros((1,batch_size, self.h_model))
-        # seq_c_gen = visit_embedding.new_zeros((1,batch_size, self.h_model))
+        alpha1s =torch.zeros(batch_size, visit_size,1).to(self.device)
+        alpha2s = torch.zeros(batch_size, visit_size, 1).to(self.device)
 
         for i in range(visit_size):
             e_t = visit_embedding[:, i:i + 1, :].permute(1, 0, 2)
-            # ablation:no e_t_prime
-            e_t_prime, _ = self.cross_attention(seq_h.clone(), e_t, e_t)
-            e_t_prime_all[:, i:i + 1, :] = e_t_prime.permute(1, 0, 2)
 
-            _, (seq_h, seq_c) = self.lstm(e_t_prime,
-                                          (seq_h.clone(), seq_c.clone()))
-            # _, (seq_h, seq_c) = self.lstm(e_t,
-            #                               (seq_h.clone(), seq_c.clone()))
+            if i ==0:
+                _, (seq_h, seq_c) = self.lstm(e_t.clone())
+            else:
+                _, (seq_h, seq_c) = self.lstm(e_t.clone(),
+                                          (hidden_state_all_visit[:, i-1: i, :].clone().permute(1, 0, 2), c_all_visit[:, i-1: i, :].clone().permute(1, 0, 2)))
             hidden_state_all_visit[:, i:i + 1, :] = seq_h.permute(1, 0, 2)
+            c_all_visit[:, i:i + 1, :] = seq_c.permute(1, 0, 2)
 
-        # ##########diff start
-        # diffusion_time_t = torch.randint(
-        #     low=0, high=self.config.diffusion.num_diffusion_timesteps, size=[visit_embedding.shape[0], ]).to(
-        #     self.device)
-        #
-        # alpha = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t).view(-1, 1, 1)
-        #
-        # normal_noise = torch.randn_like(e_t_prime_all)
-        #
-        # e_t_prime_b_first_with_noise = e_t_prime_all * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
-        #
-        # predicted_noise = self.diffusion(e_t_prime_b_first_with_noise, timesteps=diffusion_time_t)
-        #
-        # noise_loss = normal_noise - predicted_noise
-        #
-        # GEN_E_t = e_t_prime_all + noise_loss
-        # ####### diff end
-        #
-        # for i in range(visit_size):
-        #     #```new stuff that generate Et_prime from Et```
-        #     E_gen_t = GEN_E_t[:, i:i + 1, :].permute(1, 0, 2)
-        #     E_gen_t_prime, _ = self.cross_attention(seq_h_gen.clone(), E_gen_t, E_gen_t)
-        #     E_t_prime_all[:, i:i + 1, :] = E_gen_t_prime.permute(1, 0, 2)
-        #     _, (seq_h_gen, seq_c_gen) = self.lstm(E_gen_t_prime,
-        #                                   (seq_h_gen.clone(), seq_c_gen.clone()))
-        #
-        #
-        #     # _, (seq_h_gen, seq_c_gen) = self.lstm(GEN_E_t[:, i:i + 1, :].permute(1, 0, 2),
-        #     #                               (seq_h_gen.clone(), seq_c_gen.clone()))
-        #     hidden_state_all_visit_generated[:, i:i + 1, :] = seq_h_gen.permute(1, 0, 2)
+        bar_e_k = torch.zeros_like(visit_embedding)
+
+        for i in range(visit_size):
+            if i == 0:
+                bar_e_k[:, 0:1,:] = visit_embedding[:, 0:1, :]
+            else:
+                e_k = visit_embedding[:, 0:1, :]
+                w_h_k_prev = self.w_hk(hidden_state_all_visit[:,i-1:i,:])
+                attn = self.softmax(self.w2(self.tanh(self.w1(torch.cat((e_k,w_h_k_prev),dim=-1)))))
+                alpha1 = attn[:,:,0:1]
+                alpha2 = attn[:,:,1:2]
+                bar_e_k[:, i:i+1,:] = e_k * alpha1 + w_h_k_prev * alpha2
+                alpha1s[:,i:i+1,:] = alpha1
+                alpha2s[:,i:i+1,:] = alpha2
+
+
+        ##########diff start
+        diffusion_time_t = torch.randint(
+            low=0, high=self.config.diffusion.num_diffusion_timesteps, size=[visit_embedding.shape[0], ]).to(
+            self.device)
+
+        alpha = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t).view(-1, 1, 1)
+
+        normal_noise = torch.randn_like(bar_e_k)
+
+        e_t_prime_b_first_with_noise = bar_e_k * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
+
+        predicted_noise = self.diffusion(e_t_prime_b_first_with_noise, timesteps=diffusion_time_t)
+
+        noise_loss = normal_noise - predicted_noise
+
+        GEN_E_t = bar_e_k + noise_loss
+        ####### diff end
+
+        for i in range(visit_size):
+            E_gen_t = GEN_E_t[:, i:i + 1, :].permute(1, 0, 2)
+
+            if i ==0:
+                _, (seq_h, seq_c) = self.lstm(E_gen_t.clone())
+            else:
+                _, (seq_h, seq_c) = self.lstm(E_gen_t.clone(),
+                                          (hidden_state_all_visit_generated[:, i-1: i, :].clone().permute(1, 0, 2), c_all_visit_generated[:, i-1: i, :].clone().permute(1, 0, 2)))
+            hidden_state_all_visit_generated[:, i:i + 1, :] = seq_h.permute(1, 0, 2)
+            c_all_visit_generated[:, i:i + 1, :] = seq_c.permute(1, 0, 2)
+
 
         for i in range(visit_size):
 
             hidden_state_softmax_res[:, i:i+1, :] = self.classifyer(hidden_state_all_visit[:, i:i + 1, :])
-            # hidden_state_softmax_res_generated[:, i:i+1, :] = self.classifyer(hidden_state_all_visit_generated[:, i:i + 1, :])
+            hidden_state_softmax_res_generated[:, i:i+1, :] = self.classifyer(hidden_state_all_visit_generated[:, i:i + 1, :])
 
         final_prediction = hidden_state_softmax_res[:, -1, :]
-        # final_prediction_generated = hidden_state_softmax_res_generated[:, -1, :]
+        final_prediction_generated = hidden_state_softmax_res_generated[:, -1, :]
 
         # final_prediction = self.classifyer(hidden_state_all_visit[:, visit_size-1:visit_size, :]).squeeze()
         # final_prediction_generated = self.classifyer(hidden_state_all_visit[:, visit_size-1:visit_size, :]).squeeze()
 
-        return hidden_state_softmax_res, final_prediction, e_t_prime_all, hidden_state_all_visit
+        h_t = hidden_state_all_visit[:,14:15,:]
+        h_t_gen = hidden_state_all_visit_generated[:, 14:15, :]
 
-        # return hidden_state_softmax_res, hidden_state_softmax_res_generated, \
-        #        final_prediction, final_prediction_generated, \
-        #        normal_noise, predicted_noise, \
-        #        e_t_prime_all, E_t_prime_all,\
-        #        hidden_state_all_visit, hidden_state_all_visit_generated
-
+        return h_t, h_t_gen, \
+               final_prediction, final_prediction_generated, \
+               normal_noise, predicted_noise, alpha1s,alpha2s
 

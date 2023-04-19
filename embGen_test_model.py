@@ -3,6 +3,8 @@ import os
 import time
 import pandas as pd
 
+import random
+
 import torch
 # import numpy as np
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, \
@@ -26,57 +28,37 @@ def dict2namespace(config):
             new_value = value
         setattr(namespace, key, new_value)
     return namespace
-# def eval_metric(eval_set, model):
-#     model.eval()
-#     with torch.no_grad():
-#         y_true = np.array([])
-#         y_pred = np.array([])
-#         y_score = np.array([])
-#         for i, data in enumerate(eval_set):
-#             labels, ehr, mask, txt, _, lengths, time_step, code_mask = data
-#             logits, _ = model(ehr, lengths, time_step, code_mask)
-#             scores = torch.softmax(logits, dim=-1)
-#             scores = scores.data.cpu().numpy()
-#             labels = labels.data.cpu().numpy()
-#             score = scores[:, 1]
-#             pred = scores.argmax(1)
-#             y_true = np.concatenate((y_true, labels))
-#             y_pred = np.concatenate((y_pred, pred))
-#             y_score = np.concatenate((y_score, score))
-#         accuary = accuracy_score(y_true, y_pred)
-#         precision = precision_score(y_true, y_pred)
-#         recall = recall_score(y_true, y_pred)
-#         f1 = f1_score(y_true, y_pred)
-#         roc_auc = roc_auc_score(y_true, y_score)
-#         lr_precision, lr_recall, _ = precision_recall_curve(y_true, y_score)
-#         pr_auc = auc(lr_recall, lr_precision)
-#         kappa = cohen_kappa_score(y_true, y_pred)
-#     return accuary, precision, recall, f1, roc_auc, pr_auc, kappa
+
+
 def eval_metric(eval_set, model):
     model.eval()
     with torch.no_grad():
         y_true = np.array([])
         y_pred = np.array([])
         y_score = np.array([])
-        res_e_t = np.array([[]])
-        # res_E_t = np.array([[]])
-        res_h_t = np.array([[]])
-        # res_H_t = np.array([[]])
+        h_ts = np.array([])
+        h_t_gens = np.array([])
+        alpha1s = np.array([])
+        alpha2s = np.array([])
+
         for i, data in enumerate(eval_set):
             ehr, time_step, labels = data
-            # _,_,final_prediction,_,_,_,e_ts,E_ts,h_ts,H_ts = model(ehr, time_step)
-            _, final_prediction, e_ts, h_ts= model(ehr, time_step)
-            e_ts = torch.flatten(e_ts, start_dim=1)
-            # E_ts = torch.flatten(E_ts, start_dim=1)
-            h_ts = torch.flatten(h_ts, start_dim=1)
-            # H_ts = torch.flatten(H_ts, start_dim=1)
-            e_ts = e_ts.data.cpu().numpy()
-            # E_ts = E_ts.data.cpu().numpy()
-            h_ts = h_ts.data.cpu().numpy()
-            # H_ts = H_ts.data.cpu().numpy()
+            h_t,h_t_gen,final_prediction,_,_,_,alpha1,alpha2 = model(ehr, time_step)
+
+            h_t = torch.flatten(h_t, start_dim=1)
+            h_t_gen = torch.flatten(h_t_gen, start_dim=1)
+            alpha1 = torch.flatten(alpha1, start_dim=1)
+            alpha2 = torch.flatten(alpha2, start_dim=1)
+
 
             scores = torch.softmax(final_prediction, dim=-1)
             scores = scores.data.cpu().numpy()
+            h_t = h_t.data.cpu().numpy()
+            h_t_gen = h_t_gen.data.cpu().numpy()
+            alpha1 = alpha1.data.cpu().numpy()
+            alpha2 = alpha2.data.cpu().numpy()
+
+
             labels = labels.data.cpu().numpy()
             labels = labels.argmax(1)
             score = scores[:, 1]
@@ -86,21 +68,25 @@ def eval_metric(eval_set, model):
             y_pred = np.concatenate((y_pred, pred))
             y_score = np.concatenate((y_score, score))
             try:
-                res_e_t = np.concatenate((res_e_t, e_ts), axis=0)
+                h_ts = np.concatenate((h_ts, h_t), axis=0)
             except ValueError:
-                res_e_t = e_ts
-            # try:
-            #     res_E_t = np.concatenate((res_E_t, E_ts), axis=0)
-            # except ValueError:
-            #     res_E_t = E_ts
+                h_ts = h_t
+
             try:
-                res_h_t = np.concatenate((res_h_t, h_ts), axis=0)
+                h_t_gens = np.concatenate((h_t_gens, h_t_gen), axis=0)
             except ValueError:
-                res_h_t = h_ts
-            # try:
-            #     res_H_t = np.concatenate((res_H_t, H_ts), axis=0)
-            # except ValueError:
-            #     res_H_t = H_ts
+                h_t_gens = h_t_gen
+
+            try:
+                alpha1s = np.concatenate((alpha1s, alpha1), axis=0)
+            except ValueError:
+                alpha1s = alpha1
+
+            try:
+                alpha2s = np.concatenate((alpha2s, alpha2), axis=0)
+            except ValueError:
+                alpha2s = alpha2
+
 
         accuary = accuracy_score(y_true, y_pred)
         precision = precision_score(y_true, y_pred)
@@ -111,7 +97,7 @@ def eval_metric(eval_set, model):
         pr_auc = auc(lr_recall, lr_precision)
         kappa = cohen_kappa_score(y_true, y_pred)
         loss = log_loss(y_true, y_pred)
-    return accuary, precision, recall, f1, roc_auc, pr_auc, kappa, loss, res_e_t, res_h_t, y_true, y_pred
+    return accuary, precision, recall, f1, roc_auc, pr_auc, kappa, loss, h_ts, h_t_gens, alpha1s, alpha2s , y_true, y_pred
 
 def main():
     parser = argparse.ArgumentParser()
@@ -124,13 +110,12 @@ def main():
     parser.add_argument('--dropout_emb', default=0.1, type=float, help='dropout rate of embedding layers')
     parser.add_argument('--num_layers', default=1, type=int, help='number of transformer layers of EHR encoder')
     parser.add_argument('--num_heads', default=4, type=int, help='number of attention heads')
-    parser.add_argument('--max_len', default=50, type=int, help='max visits of EHR')
+    parser.add_argument('--max_len', default=15, type=int, help='max visits of EHR')
     parser.add_argument('--max_num_codes', default=20, type=int, help='max number of ICD codes in each visit')
     parser.add_argument('--max_num_blks', default=100, type=int, help='max number of blocks in each visit')
     parser.add_argument('--blk_emb_path', default='./data/processed/block_embedding.npy',
                         help='embedding path of blocks')
-    parser.add_argument('--target_disease', default='Heart_failure',
-                        choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia'])
+    parser.add_argument('--target_disease', default='mimic', choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic'])
     parser.add_argument('--target_att_heads', default=4, type=int, help='target disease attention heads number')
     parser.add_argument('--mem_size', default=15, type=int, help='memory size')
     parser.add_argument('--mem_update_size', default=15, type=int, help='memory update size')
@@ -170,9 +155,9 @@ def main():
 
 def train(args):
     print(args)
-    # random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
+    random.seed(args.seed)
+    # np.random.seed(args.seed)
+    # torch.manual_seed(args.seed)
     # if torch.cuda.is_available() and args.cuda:
     #     torch.cuda.manual_seed(args.seed)
 
@@ -220,15 +205,26 @@ def train(args):
         pad_id = len(code2id)
         data_path = './data/amnesia/amnesia'
         # emb_path = './data/processed/amnesia.npy'
+    elif args.target_disease == 'mimic':
+        pad_id = 4894
+        data_path = './data/mimic/mimic'
     else:
         raise ValueError('Invalid disease')
     device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
-    train_dataset = MyDataset(data_path + '_training_new.pickle',
-                              args.max_len, args.max_num_codes, pad_id, device)
-    dev_dataset = MyDataset(data_path + '_validation_new.pickle', args.max_len,
-                            args.max_num_codes, pad_id, device)
-    test_dataset = MyDataset(data_path + '_testing_new.pickle', args.max_len,
-                             args.max_num_codes, pad_id, device)
+    if args.target_disease == 'mimic':
+        train_dataset = MyDataset(data_path + '_train.pickle',
+                                  args.max_len, args.max_num_codes, pad_id, device)
+        dev_dataset = MyDataset(data_path + '_val.pickle', args.max_len,
+                                args.max_num_codes, pad_id, device)
+        test_dataset = MyDataset(data_path + '_test.pickle', args.max_len,
+                                 args.max_num_codes, pad_id, device)
+    else:
+        train_dataset = MyDataset(data_path + '_training_new.pickle',
+                                  args.max_len, args.max_num_codes, pad_id, device)
+        dev_dataset = MyDataset(data_path + '_validation_new.pickle', args.max_len,
+                                args.max_num_codes, pad_id, device)
+        test_dataset = MyDataset(data_path + '_testing_new.pickle', args.max_len,
+                                 args.max_num_codes, pad_id, device)
     train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=True, collate_fn=collate_fn)
     dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
     test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
@@ -276,6 +272,7 @@ def train(args):
     print('-' * 71)
     global_step, best_dev_epoch = 0, 0
     best_dev_auc, final_test_auc, total_loss = 0.0, 0.0, 0.0
+    best_epoch_pr, best_epoch_f1, best_epoch_kappa = 0.0, 0.0, 0.0
     total_DF_loss, total_CE_loss, total_CE_gen_loss, total_KL_loss = 0.0, 0.0, 0.0, 0.0
     model.train()
     if args.temperature == 'temperature':
@@ -295,23 +292,23 @@ def train(args):
             ehr, time_step, labels = data
 
             optim.zero_grad()
-            # h_res, h_gen_v2, pred, pred_v2, noise, diff_noise,_,_,_,_ = model(ehr, time_step)
-            h_res, pred, e_t, h_t= model(ehr, time_step)
+            h_res, h_gen_v2, pred, pred_v2, noise, diff_noise,_,_ = model(ehr, time_step)
+
             # if args.temperature == 'temperature':
             #     pred = pred/tau_schedule[epoch_id]
             #     pred_v2 = pred_v2/tau_schedule[epoch_id]
 
-            # DF_loss = Loss_func_diff(diff_noise, noise) * args.lambda_DF_loss
+            DF_loss = Loss_func_diff(diff_noise, noise) * args.lambda_DF_loss
             # KL_loss = Loss_func_h(h_res.log(), h_gen_v2) * args.lambda_KL_loss
             CE_loss = loss_func_pred(pred, labels)
-            # CE_gen_loss = loss_func_pred(pred_v2, labels) * args.lambda_CE_gen_loss
-            # loss = DF_loss + CE_loss + CE_gen_loss
-            loss = CE_loss
+            CE_gen_loss = loss_func_pred(pred_v2, labels) * args.lambda_CE_gen_loss
+            loss = DF_loss + CE_loss + CE_gen_loss
+            # loss = CE_loss
             loss.backward()
             total_loss += (loss.item() / labels.size(0)) * args.batch_size
-            # total_DF_loss += (DF_loss.item() / labels.size(0)) * args.batch_size
+            total_DF_loss += (DF_loss.item() / labels.size(0)) * args.batch_size
             total_CE_loss += (CE_loss.item() / labels.size(0)) * args.batch_size
-            # total_CE_gen_loss += (CE_gen_loss.item() / labels.size(0)) * args.batch_size
+            total_CE_gen_loss += (CE_gen_loss.item() / labels.size(0)) * args.batch_size
             # total_KL_loss += (KL_loss.item() / labels.size(0)) * args.batch_size
             if args.max_grad_norm > 0:
                 nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
@@ -340,10 +337,10 @@ def train(args):
             global_step += 1
 
         model.eval()
-        train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa, tr_loss,_,_,_,_ = eval_metric(train_dataloader,
+        train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa, tr_loss,_,_,_,_,_,_ = eval_metric(train_dataloader,
                                                                                                  model)
-        dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa, d_loss,_,_,_,_ = eval_metric(dev_dataloader, model)
-        test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss, t_e_t, t_h_t, t_label,t_pred = eval_metric(test_dataloader, model)
+        dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa, d_loss,_,_,_,_,_,_ = eval_metric(dev_dataloader, model)
+        test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss, h_t, gen_h_t, alpha1s, alpha2s, t_label,t_pred = eval_metric(test_dataloader, model)
         scheduler.step(d_loss)
         print('-' * 71)
         print('| step {:5} | train_acc {:7.4f} | dev_acc {:7.4f} | test_acc {:7.4f} '.format(global_step,
@@ -389,34 +386,39 @@ def train(args):
             best_dev_auc = d_f1
             final_test_auc = t_f1
             best_dev_epoch = epoch_id
+            best_epoch_pr = t_pr_auc
+            best_epoch_f1 = t_f1
+            best_epoch_kappa = t_kappa
             torch.save([model, args], model_path)
             with open(log_path, 'a') as fout:
                 fout.write('{},{},{},{}\n'.format(global_step, tr_pr_auc, d_pr_auc, t_pr_auc))
             print(f'model saved to {model_path}')
 
-        if epoch_id%5==0:
-
-            e_t_fileName = 'e_t_epoch_' + str(epoch_id) + '.csv'
-            # E_t_gen_fileName = 'E_t_gen_epoch_' + str(epoch_id) + '.csv'
-            h_t_fileName = 'h_t_epoch_' + str(epoch_id) + '.csv'
-            # H_t_gen_fileName = 'H_t_gen_epoch_' + str(epoch_id) + '.csv'
-            label_fileName = 'label_epoch_' + str(epoch_id) + '.csv'
-            pred_fileName = 'pred_epoch_' + str(epoch_id) + '.csv'
-
-            e_t_path = os.path.join(args.save_dir, e_t_fileName)
-            # E_t_path = os.path.join(args.save_dir, E_t_gen_fileName)
-            h_t_path = os.path.join(args.save_dir, h_t_fileName)
-            # H_t_path = os.path.join(args.save_dir, H_t_gen_fileName)
-            label_path = os.path.join(args.save_dir, label_fileName)
-            pred_path = os.path.join(args.save_dir, pred_fileName)
-
-
-            np.savetxt(e_t_path, t_e_t, delimiter=',')
-            # np.savetxt(E_t_path, t_E_t, delimiter=',')
-            np.savetxt(h_t_path, t_h_t, delimiter=',')
-            # np.savetxt(H_t_path, t_H_t, delimiter=',')
-            np.savetxt(label_path, t_label, delimiter=',')
-            np.savetxt(pred_path, t_pred, delimiter=',')
+            #
+            # softmaxres_fileName = 'h_t_epoch_' + str(epoch_id) + '.csv'
+            # gen_softmaxres_gen_fileName = 'gen_h_t_epoch_' + str(epoch_id) + '.csv'
+            # alpha1_filename = 'alpha1_epoch_'+ str(epoch_id) + '.csv'
+            # alpha2_filename = 'alpha2_epoch_'+ str(epoch_id) + '.csv'
+            #
+            # label_fileName = 'label_epoch_' + str(epoch_id) + '.csv'
+            # pred_fileName = 'pred_epoch_' + str(epoch_id) + '.csv'
+            #
+            # softmax_path = os.path.join(args.save_dir, softmaxres_fileName)
+            # gen_softmax_path = os.path.join(args.save_dir, gen_softmaxres_gen_fileName)
+            #
+            # alpha1_path = os.path.join(args.save_dir, alpha1_filename)
+            # alpha2_path = os.path.join(args.save_dir, alpha2_filename)
+            #
+            # label_path = os.path.join(args.save_dir, label_fileName)
+            # pred_path = os.path.join(args.save_dir, pred_fileName)
+            #
+            #
+            # # np.savetxt(softmax_path, h_t, delimiter=',')
+            # # np.savetxt(gen_softmax_path, gen_h_t, delimiter=',')
+            # np.savetxt(alpha1_path, alpha1s, delimiter=',')
+            # np.savetxt(alpha2_path, alpha2s, delimiter=',')
+            # np.saver(label_path, t_label, delimiter=',')
+            # np.savetxt(pred_path, t_pred, delimiter=',')
 
 
         # if epoch_id - best_dev_epoch >= args.max_epochs_before_stop:
@@ -426,204 +428,11 @@ def train(args):
     print('training ends in {} steps'.format(global_step))
     print('best dev auc: {:.4f} (at epoch {})'.format(best_dev_auc, best_dev_epoch))
     print('final test auc: {:.4f}'.format(final_test_auc))
+    print('best test pr: {:.4f}'.format(best_epoch_pr))
+    print('best test f1: {:.4f}'.format(best_epoch_f1))
+    print('best test kappa: {:.4f}'.format(best_epoch_kappa))
     print()
 
-
-# def pred(args):
-#     model_path = os.path.join(args.save_dir, 'models.pt')
-#     model, old_args = torch.load(model_path)
-#     device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
-#     model.to(device)
-#     model.eval()
-#     blk_emb = np.load(old_args.blk_emb_path)
-#     blk_pad_id = len(blk_emb) - 1
-#     if old_args.target_disease == 'Heart_failure':
-#         code2id = pickle.load(open('./data/hf/hf_code2idx_new.pickle', 'rb'))
-#         # id2code = {int(v): k for k, v in code2id.items()}
-#         # code2topic = pickle.load(open('./data/hf/hf_code2topic.pickle', 'rb'))
-#         pad_id = len(code2id)
-#         data_path = './data/hf/hf'
-#     elif old_args.target_disease == 'COPD':
-#         code2id = pickle.load(open('./data/copd/copd_code2idx_new.pickle', 'rb'))
-#         # id2code = {int(v): k for k, v in code2id.items()}
-#         # code2topic = pickle.load(open('./data/copd/copd_code2topic.pickle', 'rb'))
-#         pad_id = len(code2id)
-#         data_path = './data/copd/copd'
-#     elif old_args.target_disease == 'Kidney':
-#         code2id = pickle.load(open('./data/kidney/kidney_code2idx_new.pickle', 'rb'))
-#         # id2code = {int(v): k for k, v in code2id.items()}
-#         # code2topic = pickle.load(open('./data/kidney/kidney_code2topic.pickle', 'rb'))
-#         pad_id = len(code2id)
-#         data_path = './data/kidney/kidney'
-#     elif old_args.target_disease == 'Amnesia':
-#         code2id = pickle.load(open('./data/amnesia/amnesia_code2idx_new.pickle', 'rb'))
-#         # id2code = {int(v): k for k, v in code2id.items()}
-#         # code2topic = pickle.load(open('./data/amnesia/amnesia_code2topic.pickle', 'rb'))
-#         pad_id = len(code2id)
-#         data_path = './data/amnesia/amnesia'
-#     elif old_args.target_disease == 'Dementia':
-#         code2id = pickle.load(open('./data/dementia/dementia_code2idx_new.pickle', 'rb'))
-#         # id2code = {int(v): k for k, v in code2id.items()}
-#         # code2topic = pickle.load(open('./data/dementia/dementia_code2topic.pickle', 'rb'))
-#         pad_id = len(code2id)
-#         data_path = './data/dementia/dementia'
-#     else:
-#         raise ValueError('Invalid disease')
-#     # dev_dataset = MyDataset(data_path + '_validation_new.pickle', data_path + '_validation_txt.pickle',
-#     #                         old_args.max_len, old_args.max_num_codes, old_args.max_num_blks, pad_id, blk_pad_id, device)
-#     test_dataset = MyDataset(data_path + '_testing_new.pickle', old_args.max_len,
-#                              old_args.max_num_codes, pad_id, device)
-#     # dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
-#     test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
-#     # dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc = eval_metric(dev_dataloader, model)
-#     test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa = eval_metric(test_dataloader, model)
-#     with torch.no_grad():
-#         y_true = np.array([])
-#         y_pred = np.array([])
-#         y_score = np.array([])
-#         skip_rates = np.array([])
-#         for i, data in enumerate(test_dataloader):
-#             ehr, time_step, labels = data
-#             logits, skip_rate = model(ehr, lengths, time_step, code_mask)
-#             scores = torch.softmax(logits, dim=-1)
-#             scores = scores.data.cpu().numpy()
-#             labels = labels.data.cpu().numpy()
-#             skip_rate = skip_rate.data.cpu().numpy()
-#             score = scores[:, 1]
-#             pred = scores.argmax(1)
-#             y_true = np.concatenate((y_true, labels))
-#             y_pred = np.concatenate((y_pred, pred))
-#             y_score = np.concatenate((y_score, score))
-#             skip_rates = np.concatenate((skip_rates, [skip_rate]))
-#         log_path = os.path.join(args.save_dir, 'result.csv')
-#         with open(log_path, 'w') as fout:
-#             fout.write('test_auc,test_f1,test_pre,test_recall,test_pr_auc,test_kappa,skip_rate\n')
-#             fout.write(
-#                 '{},{},{},{},{},{},{}\n'.format(t_roc_auc, t_f1, t_precision, t_recall, t_pr_auc, t_kappa,
-#                                                 np.mean(skip_rates)))
-#         with open(os.path.join(args.save_dir, 'prediction.csv'), 'w') as fout2:
-#             fout2.write('prediciton,score,label\n')
-#             for i in range(len(y_true)):
-#                 fout2.write('{},{},{}\n'.format(y_pred[i], y_score[i], y_true[i]))
-
-
-# def study(args):
-#     model_path = os.path.join(args.save_dir, 'models.pt')
-#     model, old_args = torch.load(model_path)
-#     device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
-#     model.to(device)
-#     model.eval()
-#     blk_emb = np.load(old_args.blk_emb_path)
-#     blk_pad_id = len(blk_emb) - 1
-#     if old_args.target_disease == 'Heart_failure':
-#         code2id = pickle.load(open('./data/hf/hf_code2idx_new.pickle', 'rb'))
-#         id2code = {int(v): k for k, v in code2id.items()}
-#         code2topic = pickle.load(open('./data/hf/hf_code2topic.pickle', 'rb'))
-#         pad_id = len(code2id)
-#         data_path = './data/hf/hf'
-#     elif old_args.target_disease == 'COPD':
-#         code2id = pickle.load(open('./data/copd/copd_code2idx_new.pickle', 'rb'))
-#         id2code = {int(v): k for k, v in code2id.items()}
-#         code2topic = pickle.load(open('./data/copd/copd_code2topic.pickle', 'rb'))
-#         pad_id = len(code2id)
-#         data_path = './data/copd/copd'
-#     elif old_args.target_disease == 'Kidney':
-#         code2id = pickle.load(open('./data/kidney/kidney_code2idx_new.pickle', 'rb'))
-#         id2code = {int(v): k for k, v in code2id.items()}
-#         code2topic = pickle.load(open('./data/kidney/kidney_code2topic.pickle', 'rb'))
-#         pad_id = len(code2id)
-#         data_path = './data/kidney/kidney'
-#     elif old_args.target_disease == 'Amnesia':
-#         code2id = pickle.load(open('./data/amnesia/amnesia_code2idx_new.pickle', 'rb'))
-#         id2code = {int(v): k for k, v in code2id.items()}
-#         code2topic = pickle.load(open('./data/amnesia/amnesia_code2topic.pickle', 'rb'))
-#         pad_id = len(code2id)
-#         data_path = './data/amnesia/amnesia'
-#     elif old_args.target_disease == 'Dementia':
-#         code2id = pickle.load(open('./data/dementia/dementia_code2idx_new.pickle', 'rb'))
-#         id2code = {int(v): k for k, v in code2id.items()}
-#         code2topic = pickle.load(open('./data/dementia/dementia_code2topic.pickle', 'rb'))
-#         pad_id = len(code2id)
-#         data_path = './data/dementia/dementia'
-#     else:
-#         raise ValueError('Invalid disease')
-#     dev_dataset = MyDataset(data_path + '_validation_new.pickle', data_path + '_validation_txt.pickle',
-#                             old_args.max_len, old_args.max_num_codes, old_args.max_num_blks, pad_id, blk_pad_id, device)
-#     test_dataset = MyDataset(data_path + '_testing_new.pickle', data_path + '_testing_txt.pickle', old_args.max_len,
-#                              old_args.max_num_codes, old_args.max_num_blks, pad_id, blk_pad_id, device)
-#     dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
-#     test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
-#     icd2des = {}
-#     df = pd.read_excel('./data/CMS32_DESC_LONG_SHORT_DX.xlsx')
-#     icds = df['DIAGNOSIS CODE']
-#     desc = df['LONG DESCRIPTION']
-#     for i in range(len(icds)):
-#         icd = icds[i][0:3] + '.' + icds[i][3:]
-#         icd2des[icd] = desc[i]
-#     with torch.no_grad():
-#         with open(os.path.join(args.save_dir, 'code_weight.txt'), 'w') as fout:
-#             for i, data in enumerate(test_dataloader):
-#                 labels, ehr, mask, txt, mask_txt, lengths, time_step, code_mask = data
-#                 logits, v_skips, c_skips, p = model.infer(ehr, lengths, time_step)
-#                 code2w = {}
-#                 for id in range(0, model.vocab_size + 1):
-#                     if id in id2code.keys():
-#                         code = id2code[id]
-#                         if code in icd2des.keys():
-#                             des = icd2des[code]
-#                         else:
-#                             des = ''
-#                         w = p.data.cpu().numpy()[id]
-#                         # if w == 0.0:
-#                         #     print(id)
-#                         code2w[code] = w
-#                         fout.write(str(code) + ',' + str(des) + ',' + str(w) + '\n')
-#                 break
-#
-#         with open(os.path.join(args.save_dir, 'decode_test.txt'), 'w') as fout:
-#
-#             for i, data in enumerate(test_dataloader):
-#                 labels, ehr, mask, txt, mask_txt, lengths, time_step, code_mask = data
-#                 logits, v_skips, c_skips, p_mask = model.infer(ehr, lengths, time_step)
-#
-#                 predictions = logits.argmax(-1)
-#                 for l, pred, record, v_skip, c_skip, length in zip(labels, predictions, ehr, v_skips, c_skips, lengths):
-#                     output = {}
-#                     output["label"] = l.item()
-#                     output["prediction"] = pred.item()
-#                     record = record.data.cpu().numpy()
-#                     # icd
-#                     rec_li = []
-#                     for visit in record:
-#                         v_li = []
-#                         for codeid in visit:
-#                             if codeid in id2code.keys():
-#                                 v_li.append(id2code[codeid])
-#                         if len(v_li) > 0:
-#                             rec_li.append(v_li)
-#                         else:
-#                             break
-#                     output["record_icd"] = rec_li
-#                     # icd text
-#                     des_li = []
-#                     for vi in rec_li:
-#                         v_des = []
-#                         for code in vi:
-#                             if code in icd2des.keys():
-#                                 v_des.append(icd2des[code])
-#                         des_li.append(v_des)
-#                     output["record_text"] = des_li
-#                     length = length.data.cpu().numpy()
-#                     v_skip = v_skip.data.cpu().numpy()[0: length]
-#                     c_skip = c_skip.data.cpu().numpy()[0: length]
-#                     if output["label"] == 1 and len(output["record_icd"]) <= 10:
-#                         fout.write("label: {}".format(str(output["label"])) + '\n')
-#                         fout.write("prediction: {}".format(str(output["prediction"])) + "\n")
-#                         fout.write("record_icd: {}".format(str(output["record_icd"])) + '\n')
-#                         fout.write("record_text: {}".format(str(output["record_text"])) + '\n')
-#                         fout.write("v_skip: {}".format(str(v_skip)) + '\n')
-#                         fout.write("c_skip: {}".format(str(c_skip)) + '\n')
-#                         fout.write('\n')
 
 
 if __name__ == '__main__':

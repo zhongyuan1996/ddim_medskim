@@ -892,7 +892,7 @@ class Retain(nn.Module):
 
 
 class RetainEx(nn.Module):
-    def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos, device, max_visit_len):
+    def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos, device):
         super().__init__()
         self.embbedding1 = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.embbedding2 = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)

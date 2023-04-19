@@ -46,10 +46,10 @@ def eval_metric(eval_set, model):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
-    parser.add_argument('--seed', default=1234, type=int, help='seed')
+    parser.add_argument('--seed', default=3456, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
-    parser.add_argument('--encoder', default='hita', choices=['hita', 'lsan', 'lstm', 'sand', 'gruself', 'timeline', 'retain', 'retainex', 'LeapLSTM', 'skimrnn', 'skiprnn','TLSTM'])
+    parser.add_argument('--encoder', default='TLSTM', choices=['hita', 'lsan', 'lstm', 'sand', 'gruself', 'timeline', 'retain', 'retainex', 'LeapLSTM', 'skimrnn', 'skiprnn','TLSTM'])
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
     parser.add_argument('--dropout_emb', default=0.1, type=float, help='dropout rate of embedding layers')
@@ -212,6 +212,7 @@ def train(args):
     print('-' * 71)
     global_step, best_dev_epoch = 0, 0
     best_dev_auc, final_test_auc, total_loss = 0.0, 0.0, 0.0
+    best_epoch_pr, best_epoch_f1, best_epoch_kappa = 0.0, 0.0, 0.0
     model.train()
     for epoch_id in range(args.n_epochs):
         print('epoch: {:5} '.format(epoch_id))
@@ -279,6 +280,9 @@ def train(args):
             best_dev_auc = d_f1
             final_test_auc = t_f1
             best_dev_epoch = epoch_id
+            best_epoch_pr = t_pr_auc
+            best_epoch_f1 = t_f1
+            best_epoch_kappa = t_kappa
             torch.save([model, args], model_path)
             with open(log_path, 'a') as fout:
                 fout.write('{},{},{},{}\n'.format(global_step, tr_pr_auc, d_pr_auc, t_pr_auc))
@@ -291,6 +295,9 @@ def train(args):
     print('training ends in {} steps'.format(global_step))
     print('best dev auc: {:.4f} (at epoch {})'.format(best_dev_auc, best_dev_epoch))
     print('final test auc: {:.4f}'.format(final_test_auc))
+    print('best test pr: {:.4f}'.format(best_epoch_pr))
+    print('best test f1: {:.4f}'.format(best_epoch_f1))
+    print('best test kappa: {:.4f}'.format(best_epoch_kappa))
     print()
 
 

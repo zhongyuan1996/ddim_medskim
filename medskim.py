@@ -8,9 +8,11 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from torch.optim import Adam
 from tqdm import tqdm
 from models.og_dataset import *
-from models.medskim_with_diff import *
+from models.medskim import *
+# from models.medskim_with_diff import *
 from utils.utils import check_path, export_config, bool_flag
 from utils.icd_rel import *
+import random
 
 
 def eval_metric(eval_set, model):
@@ -44,7 +46,7 @@ def eval_metric(eval_set, model):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
-    parser.add_argument('--seed', default=0, type=int, help='seed')
+    parser.add_argument('--seed', default=3456, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
@@ -85,7 +87,7 @@ def main():
 
 def train(args):
     print(args)
-    # random.seed(args.seed)
+    random.seed(args.seed)
     # np.random.seed(args.seed)
     # torch.manual_seed(args.seed)
     # if torch.cuda.is_available() and args.cuda:
@@ -153,7 +155,8 @@ def train(args):
     test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
 
     if args.model == 'Selected':
-        model = Selected(pad_id, args.d_model, args.dropout, args.dropout_emb, device, args.max_len)
+        # model = Selected(pad_id, args.d_model, args.dropout, args.dropout_emb, device, args.max_len)
+        model = Selected(pad_id, args.d_model, args.dropout, args.dropout_emb)
     else:
         raise ValueError('Invalid model')
     model.to(device)
@@ -180,6 +183,7 @@ def train(args):
     print('-' * 71)
     global_step, best_dev_epoch = 0, 0
     best_dev_auc, final_test_auc, total_loss = 0.0, 0.0, 0.0
+    best_epoch_pr, best_epoch_f1, best_epoch_kappa = 0.0, 0.0, 0.0
     model.train()
     for epoch_id in range(args.n_epochs):
         print('epoch: {:5} '.format(epoch_id))
@@ -248,6 +252,9 @@ def train(args):
             best_dev_auc = d_f1
             final_test_auc = t_f1
             best_dev_epoch = epoch_id
+            best_epoch_pr = t_pr_auc
+            best_epoch_f1 = t_f1
+            best_epoch_kappa = t_kappa
             torch.save([model, args], model_path)
             with open(log_path, 'a') as fout:
                 fout.write('{},{},{},{}\n'.format(global_step, tr_pr_auc, d_pr_auc, t_pr_auc))
@@ -259,6 +266,9 @@ def train(args):
     print('training ends in {} steps'.format(global_step))
     print('best dev auc: {:.4f} (at epoch {})'.format(best_dev_auc, best_dev_epoch))
     print('final test auc: {:.4f}'.format(final_test_auc))
+    print('best test pr: {:.4f}'.format(best_epoch_pr))
+    print('best test f1: {:.4f}'.format(best_epoch_f1))
+    print('best test kappa: {:.4f}'.format(best_epoch_kappa))
     print()
 
 
