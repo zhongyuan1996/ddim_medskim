@@ -13,9 +13,9 @@ for SEED in ${seeds[@]}
         do
           if [ DISEASE="mimic" ]; then
 
-              python3 GAN_runner.py --seed=$SEED --encoder=$MODAL --target_disease=$DISEASE --max_len=15 --n_epochs=30
+              python3 CUDA_VISIBLE_DEVICES=3, GAN_runner.py --seed=$SEED --encoder=$MODAL --target_disease=$DISEASE --max_len=15 --n_epochs=30
           else
-              python3 GAN_runner.py --seed=$SEED --encoder=$MODAL --target_disease=$DISEASE --n_epochs=30
+              python3 CUDA_VISIBLE_DEVICES=3, GAN_runner.py --seed=$SEED --encoder=$MODAL --target_disease=$DISEASE --n_epochs=30
           fi
       done
       done

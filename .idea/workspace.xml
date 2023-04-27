@@ -5,8 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="GAN runner with bash and save csv">
-      <change beforePath="$PROJECT_DIR$/GAN_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/GAN_runner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/og_dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/og_dataset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GAN_bash.sh" beforeDir="false" afterPath="$PROJECT_DIR$/GAN_bash.sh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -235,14 +234,7 @@
       <workItem from="1680978590093" duration="96000" />
       <workItem from="1680978749479" duration="25647000" />
       <workItem from="1681306300565" duration="16314000" />
-      <workItem from="1681404602520" duration="162762000" />
-    </task>
-    <task id="LOCAL-00029" summary="softmax gen">
-      <created>1673891301075</created>
-      <option name="number" value="00029" />
-      <option name="presentableId" value="LOCAL-00029" />
-      <option name="project" value="LOCAL" />
-      <updated>1673891301075</updated>
+      <workItem from="1681404602520" duration="162885000" />
     </task>
     <task id="LOCAL-00030" summary="e_t, h_t for no ddpm embedding gen">
       <created>1673982699079</created>
@@ -580,7 +572,14 @@
       <option name="project" value="LOCAL" />
       <updated>1682623601309</updated>
     </task>
-    <option name="localTasksCounter" value="78" />
+    <task id="LOCAL-00078" summary="GAN runner with bash and save csv">
+      <created>1682625346145</created>
+      <option name="number" value="00078" />
+      <option name="presentableId" value="LOCAL-00078" />
+      <option name="project" value="LOCAL" />
+      <updated>1682625346145</updated>
+    </task>
+    <option name="localTasksCounter" value="79" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
