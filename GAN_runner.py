@@ -67,7 +67,7 @@ def main():
     parser.add_argument('--seed', default=1234, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=128, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
-    parser.add_argument('--encoder', default='LSTM_medGAN', choices=['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN'])
+    parser.add_argument('--encoder', default='LSTM_GcGAN', choices=['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN'])
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dense_model', default=64, type=int)
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
@@ -100,7 +100,7 @@ def main():
     parser.add_argument("--h_model", type=int, default=256, help="dimension of hidden state in LSTM")
     parser.add_argument("--lambda_DF_loss", type=float, default=0.1, help="scale of diffusion model loss")
     parser.add_argument("--lambda_CE_gen_loss", type=float, default=0.5, help="scale of generated sample loss")
-    parser.add_argument("--patience", type=int, default=5, help="learning rate patience")
+    parser.add_argument("--patience", type=int, default=7, help="learning rate patience")
     parser.add_argument("--factor", type=float, default=0.2, help="learning rate factor")
 
     args = parser.parse_args()
@@ -224,7 +224,7 @@ def train(args):
             generator.to(device)
             model = LSTM_ehrGAN(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, generator=generator)
         elif args.encoder == 'LSTM_GcGAN':
-            generator = FCN_generator(args.h_model)
+            generator = FCN_generator(args.h_model, args.max_len)
             generator.to(device)
             model = LSTM_GcGAN(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, generator=generator)
         elif args.encoder == 'LSTM_actGAN':

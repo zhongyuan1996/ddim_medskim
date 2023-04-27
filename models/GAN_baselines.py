@@ -203,12 +203,13 @@ class LSTM_generator(nn.Module):
 
 class FCN_generator(nn.Module):
 
-    def __init__(self, h_model):
+    def __init__(self, h_model, max_len=50):
         super(FCN_generator, self).__init__()
+        self.lenPlus1 = max_len + 1
         self.linear1 = nn.Linear(h_model, h_model)
-        self.layer2_conv = nn.Conv1d(102, 51, 1, 1)
+        self.layer2_conv = nn.Conv1d(self.lenPlus1*2, self.lenPlus1, 1, 1)
         self.layer3 = nn.Linear(h_model, h_model)
-        self.layer4_conv = nn.Conv1d(153, 51, 1, 1)
+        self.layer4_conv = nn.Conv1d(self.lenPlus1*3, self.lenPlus1, 1, 1)
         self.down = nn.Linear(h_model, int(h_model / 4))
 
     def forward(self, gray):
