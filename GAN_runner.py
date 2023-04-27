@@ -31,7 +31,7 @@ def eval_metric(eval_set, model):
         y_pred_fake = np.array([])
         for i, data in enumerate(eval_set):
             ehr, time_step, labels = data
-            fp_og, fp_fake, fp_decode, og_h, fake_h, decode_h = model(ehr, time_step)
+            fp_og, fp_fake, fp_decode, og_h, fake_h, decode_h = model(ehr, time_step, labels)
             scores = torch.softmax(fp_og, dim=-1)
             scores = scores.data.cpu().numpy()
             fake_scores = torch.softmax(fp_fake, dim=-1)
@@ -63,7 +63,7 @@ def main():
     parser.add_argument('--seed', default=1234, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=32, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
-    parser.add_argument('--encoder', default='LSTM_ehrGAN', choices=['LSTM_ehrGAN'])
+    parser.add_argument('--encoder', default='LSTM_actGAN', choices=['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN'])
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dense_model', default=64, type=int)
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
@@ -164,22 +164,39 @@ def train(args):
     else:
         raise ValueError('Invalid disease')
     device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
-    train_dataset = MyDataset(data_path + '_training_new.pickle',
-                              args.max_len, args.max_num_codes, pad_id, device)
-    dev_dataset = MyDataset(data_path + '_validation_new.pickle', args.max_len,
-                            args.max_num_codes, pad_id, device)
-    test_dataset = MyDataset(data_path + '_testing_new.pickle', args.max_len,
-                             args.max_num_codes, pad_id, device)
+    if args.encoder == 'LSTM_actGAN':
+        train_dataset = MyDataset_with_single_label(data_path + '_training_new.pickle',
+                                  args.max_len, args.max_num_codes, pad_id, device)
+        dev_dataset = MyDataset_with_single_label(data_path + '_validation_new.pickle', args.max_len,
+                                args.max_num_codes, pad_id, device)
+        test_dataset = MyDataset_with_single_label(data_path + '_testing_new.pickle', args.max_len,
+                                 args.max_num_codes, pad_id, device)
+    else:
+        train_dataset = MyDataset(data_path + '_training_new.pickle',
+                                  args.max_len, args.max_num_codes, pad_id, device)
+        dev_dataset = MyDataset(data_path + '_validation_new.pickle', args.max_len,
+                                args.max_num_codes, pad_id, device)
+        test_dataset = MyDataset(data_path + '_testing_new.pickle', args.max_len,
+                                 args.max_num_codes, pad_id, device)
     train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=True, collate_fn=collate_fn)
     dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
     test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
 
-    generator = LSTM_generator(args.d_model, args.dense_model)
+
     discriminator = Discriminator(args.d_model)
-    generator.to(device)
     discriminator.to(device)
     if args.encoder == 'LSTM_ehrGAN':
+        generator = LSTM_generator(args.d_model, args.dense_model)
+        generator.to(device)
         model = LSTM_ehrGAN(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, generator=generator)
+    elif args.encoder == 'LSTM_GcGAN':
+        generator = FCN_generator(args.h_model)
+        generator.to(device)
+        model = LSTM_GcGAN(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, generator=generator)
+    elif args.encoder == 'LSTM_actGAN':
+        generator = LSTM_generator(args.d_model, args.d_model)
+        generator.to(device)
+        model = LSTM_actGAN(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, generator=generator)
     model.to(device)
 
     no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
@@ -238,7 +255,9 @@ def train(args):
             optim.zero_grad()
             generator_optim.zero_grad()
 
-            fp_og, fp_fake, fp_decode, og_h, fake_h, decode_h = model(ehr, time_step)
+
+            fp_og, fp_fake, fp_decode, og_h, fake_h, decode_h = model(ehr, time_step, labels)
+
             generator_discriminator_out = discriminator(fake_h)
             true_labels = torch.ones_like(generator_discriminator_out, device=device)
             generator_loss = loss_bce(generator_discriminator_out, true_labels)

@@ -98,6 +98,25 @@ class MyDataset(Dataset):
                torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device),\
                torch.tensor(self.labels[idx], dtype=torch.float).to(self.device)
 
+class MyDataset_with_single_label(Dataset):
+    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, ehr_pad_id,
+                 device):
+        ehr, self.labels, time_step = pickle.load(open(dir_ehr, 'rb'))
+        self.ehr, _, _ = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
+        self.time_step = padTime(time_step, max_len, 100000)
+        self.device = device
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        return torch.tensor(self.ehr[idx], dtype=torch.long).to(self.device),\
+               torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device),\
+               torch.tensor(self.labels[idx], dtype=torch.float).to(self.device)
+
 # class _MyDataset(Dataset):
 #     def __init__(self, dir_ehr, dir_txt, max_len, max_numcode_pervisit, max_numblk_pervisit, ehr_pad_id, txt_pad_id,
 #                  device):

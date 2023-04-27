@@ -148,6 +148,38 @@ class classifyer(nn.Module):
         h = self.out(self.drop(h))
         return h
 
+class Linear_generator(nn.Module):
+
+    def __init__(self, h_model=256):
+        super(Linear_generator, self).__init__()
+        self.batch_norm1 = nn.BatchNorm1d(h_model/2)
+        self.batch_norm2 = nn.BatchNorm1d(h_model/4)
+        self.linear1 = nn.Linear(h_model, h_model/2)
+        self.linear2 = nn.Linear(h_model/2, h_model/4)
+        self.relu = nn.ReLU()
+
+    def forward(self, z):
+        z = self.relu(self.batch_norm1(self.linear1(z))) + z
+        z = self.relu(self.batch_norm2(self.linear2(z))) + z
+        return z
+
+class encoder_256_64(nn.Module):
+    def __init__(self, in_dim = 256, out_dim = 64):
+        super(encoder_256_64, self).__init__()
+        self.linear = nn.Linear(in_dim, out_dim)
+        self.batch_norm = nn.BatchNorm1d(out_dim)
+        self.relu = nn.ReLU()
+    def forward(self, x):
+        return self.relu(self.batch_norm(self.linear(x)))
+
+class decoder_64_256(nn.Module):
+    def __init__(self, in_dim = 64, out_dim = 256):
+        super(decoder_64_256, self).__init__()
+        self.linear = nn.Linear(in_dim, out_dim)
+        self.batch_norm = nn.BatchNorm1d(out_dim)
+        self.relu = nn.ReLU()
+    def forward(self, x):
+        return self.relu(self.batch_norm(self.linear(x)))
 
 class LSTM_generator(nn.Module):
     def __init__(self, d_model, h_model, num_layers = 1):
@@ -162,6 +194,24 @@ class LSTM_generator(nn.Module):
         # x, _ = self.lstm(x)
         # return self.relu(self.out(x))
 
+class FCN_generator(nn.Module):
+
+    def __init__(self, h_model):
+        super(FCN_generator, self).__init__()
+        self.linear1 = nn.Linear(h_model, h_model)
+        self.layer2_conv = nn.Conv1d(102, 51, 1, 1)
+        self.layer3 = nn.Linear(h_model, h_model)
+        self.layer4_conv = nn.Conv1d(153, 51, 1, 1)
+        self.down = nn.Linear(h_model, int(h_model/4))
+    def forward(self, gray):
+
+        orange = self.linear1(gray)
+        brown = self.layer2_conv(torch.cat([gray, orange], dim=1))
+        blue = self.layer3(brown)
+        red = self.layer4_conv(torch.cat([blue, brown, gray], dim=1))
+        res = self.down(red)
+        return res
+
 class Discriminator(nn.Module):
     def __init__(self, d_model):
         super(Discriminator, self).__init__()
@@ -171,11 +221,10 @@ class Discriminator(nn.Module):
     def forward(self, x):
         return self.sigmoid(self.dense(x))
 
-
-class LSTM_ehrGAN(nn.Module):
+class LSTM_medGAN(nn.Module):
     def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, generator, num_layers = 1, m = 0, dense_model = 64):
         super().__init__()
-        self.device= device
+        self.device = device
         self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.dropout = nn.Dropout(dropout)
         self.emb_dropout = nn.Dropout(dropout_emb)
@@ -186,9 +235,9 @@ class LSTM_ehrGAN(nn.Module):
         self.time_updim = nn.Linear(64, d_model)
         self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.relu = nn.ReLU()
-        self.lstm_generator = generator
-        self.dense_model = dense_model
-        self.dense = nn.Linear(d_model, dense_model)
+        self.Linear_generator = generator
+        self.decoder = decoder_64_256(dense_model, d_model)
+        self.encoder = encoder_256_64(d_model, dense_model)
         self.classifyer = classifyer(d_model)
 
     def before(self, input_seqs, seq_time_step):
@@ -205,7 +254,204 @@ class LSTM_ehrGAN(nn.Module):
         visit_embedding = visit_embedding.sum(-2) + time_encoding
         return visit_embedding
 
-    def forward(self, input_seqs, seq_time_step):
+    def forward(self, input_seqs, seq_time_step, label = None):
+        batch_size, visit_size, seq_size = input_seqs.size()
+        og_v = self.before(input_seqs, seq_time_step)
+        og_h, _ = self.lstm(og_v)
+
+        #encode og_h to dense:
+        EncX = self.encoder(og_h)
+        z = torch.randn_like(og_h)
+        Gz = self.Linear_generator(z)
+
+        DecX = self.decoder(EncX)
+        DecGz = self.decoder(Gz)
+
+
+        og_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+        fake_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+
+        for i in range(visit_size):
+
+            og_softmax[:, i:i+1, :] = self.classifyer(og_h[:, i:i+1, :])
+            fake_softmax[:, i:i+1, :] = self.classifyer(DecGz[:, i:i+1, :])
+
+        final_prediction_og = og_softmax[:, -1, :]
+        final_prediction_fake = fake_softmax[:, -1, :]
+
+        f = final_prediction_og + final_prediction_fake
+
+        return f, final_prediction_fake, _, DecX, DecGz, og_h
+
+class LSTM_actGAN(nn.Module):
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, generator, num_layers = 1, m = 0, dense_model = 64):
+        super().__init__()
+        self.device = device
+        self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.dropout = nn.Dropout(dropout)
+        self.emb_dropout = nn.Dropout(dropout_emb)
+        self.lstm = nn.LSTM(d_model, h_model, num_layers, bidirectional=False, batch_first=True, dropout=dropout)
+        self.m = m
+        self.tanh = nn.Tanh()
+        self.time_layer = nn.Linear(1, 64)
+        self.time_updim = nn.Linear(64, d_model)
+        self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.relu = nn.ReLU()
+        self.LSTM_generator = generator
+        self.label_encoder = nn.Linear(2,256)
+        self.xandy_encoder = nn.Linear(256,64)
+        self.decoder = nn.Linear(64,256)
+        self.classifyer = classifyer(d_model)
+
+    def before(self, input_seqs, seq_time_step):
+
+        #time embedding
+        seq_time_step = seq_time_step.unsqueeze(2) / 180
+        time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
+        time_encoding = self.time_updim(time_feature)
+        #visit_embedding e_t
+        visit_embedding = self.initial_embedding(input_seqs)
+        visit_embedding = self.emb_dropout(visit_embedding)
+        visit_embedding = self.relu(visit_embedding)
+
+        visit_embedding = visit_embedding.sum(-2) + time_encoding
+        return visit_embedding
+
+    def forward(self, input_seqs, seq_time_step, label):
+        batch_size, visit_size, seq_size = input_seqs.size()
+        og_v = self.before(input_seqs, seq_time_step)
+        og_h, _ = self.lstm(og_v)
+
+
+        ###generate fake visit from z and lstm generator
+        z = torch.randn_like(og_v)
+        mask = torch.ones_like(og_v)
+        for i in range(batch_size):
+            if label[i] == 0:
+                mask[i, :, :] = 0
+        fake_h = self.LSTM_generator(z) * mask
+        positive_h = og_h * mask
+
+        og_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+        fake_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+
+        for i in range(visit_size):
+
+            og_softmax[:, i:i+1, :] = self.classifyer(og_h[:, i:i+1, :])
+            fake_softmax[:, i:i+1, :] = self.classifyer(fake_h[:, i:i+1, :])
+
+        final_prediction_og = og_softmax[:, -1, :]
+        final_prediction_fake = fake_softmax[:, -1, :]
+
+        f = final_prediction_og + final_prediction_fake
+
+        return f, final_prediction_fake, _, positive_h, fake_h, _
+
+class LSTM_GcGAN(nn.Module):
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, generator, num_layers = 1, m = 0, dense_model = 64):
+        super().__init__()
+        self.device = device
+        self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.dropout = nn.Dropout(dropout)
+        self.emb_dropout = nn.Dropout(dropout_emb)
+        self.lstm = nn.LSTM(d_model, h_model, num_layers, bidirectional=False, batch_first=True, dropout=dropout)
+        self.m = m
+        self.tanh = nn.Tanh()
+        self.time_layer = nn.Linear(1, 64)
+        self.time_updim = nn.Linear(64, d_model)
+        self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.relu = nn.ReLU()
+        self.FCN_generator = generator
+        self.label_encoder = nn.Linear(2,256)
+        self.xandy_encoder = nn.Linear(256,64)
+        self.decoder = nn.Linear(64,256)
+        self.classifyer = classifyer(d_model)
+
+    def before(self, input_seqs, seq_time_step):
+
+        #time embedding
+        seq_time_step = seq_time_step.unsqueeze(2) / 180
+        time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
+        time_encoding = self.time_updim(time_feature)
+        #visit_embedding e_t
+        visit_embedding = self.initial_embedding(input_seqs)
+        visit_embedding = self.emb_dropout(visit_embedding)
+        visit_embedding = self.relu(visit_embedding)
+
+        visit_embedding = visit_embedding.sum(-2) + time_encoding
+        return visit_embedding
+
+    def forward(self, input_seqs, seq_time_step, label):
+        batch_size, visit_size, seq_size = input_seqs.size()
+        og_v = self.before(input_seqs, seq_time_step)
+        og_h, _ = self.lstm(og_v)
+        ####encoder
+        temp = self.label_encoder(label)
+        temp = temp.unsqueeze(1)
+        x_and_y = torch.cat([og_h, temp], dim=-2)
+        h = self.relu(self.xandy_encoder(x_and_y))
+        z = torch.randn_like(x_and_y)
+        gen_h = self.relu(self.FCN_generator(z))
+
+        ####decoder
+        gen_D1andD2 = self.relu(self.decoder(gen_h))
+        gen_D1 = gen_D1andD2[:, :-1, :]
+
+        D1andD2 = self.relu(self.decoder(h))
+        D1 = D1andD2[:, :-1, :]
+
+        og_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+        fake_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+        decode_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+
+        for i in range(visit_size):
+
+            og_softmax[:, i:i+1, :] = self.classifyer(og_h[:, i:i+1, :])
+            fake_softmax[:, i:i+1, :] = self.classifyer(gen_D1[:, i:i+1, :])
+            decode_softmax[:, i:i+1, :] = self.classifyer(D1[:, i:i+1, :])
+
+        final_prediction_og = og_softmax[:, -1, :]
+        final_prediction_fake = fake_softmax[:, -1, :]
+        final_prediction_decode = decode_softmax[:, -1, :]
+
+        f = final_prediction_og + final_prediction_fake
+
+        return f, final_prediction_fake, final_prediction_decode, og_h, gen_D1, D1
+
+class LSTM_ehrGAN(nn.Module):
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, generator, num_layers=1, m=0,
+                 dense_model=64):
+        super().__init__()
+        self.device = device
+        self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.dropout = nn.Dropout(dropout)
+        self.emb_dropout = nn.Dropout(dropout_emb)
+        self.lstm = nn.LSTM(d_model, h_model, num_layers, bidirectional=False, batch_first=True, dropout=dropout)
+        self.m = m
+        self.tanh = nn.Tanh()
+        self.time_layer = nn.Linear(1, 64)
+        self.time_updim = nn.Linear(64, d_model)
+        self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.relu = nn.ReLU()
+        self.lstm_generator = generator
+        self.dense_model = dense_model
+        self.dense = nn.Linear(d_model, dense_model)
+        self.classifyer = classifyer(d_model)
+
+    def before(self, input_seqs, seq_time_step):
+        # time embedding
+        seq_time_step = seq_time_step.unsqueeze(2) / 180
+        time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
+        time_encoding = self.time_updim(time_feature)
+        # visit_embedding e_t
+        visit_embedding = self.initial_embedding(input_seqs)
+        visit_embedding = self.emb_dropout(visit_embedding)
+        visit_embedding = self.relu(visit_embedding)
+
+        visit_embedding = visit_embedding.sum(-2) + time_encoding
+        return visit_embedding
+
+    def forward(self, input_seqs, seq_time_step, labels = None):
         batch_size, visit_size, seq_size = input_seqs.size()
         og_v = self.before(input_seqs, seq_time_step)
         og_h, _ = self.lstm(og_v)
@@ -221,16 +467,17 @@ class LSTM_ehrGAN(nn.Module):
         decode_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
 
         for i in range(visit_size):
-
-            og_softmax[:, i:i+1, :] = self.classifyer(og_h[:, i:i+1, :])
-            fake_softmax[:, i:i+1, :] = self.classifyer(fake_h[:, i:i+1, :])
-            decode_softmax[:, i:i+1, :] = self.classifyer(decode_h[:, i:i+1, :])
+            og_softmax[:, i:i + 1, :] = self.classifyer(og_h[:, i:i + 1, :])
+            fake_softmax[:, i:i + 1, :] = self.classifyer(fake_h[:, i:i + 1, :])
+            decode_softmax[:, i:i + 1, :] = self.classifyer(decode_h[:, i:i + 1, :])
 
         final_prediction_og = og_softmax[:, -1, :]
         final_prediction_fake = fake_softmax[:, -1, :]
         final_prediction_decode = decode_softmax[:, -1, :]
 
-        return final_prediction_og, final_prediction_fake, final_prediction_decode, og_h, fake_h, decode_h
+        f = final_prediction_og + final_prediction_fake
+
+        return f, final_prediction_fake, final_prediction_decode, og_h, fake_h, decode_h
 
 if __name__ == '__main__':
     y_true = np.array([])

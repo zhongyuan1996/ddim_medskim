@@ -102,7 +102,7 @@ def eval_metric(eval_set, model):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
-    parser.add_argument('--seed', default=1234, type=int, help='seed')
+    parser.add_argument('--seed', default=4567, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=32, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
@@ -125,7 +125,7 @@ def main():
     parser.add_argument('--lamda', default=0.1, type=float)
     parser.add_argument('--max_grad_norm', default=1.0, type=float, help='max grad norm (0 to disable)')
     parser.add_argument('--warmup_steps', default=200, type=int)
-    parser.add_argument('--n_epochs', default=50, type=int)
+    parser.add_argument('--n_epochs', default=30, type=int)
     parser.add_argument('--log_interval', default=20, type=int)
     parser.add_argument('--mode', default='train', choices=['train', 'pred', 'study'],
                         help='run training or evaluation')
