@@ -151,10 +151,10 @@ class classifyer(nn.Module):
 
 class Linear_generator(nn.Module):
 
-    def __init__(self, h_model=64):
+    def __init__(self, h_model=64, max_len=50):
         super(Linear_generator, self).__init__()
-        self.batch_norm1 = nn.BatchNorm1d(50)
-        self.batch_norm2 = nn.BatchNorm1d(50)
+        self.batch_norm1 = nn.BatchNorm1d(max_len)
+        self.batch_norm2 = nn.BatchNorm1d(max_len)
         self.linear1 = nn.Linear(h_model, h_model)
         self.linear2 = nn.Linear(h_model, h_model)
         self.relu = nn.ReLU()
