@@ -5,7 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="GAN runner with bash and save csv">
-      <change beforePath="$PROJECT_DIR$/GAN_bash.sh" beforeDir="false" afterPath="$PROJECT_DIR$/GAN_bash.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GAN_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/GAN_runner.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -234,21 +234,7 @@
       <workItem from="1680978590093" duration="96000" />
       <workItem from="1680978749479" duration="25647000" />
       <workItem from="1681306300565" duration="16314000" />
-      <workItem from="1681404602520" duration="162885000" />
-    </task>
-    <task id="LOCAL-00030" summary="e_t, h_t for no ddpm embedding gen">
-      <created>1673982699079</created>
-      <option name="number" value="00030" />
-      <option name="presentableId" value="LOCAL-00030" />
-      <option name="project" value="LOCAL" />
-      <updated>1673982699079</updated>
-    </task>
-    <task id="LOCAL-00031" summary="LSTM only">
-      <created>1674076974674</created>
-      <option name="number" value="00031" />
-      <option name="presentableId" value="LOCAL-00031" />
-      <option name="project" value="LOCAL" />
-      <updated>1674076974674</updated>
+      <workItem from="1681404602520" duration="162971000" />
     </task>
     <task id="LOCAL-00032" summary="lstm and cross attention fixed">
       <created>1674511704041</created>
@@ -579,7 +565,21 @@
       <option name="project" value="LOCAL" />
       <updated>1682625346145</updated>
     </task>
-    <option name="localTasksCounter" value="79" />
+    <task id="LOCAL-00079" summary="GAN runner with bash and save csv">
+      <created>1682625413242</created>
+      <option name="number" value="00079" />
+      <option name="presentableId" value="LOCAL-00079" />
+      <option name="project" value="LOCAL" />
+      <updated>1682625413242</updated>
+    </task>
+    <task id="LOCAL-00080" summary="GAN runner with bash and save csv">
+      <created>1682625458166</created>
+      <option name="number" value="00080" />
+      <option name="presentableId" value="LOCAL-00080" />
+      <option name="project" value="LOCAL" />
+      <updated>1682625458166</updated>
+    </task>
+    <option name="localTasksCounter" value="81" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

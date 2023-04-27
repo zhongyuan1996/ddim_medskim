@@ -9,7 +9,6 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
     precision_recall_curve, auc, cohen_kappa_score, log_loss
 from torch.optim import Adam, lr_scheduler
 from models.dataset import MyDataset as meddiff_dataset, MyDataset_with_single_label as med_diff_dataset_single_label, collate_fn as diff_collate_fn
-from models.og_dataset import MyDataset_double_label , MyDataset2 as og_dataset_for_mimic, collate_fn as og_collate_fn
 from utils.utils import check_path, export_config, bool_flag
 from models.GAN_baselines import *
 from torch.utils.data import Dataset, DataLoader
