@@ -115,7 +115,7 @@ class MyDataset_with_single_label(Dataset):
 
         return torch.tensor(self.ehr[idx], dtype=torch.long).to(self.device),\
                torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device),\
-               torch.tensor(self.labels[idx], dtype=torch.float).to(self.device)
+               torch.tensor(self.labels[idx], dtype=torch.long).to(self.device)
 
 # class _MyDataset(Dataset):
 #     def __init__(self, dir_ehr, dir_txt, max_len, max_numcode_pervisit, max_numblk_pervisit, ehr_pad_id, txt_pad_id,

@@ -59,7 +59,7 @@ def main():
     parser.add_argument('--max_num_blks', default=100, type=int, help='max number of blocks in each visit')
     parser.add_argument('--blk_emb_path', default='./data/processed/block_embedding.npy',
                         help='embedding path of blocks')
-    parser.add_argument('--target_disease', default='Kidney', choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic'])
+    parser.add_argument('--target_disease', default='COPD', choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic'])
     parser.add_argument('--target_att_heads', default=4, type=int, help='target disease attention heads number')
     parser.add_argument('--mem_size', default=15, type=int, help='memory size')
     parser.add_argument('--mem_update_size', default=15, type=int, help='memory update size')

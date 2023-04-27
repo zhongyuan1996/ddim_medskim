@@ -49,7 +49,7 @@ def main():
     parser.add_argument('--seed', default=1234, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
-    parser.add_argument('--encoder', default='TLSTM', choices=['hita', 'lsan', 'lstm', 'sand', 'gruself', 'timeline', 'retain', 'retainex', 'LeapLSTM', 'skimrnn', 'skiprnn','TLSTM'])
+    parser.add_argument('--encoder', default='hita', choices=['hita', 'lsan', 'lstm', 'sand', 'gruself', 'timeline', 'retain', 'retainex', 'LeapLSTM', 'skimrnn', 'skiprnn','TLSTM'])
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
     parser.add_argument('--dropout_emb', default=0.1, type=float, help='dropout rate of embedding layers')
@@ -61,7 +61,7 @@ def main():
     parser.add_argument('--blk_emb_path', default='./data/processed/block_embedding.npy',
                         help='embedding path of blocks')
     parser.add_argument('--blk_vocab_path', default='./data/processed/block_vocab.txt')
-    parser.add_argument('--target_disease', default='COPD', choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic'])
+    parser.add_argument('--target_disease', default='Heart_failure', choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic'])
     parser.add_argument('--target_att_heads', default=4, type=int, help='target disease attention heads number')
     parser.add_argument('--mem_size', default=20, type=int, help='memory size')
     parser.add_argument('--mem_update_size', default=15, type=int, help='memory update size')

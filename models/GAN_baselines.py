@@ -119,6 +119,7 @@ class Attention(nn.Module):
         x = self.layer_norm(x)
         return x, attention
 
+
 def dict2namespace(config):
     namespace = argparse.Namespace()
     for key, value in config.items():
@@ -128,7 +129,6 @@ def dict2namespace(config):
             new_value = value
         setattr(namespace, key, new_value)
     return namespace
-
 
 
 class classifyer(nn.Module):
@@ -148,14 +148,15 @@ class classifyer(nn.Module):
         h = self.out(self.drop(h))
         return h
 
+
 class Linear_generator(nn.Module):
 
-    def __init__(self, h_model=256):
+    def __init__(self, h_model=64):
         super(Linear_generator, self).__init__()
-        self.batch_norm1 = nn.BatchNorm1d(h_model/2)
-        self.batch_norm2 = nn.BatchNorm1d(h_model/4)
-        self.linear1 = nn.Linear(h_model, h_model/2)
-        self.linear2 = nn.Linear(h_model/2, h_model/4)
+        self.batch_norm1 = nn.BatchNorm1d(50)
+        self.batch_norm2 = nn.BatchNorm1d(50)
+        self.linear1 = nn.Linear(h_model, h_model)
+        self.linear2 = nn.Linear(h_model, h_model)
         self.relu = nn.ReLU()
 
     def forward(self, z):
@@ -163,28 +164,33 @@ class Linear_generator(nn.Module):
         z = self.relu(self.batch_norm2(self.linear2(z))) + z
         return z
 
+
 class encoder_256_64(nn.Module):
-    def __init__(self, in_dim = 256, out_dim = 64):
+    def __init__(self, in_dim=256, out_dim=64):
         super(encoder_256_64, self).__init__()
         self.linear = nn.Linear(in_dim, out_dim)
         self.batch_norm = nn.BatchNorm1d(out_dim)
         self.relu = nn.ReLU()
+
     def forward(self, x):
         return self.relu(self.batch_norm(self.linear(x)))
 
+
 class decoder_64_256(nn.Module):
-    def __init__(self, in_dim = 64, out_dim = 256):
+    def __init__(self, in_dim=64, out_dim=256):
         super(decoder_64_256, self).__init__()
         self.linear = nn.Linear(in_dim, out_dim)
         self.batch_norm = nn.BatchNorm1d(out_dim)
         self.relu = nn.ReLU()
+
     def forward(self, x):
         return self.relu(self.batch_norm(self.linear(x)))
 
+
 class LSTM_generator(nn.Module):
-    def __init__(self, d_model, h_model, num_layers = 1):
+    def __init__(self, d_model, h_model, num_layers=1):
         super(LSTM_generator, self).__init__()
-        self.lstm = nn.LSTM(h_model, d_model, num_layers = num_layers, batch_first=True)
+        self.lstm = nn.LSTM(h_model, d_model, num_layers=num_layers, batch_first=True)
         # self.out = nn.Linear(d_model, d_model)
         # self.relu = nn.ReLU()
 
@@ -194,6 +200,7 @@ class LSTM_generator(nn.Module):
         # x, _ = self.lstm(x)
         # return self.relu(self.out(x))
 
+
 class FCN_generator(nn.Module):
 
     def __init__(self, h_model):
@@ -202,15 +209,16 @@ class FCN_generator(nn.Module):
         self.layer2_conv = nn.Conv1d(102, 51, 1, 1)
         self.layer3 = nn.Linear(h_model, h_model)
         self.layer4_conv = nn.Conv1d(153, 51, 1, 1)
-        self.down = nn.Linear(h_model, int(h_model/4))
-    def forward(self, gray):
+        self.down = nn.Linear(h_model, int(h_model / 4))
 
+    def forward(self, gray):
         orange = self.linear1(gray)
         brown = self.layer2_conv(torch.cat([gray, orange], dim=1))
         blue = self.layer3(brown)
         red = self.layer4_conv(torch.cat([blue, brown, gray], dim=1))
         res = self.down(red)
         return res
+
 
 class Discriminator(nn.Module):
     def __init__(self, d_model):
@@ -221,8 +229,10 @@ class Discriminator(nn.Module):
     def forward(self, x):
         return self.sigmoid(self.dense(x))
 
+
 class LSTM_medGAN(nn.Module):
-    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, generator, num_layers = 1, m = 0, dense_model = 64):
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, generator, num_layers=1, m=0,
+                 dense_model=64):
         super().__init__()
         self.device = device
         self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
@@ -241,12 +251,11 @@ class LSTM_medGAN(nn.Module):
         self.classifyer = classifyer(d_model)
 
     def before(self, input_seqs, seq_time_step):
-
-        #time embedding
+        # time embedding
         seq_time_step = seq_time_step.unsqueeze(2) / 180
         time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
         time_encoding = self.time_updim(time_feature)
-        #visit_embedding e_t
+        # visit_embedding e_t
         visit_embedding = self.initial_embedding(input_seqs)
         visit_embedding = self.emb_dropout(visit_embedding)
         visit_embedding = self.relu(visit_embedding)
@@ -254,37 +263,35 @@ class LSTM_medGAN(nn.Module):
         visit_embedding = visit_embedding.sum(-2) + time_encoding
         return visit_embedding
 
-    def forward(self, input_seqs, seq_time_step, label = None):
+    def forward(self, input_seqs, seq_time_step, label=None):
         batch_size, visit_size, seq_size = input_seqs.size()
         og_v = self.before(input_seqs, seq_time_step)
         og_h, _ = self.lstm(og_v)
 
-        #encode og_h to dense:
+        # encode og_h to dense:
         EncX = self.encoder(og_h)
-        z = torch.randn_like(og_h)
+        z = torch.randn_like(EncX)
         Gz = self.Linear_generator(z)
 
         DecX = self.decoder(EncX)
         DecGz = self.decoder(Gz)
 
-
         og_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
         fake_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
 
         for i in range(visit_size):
-
-            og_softmax[:, i:i+1, :] = self.classifyer(og_h[:, i:i+1, :])
-            fake_softmax[:, i:i+1, :] = self.classifyer(DecGz[:, i:i+1, :])
+            og_softmax[:, i:i + 1, :] = self.classifyer(og_h[:, i:i + 1, :])
+            fake_softmax[:, i:i + 1, :] = self.classifyer(DecGz[:, i:i + 1, :])
 
         final_prediction_og = og_softmax[:, -1, :]
         final_prediction_fake = fake_softmax[:, -1, :]
 
-        f = final_prediction_og + final_prediction_fake
+        return final_prediction_og, final_prediction_fake, _, DecX, DecGz, og_h
 
-        return f, final_prediction_fake, _, DecX, DecGz, og_h
 
 class LSTM_actGAN(nn.Module):
-    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, generator, num_layers = 1, m = 0, dense_model = 64):
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, generator, num_layers=1, m=0,
+                 dense_model=64):
         super().__init__()
         self.device = device
         self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
@@ -298,18 +305,18 @@ class LSTM_actGAN(nn.Module):
         self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.relu = nn.ReLU()
         self.LSTM_generator = generator
-        self.label_encoder = nn.Linear(2,256)
-        self.xandy_encoder = nn.Linear(256,64)
-        self.decoder = nn.Linear(64,256)
+        self.label_encoder = nn.Linear(2, 256)
+        self.xandy_encoder = nn.Linear(256, 64)
+        self.decoder = nn.Linear(64, 256)
         self.classifyer = classifyer(d_model)
 
     def before(self, input_seqs, seq_time_step):
 
-        #time embedding
+        # time embedding
         seq_time_step = seq_time_step.unsqueeze(2) / 180
         time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
         time_encoding = self.time_updim(time_feature)
-        #visit_embedding e_t
+        # visit_embedding e_t
         visit_embedding = self.initial_embedding(input_seqs)
         visit_embedding = self.emb_dropout(visit_embedding)
         visit_embedding = self.relu(visit_embedding)
@@ -321,7 +328,6 @@ class LSTM_actGAN(nn.Module):
         batch_size, visit_size, seq_size = input_seqs.size()
         og_v = self.before(input_seqs, seq_time_step)
         og_h, _ = self.lstm(og_v)
-
 
         ###generate fake visit from z and lstm generator
         z = torch.randn_like(og_v)
@@ -336,19 +342,18 @@ class LSTM_actGAN(nn.Module):
         fake_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
 
         for i in range(visit_size):
-
-            og_softmax[:, i:i+1, :] = self.classifyer(og_h[:, i:i+1, :])
-            fake_softmax[:, i:i+1, :] = self.classifyer(fake_h[:, i:i+1, :])
+            og_softmax[:, i:i + 1, :] = self.classifyer(og_h[:, i:i + 1, :])
+            fake_softmax[:, i:i + 1, :] = self.classifyer(fake_h[:, i:i + 1, :])
 
         final_prediction_og = og_softmax[:, -1, :]
         final_prediction_fake = fake_softmax[:, -1, :]
 
-        f = final_prediction_og + final_prediction_fake
+        return final_prediction_og, final_prediction_fake, _, positive_h, fake_h, _
 
-        return f, final_prediction_fake, _, positive_h, fake_h, _
 
 class LSTM_GcGAN(nn.Module):
-    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, generator, num_layers = 1, m = 0, dense_model = 64):
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, generator, num_layers=1, m=0,
+                 dense_model=64):
         super().__init__()
         self.device = device
         self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
@@ -362,18 +367,17 @@ class LSTM_GcGAN(nn.Module):
         self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.relu = nn.ReLU()
         self.FCN_generator = generator
-        self.label_encoder = nn.Linear(2,256)
-        self.xandy_encoder = nn.Linear(256,64)
-        self.decoder = nn.Linear(64,256)
+        self.label_encoder = nn.Linear(2, 256)
+        self.xandy_encoder = nn.Linear(256, 64)
+        self.decoder = nn.Linear(64, 256)
         self.classifyer = classifyer(d_model)
 
     def before(self, input_seqs, seq_time_step):
-
-        #time embedding
+        # time embedding
         seq_time_step = seq_time_step.unsqueeze(2) / 180
         time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
         time_encoding = self.time_updim(time_feature)
-        #visit_embedding e_t
+        # visit_embedding e_t
         visit_embedding = self.initial_embedding(input_seqs)
         visit_embedding = self.emb_dropout(visit_embedding)
         visit_embedding = self.relu(visit_embedding)
@@ -405,18 +409,17 @@ class LSTM_GcGAN(nn.Module):
         decode_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
 
         for i in range(visit_size):
-
-            og_softmax[:, i:i+1, :] = self.classifyer(og_h[:, i:i+1, :])
-            fake_softmax[:, i:i+1, :] = self.classifyer(gen_D1[:, i:i+1, :])
-            decode_softmax[:, i:i+1, :] = self.classifyer(D1[:, i:i+1, :])
+            og_softmax[:, i:i + 1, :] = self.classifyer(og_h[:, i:i + 1, :])
+            fake_softmax[:, i:i + 1, :] = self.classifyer(gen_D1[:, i:i + 1, :])
+            decode_softmax[:, i:i + 1, :] = self.classifyer(D1[:, i:i + 1, :])
 
         final_prediction_og = og_softmax[:, -1, :]
         final_prediction_fake = fake_softmax[:, -1, :]
         final_prediction_decode = decode_softmax[:, -1, :]
 
-        f = final_prediction_og + final_prediction_fake
 
-        return f, final_prediction_fake, final_prediction_decode, og_h, gen_D1, D1
+        return final_prediction_og, final_prediction_fake, final_prediction_decode, og_h, gen_D1, D1
+
 
 class LSTM_ehrGAN(nn.Module):
     def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, generator, num_layers=1, m=0,
@@ -451,14 +454,14 @@ class LSTM_ehrGAN(nn.Module):
         visit_embedding = visit_embedding.sum(-2) + time_encoding
         return visit_embedding
 
-    def forward(self, input_seqs, seq_time_step, labels = None):
+    def forward(self, input_seqs, seq_time_step, labels=None):
         batch_size, visit_size, seq_size = input_seqs.size()
         og_v = self.before(input_seqs, seq_time_step)
         og_h, _ = self.lstm(og_v)
         x = self.dense(og_h)
         z = torch.randn_like(x)
         mask = torch.randn_like(z) < self.m
-        tilde_x = x * (~mask) + mask * z
+        tilde_x = x.clone() * (~mask) + mask * z
         fake_h = self.lstm_generator(tilde_x)
         decode_h = self.lstm_generator(x)
 
@@ -475,9 +478,8 @@ class LSTM_ehrGAN(nn.Module):
         final_prediction_fake = fake_softmax[:, -1, :]
         final_prediction_decode = decode_softmax[:, -1, :]
 
-        f = final_prediction_og + final_prediction_fake
+        return final_prediction_og, final_prediction_fake, final_prediction_decode, og_h, fake_h, decode_h
 
-        return f, final_prediction_fake, final_prediction_decode, og_h, fake_h, decode_h
 
 if __name__ == '__main__':
     y_true = np.array([])
