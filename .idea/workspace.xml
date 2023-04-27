@@ -64,7 +64,7 @@
       <recent name="C:\Users\yfz5556\PycharmProjects\ddim_medskim" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.GAN_runner">
+  <component name="RunManager" selected="Shell Script.GAN_bash.sh">
     <configuration name="GAN_runner" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="ddim_medskim" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -163,10 +163,10 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Shell Script.GAN_bash.sh" />
         <item itemvalue="Python.GAN_runner" />
         <item itemvalue="Python.baseline" />
         <item itemvalue="Shell Script.base_line_with_diff_amnesia.sh" />
-        <item itemvalue="Shell Script.GAN_bash.sh" />
         <item itemvalue="Python.og_baseline" />
       </list>
     </recent_temporary>

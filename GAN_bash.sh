@@ -12,7 +12,7 @@ for SEED in ${seeds[@]}
         do
         for DISEASE in ${target_disease[@]}
         do
-          if [ DISEASE="mimic" ]; then
+          if [ DISEASE=="mimic" ]; then
               CUDA_VISIBLE_DEVICES=3, python3 GAN_runner.py --seed=$SEED --encoder=$MODAL --target_disease=$DISEASE --max_len=15 --n_epochs=30
           else
               CUDA_VISIBLE_DEVICES=3, python3 GAN_runner.py --seed=$SEED --encoder=$MODAL --target_disease=$DISEASE --max_len=50 --n_epochs=30
