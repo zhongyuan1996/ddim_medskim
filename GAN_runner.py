@@ -120,6 +120,8 @@ def train(args):
     torch.manual_seed(args.seed)
     # if torch.cuda.is_available() and args.cuda:
     #     torch.cuda.manual_seed(args.seed)
+    if not os.path.exists(args.save_dir):
+        os.makedirs(args.save_dir)
     files = os.listdir(str(args.save_dir))
     if str(args.encoder) + '_' + str(args.target_disease) + '_' + str(args.seed) + '.csv' in files:
         print("conducted_experiments")
