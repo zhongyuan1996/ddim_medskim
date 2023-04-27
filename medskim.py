@@ -8,8 +8,8 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from torch.optim import Adam
 from tqdm import tqdm
 from models.og_dataset import *
-from models.medskim import *
-# from models.medskim_with_diff import *
+# from models.medskim import *
+from models.medskim_with_diff import *
 from utils.utils import check_path, export_config, bool_flag
 from utils.icd_rel import *
 import random
