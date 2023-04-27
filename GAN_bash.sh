@@ -11,12 +11,11 @@ for SEED in ${seeds[@]}
         do
         for DISEASE in ${target_disease[@]}
         do
-          path=$save_path$MODAL$SEED$DISEASE/
           if [ DISEASE="mimic" ]; then
 
-              python3 GAN_runner.py --seed=$SEED --model=$MODAL --target_disease=$DISEASE --max_len=15 --n_epochs=30 --save_dir=$path
+              python3 GAN_runner.py --seed=$SEED --encoder=$MODAL --target_disease=$DISEASE --max_len=15 --n_epochs=30
           else
-              python3 GAN_runner.py --seed=$SEED --model=$MODAL --target_disease=$DISEASE --n_epochs=30 --save_dir=$path
+              python3 GAN_runner.py --seed=$SEED --encoder=$MODAL --target_disease=$DISEASE --n_epochs=30
           fi
       done
       done

@@ -4,13 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="GAN diff debugging">
+    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="GAN runner with bash and save csv">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GAN_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/GAN_runner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/medskim.py" beforeDir="false" afterPath="$PROJECT_DIR$/medskim.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/GAN_baselines.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/GAN_baselines.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/dataset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/og_baseline.py" beforeDir="false" afterPath="$PROJECT_DIR$/og_baseline.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GAN_bash.sh" beforeDir="false" afterPath="$PROJECT_DIR$/GAN_bash.sh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -239,21 +235,7 @@
       <workItem from="1680978590093" duration="96000" />
       <workItem from="1680978749479" duration="25647000" />
       <workItem from="1681306300565" duration="16314000" />
-      <workItem from="1681404602520" duration="160420000" />
-    </task>
-    <task id="LOCAL-00025" summary="ablation2 and baselines">
-      <created>1673638799961</created>
-      <option name="number" value="00025" />
-      <option name="presentableId" value="LOCAL-00025" />
-      <option name="project" value="LOCAL" />
-      <updated>1673638799961</updated>
-    </task>
-    <task id="LOCAL-00026" summary="ablation2 and baselines">
-      <created>1673672388466</created>
-      <option name="number" value="00026" />
-      <option name="presentableId" value="LOCAL-00026" />
-      <option name="project" value="LOCAL" />
-      <updated>1673672388467</updated>
+      <workItem from="1681404602520" duration="160869000" />
     </task>
     <task id="LOCAL-00027" summary="ready to generate et ht with labels, 5 epochs">
       <created>1673721710867</created>
@@ -584,7 +566,21 @@
       <option name="project" value="LOCAL" />
       <updated>1682559059815</updated>
     </task>
-    <option name="localTasksCounter" value="74" />
+    <task id="LOCAL-00074" summary="GAN runner with bash and save csv">
+      <created>1682623065279</created>
+      <option name="number" value="00074" />
+      <option name="presentableId" value="LOCAL-00074" />
+      <option name="project" value="LOCAL" />
+      <updated>1682623065279</updated>
+    </task>
+    <task id="LOCAL-00075" summary="GAN runner with bash and save csv">
+      <created>1682623147663</created>
+      <option name="number" value="00075" />
+      <option name="presentableId" value="LOCAL-00075" />
+      <option name="project" value="LOCAL" />
+      <updated>1682623147663</updated>
+    </task>
+    <option name="localTasksCounter" value="76" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -609,7 +605,6 @@
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
-    <MESSAGE value="lstm and cross attention fixed" />
     <MESSAGE value="fixing attention" />
     <MESSAGE value="rerun hf and amnesia" />
     <MESSAGE value="result before softmax" />
@@ -634,7 +629,8 @@
     <MESSAGE value="mimic on baseline_with_diff and og_baselines. first GAN baseline ready" />
     <MESSAGE value="mimic on original meddiff" />
     <MESSAGE value="GAN diff debugging" />
-    <option name="LAST_COMMIT_MESSAGE" value="GAN diff debugging" />
+    <MESSAGE value="GAN runner with bash and save csv" />
+    <option name="LAST_COMMIT_MESSAGE" value="GAN runner with bash and save csv" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -693,7 +689,7 @@
     <SUITE FILE_PATH="coverage/ddim_medskim$og_test_model.coverage" NAME="og_test_model Coverage Results" MODIFIED="1673470930495" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$medskim.coverage" NAME="medskim Coverage Results" MODIFIED="1682564278512" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$helloworld.coverage" NAME="helloworld Coverage Results" MODIFIED="1667052055792" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$GAN_runner.coverage" NAME="GAN_runner Coverage Results" MODIFIED="1682622821119" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$GAN_runner.coverage" NAME="GAN_runner Coverage Results" MODIFIED="1682623014135" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$new_model_runner.coverage" NAME="new_model_runner Coverage Results" MODIFIED="1680794613501" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$adacare.coverage" NAME="adacare Coverage Results" MODIFIED="1682557533660" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$remastered_model.coverage" NAME="remastered_model Coverage Results" MODIFIED="1679863265153" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
