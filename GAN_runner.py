@@ -8,9 +8,11 @@ import torch
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, \
     precision_recall_curve, auc, cohen_kappa_score, log_loss
 from torch.optim import Adam, lr_scheduler
-from models.dataset import *
+from models.dataset import MyDataset as meddiff_dataset, MyDataset_with_single_label as med_diff_dataset_single_label, collate_fn as diff_collate_fn
+from models.og_dataset import MyDataset_double_label , MyDataset2 as og_dataset_for_mimic, collate_fn as og_collate_fn
 from utils.utils import check_path, export_config, bool_flag
 from models.GAN_baselines import *
+from torch.utils.data import Dataset, DataLoader
 torch.autograd.set_detect_anomaly(True)
 import yaml
 
@@ -166,27 +168,55 @@ def train(args):
             pad_id = len(code2id)
             data_path = './data/amnesia/amnesia'
             # emb_path = './data/processed/amnesia.npy'
+        elif args.target_disease == 'mimic':
+            pad_id = 4894
+            data_path = './data/mimic/mimic'
         else:
             raise ValueError('Invalid disease')
         device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
-        if args.encoder == 'LSTM_actGAN' or 'LSTM_medGAN':
-            train_dataset = MyDataset_with_single_label(data_path + '_training_new.pickle',
+        if args.encoder in ['LSTM_actGAN', 'LSTM_medGAN'] and args.target_disease != 'mimic':
+            train_dataset = med_diff_dataset_single_label(data_path + '_training_new.pickle',
                                       args.max_len, args.max_num_codes, pad_id, device)
-            dev_dataset = MyDataset_with_single_label(data_path + '_validation_new.pickle', args.max_len,
+            dev_dataset = med_diff_dataset_single_label(data_path + '_validation_new.pickle', args.max_len,
                                     args.max_num_codes, pad_id, device)
-            test_dataset = MyDataset_with_single_label(data_path + '_testing_new.pickle', args.max_len,
+            test_dataset = med_diff_dataset_single_label(data_path + '_testing_new.pickle', args.max_len,
                                      args.max_num_codes, pad_id, device)
-        else:
-            train_dataset = MyDataset(data_path + '_training_new.pickle',
+            train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=True, collate_fn=diff_collate_fn)
+            dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=diff_collate_fn)
+            test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=diff_collate_fn)
+        elif args.encoder not in ['LSTM_actGAN', 'LSTM_medGAN'] and args.target_disease != 'mimic':
+            train_dataset = meddiff_dataset(data_path + '_training_new.pickle',
                                       args.max_len, args.max_num_codes, pad_id, device)
-            dev_dataset = MyDataset(data_path + '_validation_new.pickle', args.max_len,
+            dev_dataset = meddiff_dataset(data_path + '_validation_new.pickle', args.max_len,
                                     args.max_num_codes, pad_id, device)
-            test_dataset = MyDataset(data_path + '_testing_new.pickle', args.max_len,
+            test_dataset = meddiff_dataset(data_path + '_testing_new.pickle', args.max_len,
                                      args.max_num_codes, pad_id, device)
-        train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=True, collate_fn=collate_fn)
-        dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
-        test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
+            train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=True, collate_fn=diff_collate_fn)
+            dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=diff_collate_fn)
+            test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=diff_collate_fn)
+        elif args.encoder not in ['LSTM_actGAN', 'LSTM_medGAN'] and args.target_disease == 'mimic':
+            train_dataset = meddiff_dataset(data_path + '_train.pickle',
+                                       args.max_len, args.max_num_blks, pad_id, device)
+            dev_dataset = meddiff_dataset(data_path + '_val.pickle',
+                                     args.max_len,
+                                     args.max_num_codes, pad_id, device)
+            test_dataset = meddiff_dataset(data_path + '_test.pickle', args.max_len,
+                                      args.max_num_codes, pad_id, device)
+            train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=True, collate_fn=diff_collate_fn)
+            dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=diff_collate_fn)
+            test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=diff_collate_fn)
 
+        elif args.encoder in ['LSTM_actGAN', 'LSTM_medGAN'] and args.target_disease == 'mimic':
+            train_dataset = med_diff_dataset_single_label(data_path + '_train.pickle',
+                                       args.max_len, args.max_num_codes, pad_id, device)
+            dev_dataset = med_diff_dataset_single_label(data_path + '_val.pickle',
+                                     args.max_len,
+                                     args.max_num_codes, pad_id, device)
+            test_dataset = med_diff_dataset_single_label(data_path + '_test.pickle', args.max_len,
+                                      args.max_num_codes, pad_id, device)
+            train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=True, collate_fn=diff_collate_fn)
+            dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=diff_collate_fn)
+            test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=diff_collate_fn)
 
         discriminator = Discriminator(args.d_model)
         discriminator.to(device)
