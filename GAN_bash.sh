@@ -1,8 +1,9 @@
 #!/bin/bash
 
 model=("LSTM_GcGAN" "LSTM_medGAN" "LSTM_ehrGAN" "LSTM_actGAN" )
-target_disease=("mimic" "Heart_failure" "COPD" "Kidney" "Amnesia")
-seeds=(1234 2345 3456)
+#target_disease=("mimic" "Heart_failure" "COPD" "Kidney" "Amnesia")
+target_disease=("mimic")
+seeds=(4567 5678 6789 7890 8901
 save_path="./saved_models/"
 
 for SEED in ${seeds[@]}

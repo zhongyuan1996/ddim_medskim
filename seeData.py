@@ -1,4 +1,6 @@
 import pickle
+
+import numpy as np
 import pandas as pd
 from models.dataset import padMatrix,padTime
 from sklearn.model_selection import train_test_split
@@ -57,36 +59,36 @@ random.seed(1234)
 # pickle.dump((test_ehr, test_label, test_time_step), open('data/mimic/mimic_test.pickle', 'wb'))
 # pickle.dump((val_ehr, val_label, val_time_step), open('data/mimic/mimic_val.pickle', 'wb'))
 
-ehr, label, time_step = pickle.load(open('data/mimic/mimic_train.pickle', 'rb'))
-ehr_test, label_test, time_step_test = pickle.load(open('data/mimic/mimic_test.pickle', 'rb'))
-ehr_val, label_val, time_step_val = pickle.load(open('data/mimic/mimic_val.pickle', 'rb'))
-
-print(sum([1 for label in label if label == 1])+sum([1 for label in label_test if label == 1])+sum([1 for label in label_val if label == 1]))
-print(sum([1 for label in label if label == 0])+sum([1 for label in label_test if label == 0])+sum([1 for label in label_val if label == 0]))
-print(len(label)+len(label_test)+len(label_val))
-
-a_ehr, a_label, a_timestep = pickle.load(open('data/mimic/mimic_train.pickle', 'rb'))
-b_ehr, b_label, b_timestep = pickle.load(open('data/mimic/mimic_test.pickle', 'rb'))
-c_ehr, c_label, c_timestep = pickle.load(open('data/mimic/mimic_val.pickle', 'rb'))
-
-positive, negative = 0, 0
-for patient in a_label:
-    if patient == 1:
-        positive += 1
-    else:
-        negative += 1
-for patient in b_label:
-    if patient == 1:
-        positive += 1
-    else:
-        negative += 1
-for patient in c_label:
-    if patient == 1:
-        positive += 1
-    else:
-        negative += 1
-print(positive)
-print(negative)
+# ehr, label, time_step = pickle.load(open('data/mimic/mimic_train.pickle', 'rb'))
+# ehr_test, label_test, time_step_test = pickle.load(open('data/mimic/mimic_test.pickle', 'rb'))
+# ehr_val, label_val, time_step_val = pickle.load(open('data/mimic/mimic_val.pickle', 'rb'))
+#
+# print(sum([1 for label in label if label == 1])+sum([1 for label in label_test if label == 1])+sum([1 for label in label_val if label == 1]))
+# print(sum([1 for label in label if label == 0])+sum([1 for label in label_test if label == 0])+sum([1 for label in label_val if label == 0]))
+# print(len(label)+len(label_test)+len(label_val))
+#
+# a_ehr, a_label, a_timestep = pickle.load(open('data/mimic/mimic_train.pickle', 'rb'))
+# b_ehr, b_label, b_timestep = pickle.load(open('data/mimic/mimic_test.pickle', 'rb'))
+# c_ehr, c_label, c_timestep = pickle.load(open('data/mimic/mimic_val.pickle', 'rb'))
+#
+# positive, negative = 0, 0
+# for patient in a_label:
+#     if patient == 1:
+#         positive += 1
+#     else:
+#         negative += 1
+# for patient in b_label:
+#     if patient == 1:
+#         positive += 1
+#     else:
+#         negative += 1
+# for patient in c_label:
+#     if patient == 1:
+#         positive += 1
+#     else:
+#         negative += 1
+# print(positive)
+# print(negative)
 
 
 # visit_length = []
@@ -177,3 +179,10 @@ print(negative)
 #         break
 
 
+###################################   FIDDLE   ############################################
+
+
+fiddle = np.load('data/fiddle/X.npz')
+for key in fiddle.keys():
+    print(key)
+    print(fiddle[key].shape)
