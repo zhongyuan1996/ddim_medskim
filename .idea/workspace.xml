@@ -6,7 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="GAN runner with bash and save csv">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/seeData.py" beforeDir="false" afterPath="$PROJECT_DIR$/seeData.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/og_baseline.py" beforeDir="false" afterPath="$PROJECT_DIR$/og_baseline.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -63,7 +63,7 @@
       <recent name="C:\Users\yfz5556\PycharmProjects\ddim_medskim" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.seeData">
+  <component name="RunManager" selected="Python.og_baseline">
     <configuration name="GAN_runner" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="ddim_medskim" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -100,6 +100,28 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/baseline.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="og_baseline" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="ddim_medskim" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/og_baseline.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -145,28 +167,13 @@
       <envs />
       <method v="2" />
     </configuration>
-    <configuration name="base_line_with_diff_amnesia.sh" type="ShConfigurationType" temporary="true">
-      <option name="SCRIPT_TEXT" value="" />
-      <option name="INDEPENDENT_SCRIPT_PATH" value="true" />
-      <option name="SCRIPT_PATH" value="$PROJECT_DIR$/base_line_with_diff_amnesia.sh" />
-      <option name="SCRIPT_OPTIONS" value="" />
-      <option name="INDEPENDENT_SCRIPT_WORKING_DIRECTORY" value="true" />
-      <option name="SCRIPT_WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="INDEPENDENT_INTERPRETER_PATH" value="true" />
-      <option name="INTERPRETER_PATH" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="EXECUTE_IN_TERMINAL" value="true" />
-      <option name="EXECUTE_SCRIPT_FILE" value="true" />
-      <envs />
-      <method v="2" />
-    </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.og_baseline" />
         <item itemvalue="Python.seeData" />
         <item itemvalue="Shell Script.GAN_bash.sh" />
         <item itemvalue="Python.GAN_runner" />
         <item itemvalue="Python.baseline" />
-        <item itemvalue="Shell Script.base_line_with_diff_amnesia.sh" />
       </list>
     </recent_temporary>
   </component>
@@ -231,21 +238,7 @@
       <workItem from="1680978590093" duration="96000" />
       <workItem from="1680978749479" duration="25647000" />
       <workItem from="1681306300565" duration="16314000" />
-      <workItem from="1681404602520" duration="169671000" />
-    </task>
-    <task id="LOCAL-00040" summary="rerun hf and amnesia">
-      <created>1674668654505</created>
-      <option name="number" value="00040" />
-      <option name="presentableId" value="LOCAL-00040" />
-      <option name="project" value="LOCAL" />
-      <updated>1674668654505</updated>
-    </task>
-    <task id="LOCAL-00041" summary="rerun hf and amnesia">
-      <created>1674669083375</created>
-      <option name="number" value="00041" />
-      <option name="presentableId" value="LOCAL-00041" />
-      <option name="project" value="LOCAL" />
-      <updated>1674669083375</updated>
+      <workItem from="1681404602520" duration="171657000" />
     </task>
     <task id="LOCAL-00042" summary="ab2">
       <created>1674674971375</created>
@@ -576,7 +569,21 @@
       <option name="project" value="LOCAL" />
       <updated>1682639565870</updated>
     </task>
-    <option name="localTasksCounter" value="89" />
+    <task id="LOCAL-00089" summary="GAN runner with bash and save csv">
+      <created>1682700551801</created>
+      <option name="number" value="00089" />
+      <option name="presentableId" value="LOCAL-00089" />
+      <option name="project" value="LOCAL" />
+      <updated>1682700551801</updated>
+    </task>
+    <task id="LOCAL-00090" summary="GAN runner with bash and save csv">
+      <created>1682700612636</created>
+      <option name="number" value="00090" />
+      <option name="presentableId" value="LOCAL-00090" />
+      <option name="project" value="LOCAL" />
+      <updated>1682700612636</updated>
+    </task>
+    <option name="localTasksCounter" value="91" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -681,7 +688,7 @@
     <SUITE FILE_PATH="coverage/ddim_medskim$dataset.coverage" NAME="dataset Coverage Results" MODIFIED="1667506884316" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
     <SUITE FILE_PATH="coverage/ddim_medskim$cond_test_model.coverage" NAME="cond_test_model Coverage Results" MODIFIED="1670200881349" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$ddim_LSTM.coverage" NAME="ddim_LSTM Coverage Results" MODIFIED="1669239149204" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$og_baseline.coverage" NAME="og_baseline Coverage Results" MODIFIED="1682608735043" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$og_baseline.coverage" NAME="og_baseline Coverage Results" MODIFIED="1682702408563" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$og_test_model.coverage" NAME="og_test_model Coverage Results" MODIFIED="1673470930495" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$medskim.coverage" NAME="medskim Coverage Results" MODIFIED="1682564278512" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$helloworld.coverage" NAME="helloworld Coverage Results" MODIFIED="1667052055792" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
