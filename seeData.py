@@ -137,15 +137,19 @@ random.seed(1234)
 #
 # print(len(icd_codes))
 
-
-# i = 0
-# for a, b, c in zip(ehr, label, time_step):
-#     print("ehr data: " + str(a))
-#     print("label: " + str(b))
-#     print("time_step: " + str(c))
-#     i+=1
-#     if i >2 :
-#         break
+ehr, label = pickle.load(open('data/EEG/EEG_train.pickle', 'rb'))
+# ehr_test, label_test = pickle.load(open('EEG_test.pickle', 'rb'))
+# ehr_val, label_val = pickle.load(open('EEG_val.pickle', 'rb'))
+i = 0
+for a, b in zip(ehr, label):
+    print("ehr data: " + str(a))
+    print(len(a))
+    print(str(a[0]))
+    print(len(a[0]))
+    print("label: " + str(b))
+    i+=1
+    if i >2 :
+        break
 
 
 # ehr, label, time_step = pickle.load(open('data/copd/copd_training_new.pickle', 'rb'))
@@ -181,8 +185,3 @@ random.seed(1234)
 
 ###################################   FIDDLE   ############################################
 
-
-fiddle = np.load('data/fiddle/X.npz')
-for key in fiddle.keys():
-    print(key)
-    print(fiddle[key].shape)

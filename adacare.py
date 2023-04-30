@@ -9,8 +9,8 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from torch.optim import *
 from sklearn.metrics import precision_recall_curve, auc
 from models.og_dataset import *
-# from models.adacare import *
-from models.adacare_with_diff import *
+from models.adacare import *
+# from models.adacare_with_diff import *
 from utils.utils import check_path, export_config, bool_flag
 import random
 
@@ -45,7 +45,7 @@ def eval_metric(eval_set, model, device):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
-    parser.add_argument('--seed', default=2345, type=int, help='seed')
+    parser.add_argument('--seed', default=3456, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
     parser.add_argument('--encoder', default='hita', choices=['hita', 'lsan', 'lstm', 'sand', 'gruself', 'timeline', 'retain', 'retainex'])
@@ -60,7 +60,7 @@ def main():
     parser.add_argument('--blk_emb_path', default='./data/processed/block_embedding.npy',
                         help='embedding path of blocks')
     parser.add_argument('--blk_vocab_path', default='./data/processed/block_vocab.txt')
-    parser.add_argument('--target_disease', default='COPD', choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic'])
+    parser.add_argument('--target_disease', default='Heart_failure', choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic'])
     parser.add_argument('--target_att_heads', default=4, type=int, help='target disease attention heads number')
     parser.add_argument('--mem_size', default=20, type=int, help='memory size')
     parser.add_argument('--mem_update_size', default=15, type=int, help='memory update size')

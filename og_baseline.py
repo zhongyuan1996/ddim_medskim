@@ -10,7 +10,8 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from torch.optim import *
 from sklearn.metrics import precision_recall_curve, auc
 from models.og_dataset import *
-from models.baseline import *
+# from models.baseline import *
+from models.baseline_EEG import *
 from models.leap_lstm import LeapLSTM
 from models.skim_rnn import SkimRNN
 from models.skiplstm import SkipLSTM
@@ -50,19 +51,19 @@ def main():
     parser.add_argument('--seed', default=1234, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
-    parser.add_argument('--encoder', default='hita', choices=['hita', 'lsan', 'lstm', 'sand', 'gruself', 'timeline', 'retain', 'retainex', 'LeapLSTM', 'skimrnn', 'skiprnn','TLSTM'])
+    parser.add_argument('--encoder', default='TLSTM', choices=['hita', 'lsan', 'lstm', 'sand', 'gruself', 'timeline', 'retain', 'retainex', 'LeapLSTM', 'skimrnn', 'skiprnn','TLSTM'])
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
     parser.add_argument('--dropout_emb', default=0.1, type=float, help='dropout rate of embedding layers')
     parser.add_argument('--num_layers', default=2, type=int, help='number of transformer layers of EHR encoder')
     parser.add_argument('--num_heads', default=4, type=int, help='number of attention heads')
-    parser.add_argument('--max_len', default=50, type=int, help='max visits of EHR')
-    parser.add_argument('--max_num_codes', default=20, type=int, help='max number of ICD codes in each visit')
+    parser.add_argument('--max_len', default=200, type=int, help='max visits of EHR')
+    parser.add_argument('--max_num_codes', default=16, type=int, help='max number of ICD codes in each visit')
     parser.add_argument('--max_num_blks', default=120, type=int, help='max number of blocks in each visit')
     parser.add_argument('--blk_emb_path', default='./data/processed/block_embedding.npy',
                         help='embedding path of blocks')
     parser.add_argument('--blk_vocab_path', default='./data/processed/block_vocab.txt')
-    parser.add_argument('--target_disease', default='Heart_failure', choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic'])
+    parser.add_argument('--target_disease', default='EEG', choices=['EEG', 'Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic'])
     parser.add_argument('--target_att_heads', default=4, type=int, help='target disease attention heads number')
     parser.add_argument('--mem_size', default=20, type=int, help='memory size')
     parser.add_argument('--mem_update_size', default=15, type=int, help='memory update size')
@@ -135,7 +136,9 @@ def train(args):
         elif args.target_disease == 'mimic':
             pad_id = 4894
             data_path = './data/mimic/mimic'
-
+        elif args.target_disease == 'EEG':
+            pad_id = 16
+            data_path = 'data/EEG/EEG'
         else:
             raise ValueError('Invalid disease')
         device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
@@ -147,6 +150,13 @@ def train(args):
                                     args.max_num_codes, args.max_num_blks, pad_id, device)
             test_dataset = MyDataset2(data_path + '_test.pickle', args.max_len,
                                      args.max_num_codes, args.max_num_blks, pad_id, device)
+        elif args.target_disease == 'EEG':
+            train_dataset = MyDataset_EEG(data_path + '_train.pickle', '',
+                                      args.max_len, args.max_num_codes, args.max_num_blks, pad_id, blk_pad_id, device)
+            dev_dataset = MyDataset_EEG(data_path + '_val.pickle', '', args.max_len,
+                                    args.max_num_codes, args.max_num_blks, pad_id, blk_pad_id, device)
+            test_dataset = MyDataset_EEG(data_path + '_test.pickle', '', args.max_len,
+                                     args.max_num_codes, args.max_num_blks, pad_id, blk_pad_id, device)
         else:
             train_dataset = MyDataset(data_path + '_training_new.pickle', data_path + '_training_txt.pickle',
                                       args.max_len, args.max_num_codes, args.max_num_blks, pad_id, blk_pad_id, device)
@@ -154,6 +164,7 @@ def train(args):
                                     args.max_num_codes, args.max_num_blks, pad_id, blk_pad_id, device)
             test_dataset = MyDataset(data_path + '_testing_new.pickle', data_path + '_testing_txt.pickle', args.max_len,
                                      args.max_num_codes, args.max_num_blks, pad_id, blk_pad_id, device)
+
         train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=True, collate_fn=collate_fn)
         dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
         test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
@@ -226,8 +237,8 @@ def train(args):
             model.train()
             start_time = time.time()
             for i, data in enumerate(train_dataloader):
-                labels, ehr, mask, txt, mask_txt, lengths, time_step, code_mask = data
                 optim.zero_grad()
+                labels, ehr, mask, txt, mask_txt, lengths, time_step, code_mask = data
                 outputs = model(ehr, mask, lengths, time_step, code_mask)
                 loss = loss_func(outputs, labels)
                 loss.backward()
