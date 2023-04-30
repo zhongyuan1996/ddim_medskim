@@ -115,6 +115,7 @@ class AdaCare(nn.Module):
     def __init__(self, vocab_size, hidden_dim=128, kernel_size=2, kernel_num=64, input_dim=128, output_dim=1, dropout=0.5, r_v=4,
                  r_c=4, activation='sigmoid'):
         super(AdaCare, self).__init__()
+        self.lowtolarge = nn.Linear(16,256)
         self.embedding = nn.Embedding(vocab_size + 1, hidden_dim, padding_idx=-1)
         self.hidden_dim = hidden_dim
         self.kernel_size = kernel_size
@@ -146,7 +147,9 @@ class AdaCare(nn.Module):
         batch_size = input.size(0)
         time_step = input.size(1)
         # feature_dim = input.size(2)
-        input = self.embedding(input).sum(dim=2)
+
+        # input = self.embedding(input).sum(dim=2)
+        input = self.lowtolarge(input)
 
         cur_h = Variable(torch.zeros(batch_size, self.hidden_dim)).to(device)
         inputse_att = []

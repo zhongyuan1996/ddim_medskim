@@ -7,6 +7,7 @@ import torch.nn.functional as F
 class Selected(nn.Module):
     def __init__(self, vocab_size, d_model, dropout, dropout_emb):
         super().__init__()
+        self.lowtolarge = nn.Linear(16,256)
         self.vocab_size = vocab_size
         self.d_model = d_model
         self.embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
