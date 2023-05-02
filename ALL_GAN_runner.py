@@ -66,7 +66,7 @@ def main():
     parser.add_argument('--seed', default=1234, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
-    parser.add_argument('--model', default='LSTM_medGAN', choices=['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN'])
+    parser.add_argument('--model', default='LSTM_GcGAN', choices=['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN'])
     parser.add_argument('--target_disease', default='Kidney',
                         choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic'])
     parser.add_argument('--n_epochs', default=30, type=int)
@@ -99,7 +99,7 @@ def main():
     parser.add_argument("--lambda_DF_loss", type=float, default=0.1, help="scale of diffusion model loss")
     parser.add_argument("--lambda_CE_gen_loss", type=float, default=0.5, help="scale of generated sample loss")
     parser.add_argument("--patience", type=int, default=7, help="learning rate patience")
-    parser.add_argument("--factor", type=float, default=0.2, help="learning rate factor")
+    parser.add_argument("--factor", type=float, default=0.5, help="learning rate factor")
 
     args = parser.parse_args()
     if args.mode == 'train':
@@ -195,7 +195,7 @@ def train(args):
             generator.to(device)
             model = LSTM_ehrGAN(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN)
         elif args.model == 'LSTM_GcGAN':
-            generator = Linear_generator(64, args.max_len + 1)
+            generator = FCN_generator(64, args.max_len)
             GAN = GcGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
             model = LSTM_GcGAN(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN)

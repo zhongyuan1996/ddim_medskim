@@ -207,14 +207,14 @@ class FCN_generator(nn.Module):
         self.layer2_conv = nn.Conv1d(self.lenPlus1 * 2, self.lenPlus1, 1, 1)
         self.layer3 = nn.Linear(h_model, h_model)
         self.layer4_conv = nn.Conv1d(self.lenPlus1 * 3, self.lenPlus1, 1, 1)
-        self.down = nn.Linear(h_model, int(h_model / 4))
+        self.ff = nn.Linear(h_model, h_model)
 
     def forward(self, gray):
         orange = self.linear1(gray)
         brown = self.layer2_conv(torch.cat([gray, orange], dim=1))
         blue = self.layer3(brown)
         red = self.layer4_conv(torch.cat([blue, brown, gray], dim=1))
-        res = self.down(red)
+        res = self.ff(red)
         return res
 
 
@@ -370,7 +370,7 @@ class GcGAN(nn.Module):
         gen_D1 = gen_D1andD2[:, :-1, :]
 
         gen_D2 = gen_D1andD2[:, -1, :].unsqueeze(1)
-        gen_D2 = self.sigmoid(self.label_decoder(gen_D2))
+        gen_D2 = self.sigmoid(self.label_decoder(gen_D2)).squeeze()
 
         D1andD2 = self.GcGAN_decoder(h)
         D1 = D1andD2[:, :-1, :]
