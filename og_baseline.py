@@ -10,8 +10,8 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from torch.optim import *
 from sklearn.metrics import precision_recall_curve, auc
 from models.og_dataset import *
-# from models.baseline import *
-from models.baseline_EEG import *
+from models.baseline import *
+# from models.baseline_EEG import *
 from models.leap_lstm import LeapLSTM
 from models.skim_rnn import SkimRNN
 from models.skiplstm import SkipLSTM
@@ -51,19 +51,19 @@ def main():
     parser.add_argument('--seed', default=1234, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
-    parser.add_argument('--encoder', default='hita', choices=['hita', 'lsan', 'lstm', 'sand', 'gruself', 'timeline', 'retain', 'retainex', 'LeapLSTM', 'skimrnn', 'skiprnn','TLSTM'])
+    parser.add_argument('--encoder', default='lstm', choices=['hita', 'lsan', 'lstm', 'sand', 'gruself', 'timeline', 'retain', 'retainex', 'LeapLSTM', 'skimrnn', 'skiprnn','TLSTM'])
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
     parser.add_argument('--dropout_emb', default=0.1, type=float, help='dropout rate of embedding layers')
     parser.add_argument('--num_layers', default=2, type=int, help='number of transformer layers of EHR encoder')
     parser.add_argument('--num_heads', default=4, type=int, help='number of attention heads')
-    parser.add_argument('--max_len', default=40, type=int, help='max visits of EHR')
+    parser.add_argument('--max_len', default=50, type=int, help='max visits of EHR')
     parser.add_argument('--max_num_codes', default=16, type=int, help='max number of ICD codes in each visit')
     parser.add_argument('--max_num_blks', default=120, type=int, help='max number of blocks in each visit')
     parser.add_argument('--blk_emb_path', default='./data/processed/block_embedding.npy',
                         help='embedding path of blocks')
     parser.add_argument('--blk_vocab_path', default='./data/processed/block_vocab.txt')
-    parser.add_argument('--target_disease', default='EEG', choices=['EEG', 'Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic'])
+    parser.add_argument('--target_disease', default='Kidney', choices=['EEG', 'Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic'])
     parser.add_argument('--target_att_heads', default=4, type=int, help='target disease attention heads number')
     parser.add_argument('--mem_size', default=20, type=int, help='memory size')
     parser.add_argument('--mem_update_size', default=15, type=int, help='memory update size')
@@ -71,7 +71,7 @@ def main():
     parser.add_argument('--weight_decay', default=0.001, type=float)
     parser.add_argument('--max_grad_norm', default=1.0, type=float, help='max grad norm (0 to disable)')
     parser.add_argument('--warmup_steps', default=200, type=int)
-    parser.add_argument('--n_epochs', default=2, type=int)
+    parser.add_argument('--n_epochs', default=30, type=int)
     parser.add_argument('--log_interval', default=20, type=int)
     parser.add_argument('--mode', default='train', choices=['train', 'eval', 'pred','gen'], help='run training or evaluation')
     parser.add_argument('--save_dir', default='./saved_models/', help='model output directory')

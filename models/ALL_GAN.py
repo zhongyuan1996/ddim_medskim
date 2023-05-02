@@ -503,14 +503,17 @@ class LSTM_medGAN(nn.Module):
 
         Dec_V, Gen_V, _, _ = self.GAN(v, seq_time_step, label)
 
-        Fused_V = self.fuse(torch.cat([v, Gen_V], dim=-1))
+        # Fused_V = self.fuse(torch.cat([v, Gen_V], dim=-1))
 
-        h, _ = self.lstm(Fused_V)
+        h, _ = self.lstm(v)
+        gen_h, _ = self.lstm(Gen_V)
 
         og_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+        fake_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
 
         for i in range(visit_size):
             og_softmax[:, i:i + 1, :] = self.classifyer(h[:, i:i + 1, :])
+            fake_softmax[:, i:i + 1, :] = self.classifyer(gen_h[:, i:i + 1, :])
 
         final_prediction_og = og_softmax[:, -1, :]
 
@@ -557,14 +560,17 @@ class LSTM_actGAN(nn.Module):
 
         Dec_V, Gen_V, _, _ = self.GAN(v, seq_time_step, label)
 
-        Fused_V = self.fuse(torch.cat([v, Gen_V], dim=-1))
+        # Fused_V = self.fuse(torch.cat([v, Gen_V], dim=-1))
 
-        h, _ = self.lstm(Fused_V)
+        h, _ = self.lstm(v)
+        gen_h, _ = self.lstm(Gen_V)
 
         og_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+        fake_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
 
         for i in range(visit_size):
             og_softmax[:, i:i + 1, :] = self.classifyer(h[:, i:i + 1, :])
+            fake_softmax[:, i:i + 1, :] = self.classifyer(gen_h[:, i:i + 1, :])
 
         final_prediction_og = og_softmax[:, -1, :]
 
@@ -605,20 +611,23 @@ class LSTM_GcGAN(nn.Module):
         batch_size, visit_size, seq_size = input_seqs.size()
         v = self.before(input_seqs, seq_time_step)
 
-        Dec_V, Gen_V, _, Gen_label = self.GAN(v, seq_time_step, label)
+        Dec_V, Gen_V, _, _ = self.GAN(v, seq_time_step, label)
 
-        Fused_V = self.fuse(torch.cat([v, Gen_V], dim=-1))
+        # Fused_V = self.fuse(torch.cat([v, Gen_V], dim=-1))
 
-        h, _ = self.lstm(Fused_V)
+        h, _ = self.lstm(v)
+        gen_h, _ = self.lstm(Gen_V)
 
         og_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+        fake_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
 
         for i in range(visit_size):
             og_softmax[:, i:i + 1, :] = self.classifyer(h[:, i:i + 1, :])
+            fake_softmax[:, i:i + 1, :] = self.classifyer(gen_h[:, i:i + 1, :])
 
         final_prediction_og = og_softmax[:, -1, :]
 
-        return final_prediction_og, Dec_V, Gen_V, seq_time_step, Gen_label
+        return final_prediction_og, Dec_V, Gen_V, seq_time_step, label
 
 class LSTM_ehrGAN(nn.Module):
     def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_layers=1, m=0,
@@ -636,7 +645,7 @@ class LSTM_ehrGAN(nn.Module):
         self.relu = nn.ReLU()
         self.GAN = GAN
         self.classifyer = classifyer(d_model)
-        self.fuse = nn.Linear(d_model * 2, d_model)
+        # self.fuse = nn.Linear(d_model * 2, d_model)
 
     def before(self, input_seqs, seq_time_step):
         # time embedding
@@ -657,19 +666,225 @@ class LSTM_ehrGAN(nn.Module):
 
         Dec_V, Gen_V, _, _ = self.GAN(v, seq_time_step, label)
 
-        Fused_V = self.fuse(torch.cat([v, Gen_V], dim=-1))
+        # Fused_V = self.fuse(torch.cat([v, Gen_V], dim=-1))
 
-        h, _ = self.lstm(Fused_V)
+        h, _ = self.lstm(v)
+        gen_h, _ = self.lstm(Gen_V)
 
         og_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+        fake_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
 
         for i in range(visit_size):
             og_softmax[:, i:i + 1, :] = self.classifyer(h[:, i:i + 1, :])
+            fake_softmax[:, i:i + 1, :] = self.classifyer(gen_h[:, i:i + 1, :])
 
         final_prediction_og = og_softmax[:, -1, :]
 
         return final_prediction_og, Dec_V, Gen_V, seq_time_step, label
 
+# class LSTM_medGAN(nn.Module):
+#     def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_layers=1, m=0,
+#                  dense_model=64):
+#         super().__init__()
+#         self.device = device
+#         self.dropout = nn.Dropout(dropout)
+#         self.emb_dropout = nn.Dropout(dropout_emb)
+#         self.lstm = nn.LSTM(d_model, h_model, num_layers, bidirectional=False, batch_first=True, dropout=dropout)
+#         self.m = m
+#         self.tanh = nn.Tanh()
+#         self.time_layer = nn.Linear(1, 64)
+#         self.time_updim = nn.Linear(64, d_model)
+#         self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+#         self.relu = nn.ReLU()
+#         self.GAN = GAN
+#         self.fuse = nn.Linear(d_model * 2, d_model)
+#         self.classifyer = classifyer(d_model)
+#
+#     def before(self, input_seqs, seq_time_step):
+#         # time embedding
+#         seq_time_step = seq_time_step.unsqueeze(2) / 180
+#         time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
+#         time_encoding = self.time_updim(time_feature)
+#         # visit_embedding e_t
+#         visit_embedding = self.initial_embedding(input_seqs)
+#         visit_embedding = self.emb_dropout(visit_embedding)
+#         visit_embedding = self.relu(visit_embedding)
+#
+#         visit_embedding = visit_embedding.sum(-2) + time_encoding
+#         return visit_embedding
+#
+#     def forward(self, input_seqs, mask, length, seq_time_step, codemask, label):
+#         batch_size, visit_size, seq_size = input_seqs.size()
+#         v = self.before(input_seqs, seq_time_step)
+#
+#         Dec_V, Gen_V, _, _ = self.GAN(v, seq_time_step, label)
+#
+#         Fused_V = self.fuse(torch.cat([v, Gen_V], dim=-1))
+#
+#         h, _ = self.lstm(Fused_V)
+#
+#         og_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+#
+#         for i in range(visit_size):
+#             og_softmax[:, i:i + 1, :] = self.classifyer(h[:, i:i + 1, :])
+#
+#         final_prediction_og = og_softmax[:, -1, :]
+#
+#         return final_prediction_og, Dec_V, Gen_V, seq_time_step, label
+#
+# class LSTM_actGAN(nn.Module):
+#     def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_layers=1, m=0,
+#                  dense_model=64):
+#         super().__init__()
+#         self.device = device
+#         self.dropout = nn.Dropout(dropout)
+#         self.emb_dropout = nn.Dropout(dropout_emb)
+#         self.lstm = nn.LSTM(d_model, h_model, num_layers, bidirectional=False, batch_first=True, dropout=dropout)
+#         self.m = m
+#         self.tanh = nn.Tanh()
+#         self.time_layer = nn.Linear(1, 64)
+#         self.time_updim = nn.Linear(64, d_model)
+#         self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+#         self.relu = nn.ReLU()
+#         self.GAN = GAN
+#         self.label_encoder = nn.Linear(2, 256)
+#         self.xandy_encoder = nn.Linear(256, 64)
+#         self.decoder = nn.Linear(64, 256)
+#         self.classifyer = classifyer(d_model)
+#         self.fuse = nn.Linear(d_model * 2, d_model)
+#
+#     def before(self, input_seqs, seq_time_step):
+#
+#         # time embedding
+#         seq_time_step = seq_time_step.unsqueeze(2) / 180
+#         time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
+#         time_encoding = self.time_updim(time_feature)
+#         # visit_embedding e_t
+#         visit_embedding = self.initial_embedding(input_seqs)
+#         visit_embedding = self.emb_dropout(visit_embedding)
+#         visit_embedding = self.relu(visit_embedding)
+#
+#         visit_embedding = visit_embedding.sum(-2) + time_encoding
+#         return visit_embedding
+#
+#     def forward(self, input_seqs, mask, length, seq_time_step, codemask, label):
+#         batch_size, visit_size, seq_size = input_seqs.size()
+#         v = self.before(input_seqs, seq_time_step)
+#
+#         Dec_V, Gen_V, _, _ = self.GAN(v, seq_time_step, label)
+#
+#         Fused_V = self.fuse(torch.cat([v, Gen_V], dim=-1))
+#
+#         h, _ = self.lstm(Fused_V)
+#
+#         og_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+#
+#         for i in range(visit_size):
+#             og_softmax[:, i:i + 1, :] = self.classifyer(h[:, i:i + 1, :])
+#
+#         final_prediction_og = og_softmax[:, -1, :]
+#
+#         return final_prediction_og, Dec_V, Gen_V, seq_time_step, label
+#
+# class LSTM_GcGAN(nn.Module):
+#     def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_layers=1, m=0,
+#                  dense_model=64):
+#         super().__init__()
+#         self.device = device
+#         self.dropout = nn.Dropout(dropout)
+#         self.emb_dropout = nn.Dropout(dropout_emb)
+#         self.lstm = nn.LSTM(d_model, h_model, num_layers, bidirectional=False, batch_first=True, dropout=dropout)
+#         self.m = m
+#         self.tanh = nn.Tanh()
+#         self.time_layer = nn.Linear(1, 64)
+#         self.time_updim = nn.Linear(64, d_model)
+#         self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+#         self.relu = nn.ReLU()
+#         self.GAN = GAN
+#         self.classifyer = classifyer(d_model)
+#         self.fuse = nn.Linear(d_model * 2, d_model)
+#
+#     def before(self, input_seqs, seq_time_step):
+#         # time embedding
+#         seq_time_step = seq_time_step.unsqueeze(2) / 180
+#         time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
+#         time_encoding = self.time_updim(time_feature)
+#         # visit_embedding e_t
+#         visit_embedding = self.initial_embedding(input_seqs)
+#         visit_embedding = self.emb_dropout(visit_embedding)
+#         visit_embedding = self.relu(visit_embedding)
+#
+#         visit_embedding = visit_embedding.sum(-2) + time_encoding
+#         return visit_embedding
+#
+#     def forward(self, input_seqs, mask, length, seq_time_step, codemask, label):
+#         batch_size, visit_size, seq_size = input_seqs.size()
+#         v = self.before(input_seqs, seq_time_step)
+#
+#         Dec_V, Gen_V, _, Gen_label = self.GAN(v, seq_time_step, label)
+#
+#         Fused_V = self.fuse(torch.cat([v, Gen_V], dim=-1))
+#
+#         h, _ = self.lstm(Fused_V)
+#
+#         og_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+#
+#         for i in range(visit_size):
+#             og_softmax[:, i:i + 1, :] = self.classifyer(h[:, i:i + 1, :])
+#
+#         final_prediction_og = og_softmax[:, -1, :]
+#
+#         return final_prediction_og, Dec_V, Gen_V, seq_time_step, Gen_label
+#
+# class LSTM_ehrGAN(nn.Module):
+#     def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_layers=1, m=0,
+#                  dense_model=64):
+#         super().__init__()
+#         self.device = device
+#         self.dropout = nn.Dropout(dropout)
+#         self.emb_dropout = nn.Dropout(dropout_emb)
+#         self.lstm = nn.LSTM(d_model, h_model, num_layers, bidirectional=False, batch_first=True, dropout=dropout)
+#         self.m = m
+#         self.tanh = nn.Tanh()
+#         self.time_layer = nn.Linear(1, 64)
+#         self.time_updim = nn.Linear(64, d_model)
+#         self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+#         self.relu = nn.ReLU()
+#         self.GAN = GAN
+#         self.classifyer = classifyer(d_model)
+#         self.fuse = nn.Linear(d_model * 2, d_model)
+#
+#     def before(self, input_seqs, seq_time_step):
+#         # time embedding
+#         seq_time_step = seq_time_step.unsqueeze(2) / 180
+#         time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
+#         time_encoding = self.time_updim(time_feature)
+#         # visit_embedding e_t
+#         visit_embedding = self.initial_embedding(input_seqs)
+#         visit_embedding = self.emb_dropout(visit_embedding)
+#         visit_embedding = self.relu(visit_embedding)
+#
+#         visit_embedding = visit_embedding.sum(-2) + time_encoding
+#         return visit_embedding
+#
+#     def forward(self, input_seqs, mask, length, seq_time_step, codemask, label):
+#         batch_size, visit_size, seq_size = input_seqs.size()
+#         v = self.before(input_seqs, seq_time_step)
+#
+#         Dec_V, Gen_V, _, _ = self.GAN(v, seq_time_step, label)
+#
+#         Fused_V = self.fuse(torch.cat([v, Gen_V], dim=-1))
+#
+#         h, _ = self.lstm(Fused_V)
+#
+#         og_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+#
+#         for i in range(visit_size):
+#             og_softmax[:, i:i + 1, :] = self.classifyer(h[:, i:i + 1, :])
+#
+#         final_prediction_og = og_softmax[:, -1, :]
+#
+#         return final_prediction_og, Dec_V, Gen_V, seq_time_step, label
 
 if __name__ == '__main__':
     y_true = np.array([])

@@ -66,7 +66,7 @@ def main():
     parser.add_argument('--seed', default=1234, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
-    parser.add_argument('--model', default='LSTM_GcGAN', choices=['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN'])
+    parser.add_argument('--model', default='LSTM_ehrGAN', choices=['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN'])
     parser.add_argument('--target_disease', default='Kidney',
                         choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic'])
     parser.add_argument('--n_epochs', default=30, type=int)
