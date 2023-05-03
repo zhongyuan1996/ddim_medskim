@@ -447,10 +447,10 @@ class LSTM_base(nn.Module):
         time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
         time_encoding = self.time_updim(time_feature)
         # visit_embedding e_t
-        if not self.initial_d:
-            visit_embedding = self.initial_embedding(input_seqs)
-        else:
-            visit_embedding = self.initial_embedding_2(input_seqs)
+        # if self.initial_d != 0:
+        visit_embedding = self.initial_embedding(input_seqs)
+        # else:
+        # visit_embedding = self.initial_embedding_2(input_seqs)
         visit_embedding = self.emb_dropout(visit_embedding)
         visit_embedding = self.relu(visit_embedding)
 
@@ -486,10 +486,10 @@ class LSTM_medGAN(nn.Module):
         self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.relu = nn.ReLU()
         self.GAN = GAN
-        self.initial_d = initial_d
-        self.initial_embedding_2 = nn.Linear(self.initial_d, d_model)
         self.relu = nn.ReLU()
         self.classifyer = classifyer(d_model)
+        self.initial_d = initial_d
+        self.initial_embedding_2 = nn.Linear(self.initial_d, d_model)
 
     def before(self, input_seqs, seq_time_step):
         # time embedding
@@ -498,13 +498,16 @@ class LSTM_medGAN(nn.Module):
         time_encoding = self.time_updim(time_feature)
         # visit_embedding e_t
         if self.initial_d != 0:
-            visit_embedding = self.initial_embedding(input_seqs)
-        else:
             visit_embedding = self.initial_embedding_2(input_seqs)
-        visit_embedding = self.emb_dropout(visit_embedding)
-        visit_embedding = self.relu(visit_embedding)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
+            visit_embedding = visit_embedding + time_encoding
+        else:
+            visit_embedding = self.initial_embedding(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
 
-        visit_embedding = visit_embedding.sum(-2) + time_encoding
+            visit_embedding = visit_embedding.sum(-2) + time_encoding
         return visit_embedding
 
     def forward(self, input_seqs, mask, length, seq_time_step, codemask, label):
@@ -526,11 +529,12 @@ class LSTM_medGAN(nn.Module):
             fake_softmax[:, i:i + 1, :] = self.classifyer(gen_h[:, i:i + 1, :])
 
         final_prediction_og = og_softmax[:, -1, :]
+        final_prediction_fake = fake_softmax[:, -1, :]
 
-        return final_prediction_og, fake_softmax, Dec_V, Gen_V, seq_time_step, label
+        return final_prediction_og, final_prediction_fake, Dec_V, Gen_V, seq_time_step, label
 
 class LSTM_actGAN(nn.Module):
-    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_layers=1, m=0,
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, initial_d=0, num_layers=1, m=0,
                  dense_model=64):
         super().__init__()
         self.device = device
@@ -548,20 +552,26 @@ class LSTM_actGAN(nn.Module):
         self.xandy_encoder = nn.Linear(256, 64)
         self.decoder = nn.Linear(64, 256)
         self.classifyer = classifyer(d_model)
-        self.fuse = nn.Linear(d_model * 2, d_model)
+        self.initial_d = initial_d
+        self.initial_embedding_2 = nn.Linear(self.initial_d, d_model)
 
     def before(self, input_seqs, seq_time_step):
-
         # time embedding
         seq_time_step = seq_time_step.unsqueeze(2) / 180
         time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
         time_encoding = self.time_updim(time_feature)
         # visit_embedding e_t
-        visit_embedding = self.initial_embedding(input_seqs)
-        visit_embedding = self.emb_dropout(visit_embedding)
-        visit_embedding = self.relu(visit_embedding)
+        if self.initial_d != 0:
+            visit_embedding = self.initial_embedding_2(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
+            visit_embedding = visit_embedding + time_encoding
+        else:
+            visit_embedding = self.initial_embedding(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
 
-        visit_embedding = visit_embedding.sum(-2) + time_encoding
+            visit_embedding = visit_embedding.sum(-2) + time_encoding
         return visit_embedding
 
     def forward(self, input_seqs, mask, length, seq_time_step, codemask, label):
@@ -583,11 +593,11 @@ class LSTM_actGAN(nn.Module):
             fake_softmax[:, i:i + 1, :] = self.classifyer(gen_h[:, i:i + 1, :])
 
         final_prediction_og = og_softmax[:, -1, :]
-
-        return final_prediction_og, fake_softmax, Dec_V, Gen_V, seq_time_step, label
+        final_prediction_fake = fake_softmax[:, -1, :]
+        return final_prediction_og, final_prediction_fake, Dec_V, Gen_V, seq_time_step, label
 
 class LSTM_GcGAN(nn.Module):
-    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_layers=1, m=0,
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, initial_d=0, num_layers=1, m=0,
                  dense_model=64):
         super().__init__()
         self.device = device
@@ -602,7 +612,8 @@ class LSTM_GcGAN(nn.Module):
         self.relu = nn.ReLU()
         self.GAN = GAN
         self.classifyer = classifyer(d_model)
-        self.fuse = nn.Linear(d_model * 2, d_model)
+        self.initial_d = initial_d
+        self.initial_embedding_2 = nn.Linear(self.initial_d, d_model)
 
     def before(self, input_seqs, seq_time_step):
         # time embedding
@@ -610,11 +621,17 @@ class LSTM_GcGAN(nn.Module):
         time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
         time_encoding = self.time_updim(time_feature)
         # visit_embedding e_t
-        visit_embedding = self.initial_embedding(input_seqs)
-        visit_embedding = self.emb_dropout(visit_embedding)
-        visit_embedding = self.relu(visit_embedding)
+        if self.initial_d != 0:
+            visit_embedding = self.initial_embedding_2(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
+            visit_embedding = visit_embedding + time_encoding
+        else:
+            visit_embedding = self.initial_embedding(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
 
-        visit_embedding = visit_embedding.sum(-2) + time_encoding
+            visit_embedding = visit_embedding.sum(-2) + time_encoding
         return visit_embedding
 
     def forward(self, input_seqs, mask, length, seq_time_step, codemask, label):
@@ -636,11 +653,11 @@ class LSTM_GcGAN(nn.Module):
             fake_softmax[:, i:i + 1, :] = self.classifyer(gen_h[:, i:i + 1, :])
 
         final_prediction_og = og_softmax[:, -1, :]
-
-        return final_prediction_og, fake_softmax, Dec_V, Gen_V, seq_time_step, label
+        final_prediction_fake = fake_softmax[:, -1, :]
+        return final_prediction_og, final_prediction_fake, Dec_V, Gen_V, seq_time_step, label
 
 class LSTM_ehrGAN(nn.Module):
-    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_layers=1, m=0,
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, initial_d=0, num_layers=1, m=0,
                  dense_model=64):
         super().__init__()
         self.device = device
@@ -655,7 +672,8 @@ class LSTM_ehrGAN(nn.Module):
         self.relu = nn.ReLU()
         self.GAN = GAN
         self.classifyer = classifyer(d_model)
-        # self.fuse = nn.Linear(d_model * 2, d_model)
+        self.initial_d = initial_d
+        self.initial_embedding_2 = nn.Linear(self.initial_d, d_model)
 
     def before(self, input_seqs, seq_time_step):
         # time embedding
@@ -663,11 +681,17 @@ class LSTM_ehrGAN(nn.Module):
         time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
         time_encoding = self.time_updim(time_feature)
         # visit_embedding e_t
-        visit_embedding = self.initial_embedding(input_seqs)
-        visit_embedding = self.emb_dropout(visit_embedding)
-        visit_embedding = self.relu(visit_embedding)
+        if self.initial_d != 0:
+            visit_embedding = self.initial_embedding_2(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
+            visit_embedding = visit_embedding + time_encoding
+        else:
+            visit_embedding = self.initial_embedding(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
 
-        visit_embedding = visit_embedding.sum(-2) + time_encoding
+            visit_embedding = visit_embedding.sum(-2) + time_encoding
         return visit_embedding
 
     def forward(self, input_seqs, mask, length, seq_time_step, codemask, label):
@@ -689,11 +713,11 @@ class LSTM_ehrGAN(nn.Module):
             fake_softmax[:, i:i + 1, :] = self.classifyer(gen_h[:, i:i + 1, :])
 
         final_prediction_og = og_softmax[:, -1, :]
-
-        return final_prediction_og, fake_softmax, Dec_V, Gen_V, seq_time_step, label
+        final_prediction_fake = fake_softmax[:, -1, :]
+        return final_prediction_og, final_prediction_fake, Dec_V, Gen_V, seq_time_step, label
 
 class Dipole_base(nn.Module):
-    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_layers=1, m=0,
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, initial_d=0, num_layers=1, m=0,
                  dense_model=64):
         super().__init__()
         self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
@@ -708,7 +732,8 @@ class Dipole_base(nn.Module):
         self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.GAN = GAN
         self.relu=nn.ReLU()
-
+        self.initial_d = initial_d
+        self.initial_embedding_2 = nn.Linear(self.initial_d, d_model)
 
     def before(self, input_seqs, seq_time_step):
         # time embedding
@@ -716,11 +741,17 @@ class Dipole_base(nn.Module):
         time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
         time_encoding = self.time_updim(time_feature)
         # visit_embedding e_t
-        visit_embedding = self.initial_embedding(input_seqs)
-        visit_embedding = self.emb_dropout(visit_embedding)
-        visit_embedding = self.relu(visit_embedding)
+        if self.initial_d != 0:
+            visit_embedding = self.initial_embedding_2(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
+            visit_embedding = visit_embedding + time_encoding
+        else:
+            visit_embedding = self.initial_embedding(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
 
-        visit_embedding = visit_embedding.sum(-2) + time_encoding
+            visit_embedding = visit_embedding.sum(-2) + time_encoding
         return visit_embedding
 
     def forward(self, input_seqs, mask, lengths, seq_time_step, codemask, label):
@@ -758,7 +789,7 @@ class Dipole_base(nn.Module):
 
 class TLSTM_base(nn.Module):
 
-    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_layers=1, m=0,
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, initial_d=0, num_layers=1, m=0,
                  dense_model=64):
         super(TLSTM_base, self).__init__()
 
@@ -772,9 +803,13 @@ class TLSTM_base(nn.Module):
         self.output_mlp = nn.Sequential(nn.Linear(d_model, 2))
         self.pooler = MaxPoolLayer()
         self.GAN = GAN
-
+        self.initial_d = initial_d
+        self.initial_embedding_2 = nn.Linear(self.initial_d, d_model)
     def forward(self, input_seqs, mask, lengths, seq_time_step, codemask, label):
-        x = self.embbedding(input_seqs).sum(dim=2)
+        if self.initial_d != 0:
+            x = self.initial_embedding_2(input_seqs)
+        else:
+            x = self.embbedding(input_seqs).sum(dim=2)
 
         Dec_X, Gen_X, _, _ = self.GAN(x, seq_time_step, label)
 
@@ -831,7 +866,7 @@ class TLSTM_base(nn.Module):
 
 class SAND_base(nn.Module):
 
-    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_heads, max_pos, num_layers=1, m=0,
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_heads, max_pos, initial_d=0, num_layers=1, m=0,
                  dense_model=64):
 
         super().__init__()
@@ -849,18 +884,23 @@ class SAND_base(nn.Module):
         self.out_layer = nn.Linear(d_model * 4, 2)
         self.layer_norm = nn.LayerNorm(d_model)
         self.GAN = GAN
+        self.initial_d = initial_d
+        self.initial_embedding_2 = nn.Linear(self.initial_d, d_model)
 
 
     def forward(self, input_seqs, masks, lengths, seq_time_step, codemask, label):
-        x = self.embbedding(input_seqs).sum(dim=2) + self.bias_embedding
+        if self.initial_d != 0:
+            x = self.initial_embedding_2(input_seqs)
+        else:
+            x = self.embbedding(input_seqs).sum(dim=2) + self.bias_embedding
         bs, sl, dm = x.size()
         x = self.emb_dropout(x)
-        output_pos, ind_pos = self.pos_emb(lengths)
-        x += output_pos
+        # output_pos, ind_pos = self.pos_emb(lengths)
+        # x += output_pos
 
         Dec_X, Gen_X, _, _ = self.GAN(x, seq_time_step, label)
 
-        x, attention = self.encoder_layer(x, x, x, masks)
+        x, attention = self.encoder_layer(x, x, x)
         mask = (torch.arange(sl, device=x.device).unsqueeze(0).expand(bs, sl) >= lengths.unsqueeze(
             1))
         x = x.masked_fill(mask.unsqueeze(-1).expand_as(x), 0.0)

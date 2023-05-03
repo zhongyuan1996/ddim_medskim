@@ -205,8 +205,8 @@ random.seed(1234)
 # temp = np.array(list(reversed(range(0, len(val_x[0])))))
 # val_timeseq = np.repeat(temp[np.newaxis,: ], len(val_x), axis=0)
 #
-# training_x, training_y, training_timeseq, testing_x, testing_y, testing_timeseq, val_x, val_y, val_timeseq = \
-# training_x.tolist(), training_y.tolist(), training_timeseq.tolist(), testing_x.tolist(), testing_y.tolist(), testing_timeseq.tolist(), val_x.tolist(), val_y.tolist(), val_timeseq.tolist()
+# # training_x, training_y, training_timeseq, testing_x, testing_y, testing_timeseq, val_x, val_y, val_timeseq = \
+# # training_x.tolist(), training_y.tolist(), training_timeseq.tolist(), testing_x.tolist(), testing_y.tolist(), testing_timeseq.tolist(), val_x.tolist(), val_y.tolist(), val_timeseq.tolist()
 #
 # pickle.dump((training_x, training_y, training_timeseq), open('data/ARF/ARF_training_new.pickle', 'wb'))
 # pickle.dump((testing_x, testing_y, testing_timeseq), open('data/ARF/ARF_testing_new.pickle', 'wb'))
@@ -227,8 +227,8 @@ random.seed(1234)
 # temp = np.array(list(reversed(range(0, len(val_x[0])))))
 # val_timeseq = np.repeat(temp[np.newaxis,: ], len(val_x), axis=0)
 #
-# training_x, training_y, training_timeseq, testing_x, testing_y, testing_timeseq, val_x, val_y, val_timeseq = \
-# training_x.tolist(), training_y.tolist(), training_timeseq.tolist(), testing_x.tolist(), testing_y.tolist(), testing_timeseq.tolist(), val_x.tolist(), val_y.tolist(), val_timeseq.tolist()
+# # training_x, training_y, training_timeseq, testing_x, testing_y, testing_timeseq, val_x, val_y, val_timeseq = \
+# # training_x.tolist(), training_y.tolist(), training_timeseq.tolist(), testing_x.tolist(), testing_y.tolist(), testing_timeseq.tolist(), val_x.tolist(), val_y.tolist(), val_timeseq.tolist()
 #
 # pickle.dump((training_x, training_y, training_timeseq), open('data/Shock/Shock_training_new.pickle', 'wb'))
 # pickle.dump((testing_x, testing_y, testing_timeseq), open('data/Shock/Shock_testing_new.pickle', 'wb'))
@@ -238,21 +238,21 @@ training = np.load('data/mortality/mortality_training_og.npz')
 training_x, training_y = training['x'], training['y']
 temp = np.array(list(reversed(range(0, len(training_x[0])))))
 training_timeseq = np.repeat(temp[np.newaxis,: ], len(training_x), axis=0)
-training_x, training_y, training_timeseq = training_x.tolist(), training_y.tolist(), training_timeseq.tolist()
+# training_x, training_y, training_timeseq = training_x.tolist(), training_y.tolist(), training_timeseq.tolist()
 pickle.dump((training_x, training_y, training_timeseq), open('data/mortality/mortality_training_new.pickle', 'wb'))
 
-# testing = np.load('data/mortality/mortality_testing_og.npz')
-# testing_x, testing_y = testing['x'], testing['y']
-# temp = np.array(list(reversed(range(0, len(testing_x[0])))))
-# testing_timeseq = np.repeat(temp[np.newaxis,: ], len(testing_x), axis=0)
+testing = np.load('data/mortality/mortality_testing_og.npz')
+testing_x, testing_y = testing['x'], testing['y']
+temp = np.array(list(reversed(range(0, len(testing_x[0])))))
+testing_timeseq = np.repeat(temp[np.newaxis,: ], len(testing_x), axis=0)
 # testing_x, testing_y, testing_timeseq = testing_x.tolist(), testing_y.tolist(), testing_timeseq.tolist()
-# pickle.dump((testing_x, testing_y, testing_timeseq), open('data/mortality/mortality_testing_new.pickle', 'wb'))
+pickle.dump((testing_x, testing_y, testing_timeseq), open('data/mortality/mortality_testing_new.pickle', 'wb'))
 
 
 
-# val = np.load('data/mortality/mortality_validation_og.npz')
-# val_x, val_y = val['x'], val['y']
-# temp = np.array(list(reversed(range(0, len(val_x[0])))))
-# val_timeseq = np.repeat(temp[np.newaxis,: ], len(val_x), axis=0)
+val = np.load('data/mortality/mortality_validation_og.npz')
+val_x, val_y = val['x'], val['y']
+temp = np.array(list(reversed(range(0, len(val_x[0])))))
+val_timeseq = np.repeat(temp[np.newaxis,: ], len(val_x), axis=0)
 # val_x, val_y, val_timeseq = val_x.tolist(), val_y.tolist(), val_timeseq.tolist()
-# pickle.dump((val_x, val_y, val_timeseq), open('data/mortality/mortality_validation_new.pickle', 'wb'))
+pickle.dump((val_x, val_y, val_timeseq), open('data/mortality/mortality_validation_new.pickle', 'wb'))
