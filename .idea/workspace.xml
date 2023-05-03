@@ -4,11 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="all gan for lstm">
+    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="gradient update method">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ALL_GAN_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/ALL_GAN_runner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/ALL_GAN.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/ALL_GAN.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/baseline.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/baseline.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/og_baseline.py" beforeDir="false" afterPath="$PROJECT_DIR$/og_baseline.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -65,7 +62,7 @@
       <recent name="C:\Users\yfz5556\PycharmProjects\ddim_medskim" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.ALL_GAN_runner">
+  <component name="RunManager" selected="Python.og_baseline">
     <configuration name="ALL_GAN" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="ddim_medskim" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -178,8 +175,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.ALL_GAN_runner" />
         <item itemvalue="Python.og_baseline" />
+        <item itemvalue="Python.ALL_GAN_runner" />
         <item itemvalue="Python.ALL_GAN" />
         <item itemvalue="Python.seeData" />
         <item itemvalue="Python.medskim" />
@@ -250,21 +247,7 @@
       <workItem from="1681404602520" duration="185886000" />
       <workItem from="1682881468624" duration="14873000" />
       <workItem from="1683046113494" duration="331000" />
-      <workItem from="1683046453847" duration="18824000" />
-    </task>
-    <task id="LOCAL-00049" summary="remaster model for hyper-perameter study">
-      <created>1674780647940</created>
-      <option name="number" value="00049" />
-      <option name="presentableId" value="LOCAL-00049" />
-      <option name="project" value="LOCAL" />
-      <updated>1674780647940</updated>
-    </task>
-    <task id="LOCAL-00050" summary="abtest rewritten">
-      <created>1674867063329</created>
-      <option name="number" value="00050" />
-      <option name="presentableId" value="LOCAL-00050" />
-      <option name="project" value="LOCAL" />
-      <updated>1674867063330</updated>
+      <workItem from="1683046453847" duration="24125000" />
     </task>
     <task id="LOCAL-00051" summary="abtest rewritten">
       <created>1674914485120</created>
@@ -595,7 +578,21 @@
       <option name="project" value="LOCAL" />
       <updated>1683068526375</updated>
     </task>
-    <option name="localTasksCounter" value="98" />
+    <task id="LOCAL-00098" summary="gradient update method">
+      <created>1683069751407</created>
+      <option name="number" value="00098" />
+      <option name="presentableId" value="LOCAL-00098" />
+      <option name="project" value="LOCAL" />
+      <updated>1683069751407</updated>
+    </task>
+    <task id="LOCAL-00099" summary="gradient update method">
+      <created>1683069824329</created>
+      <option name="number" value="00099" />
+      <option name="presentableId" value="LOCAL-00099" />
+      <option name="project" value="LOCAL" />
+      <updated>1683069824329</updated>
+    </task>
+    <option name="localTasksCounter" value="100" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -620,7 +617,6 @@
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
-    <MESSAGE value="h_t-1" />
     <MESSAGE value="getting e_t and E_t" />
     <MESSAGE value="getting h_t and H_t" />
     <MESSAGE value="remaster model for hyper-perameter study" />
@@ -645,7 +641,8 @@
     <MESSAGE value="EEG baselines" />
     <MESSAGE value="medskim diff amnesia" />
     <MESSAGE value="all gan for lstm" />
-    <option name="LAST_COMMIT_MESSAGE" value="all gan for lstm" />
+    <MESSAGE value="gradient update method" />
+    <option name="LAST_COMMIT_MESSAGE" value="gradient update method" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -711,7 +708,7 @@
     <SUITE FILE_PATH="coverage/ddim_medskim$dataset.coverage" NAME="dataset Coverage Results" MODIFIED="1667506884316" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
     <SUITE FILE_PATH="coverage/ddim_medskim$cond_test_model.coverage" NAME="cond_test_model Coverage Results" MODIFIED="1670200881349" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$ddim_LSTM.coverage" NAME="ddim_LSTM Coverage Results" MODIFIED="1669239149204" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$og_baseline.coverage" NAME="og_baseline Coverage Results" MODIFIED="1683068958351" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$og_baseline.coverage" NAME="og_baseline Coverage Results" MODIFIED="1683075309579" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$og_test_model.coverage" NAME="og_test_model Coverage Results" MODIFIED="1673470930495" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$medskim.coverage" NAME="medskim Coverage Results" MODIFIED="1682959153777" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$helloworld.coverage" NAME="helloworld Coverage Results" MODIFIED="1667052055792" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
