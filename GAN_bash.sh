@@ -14,11 +14,11 @@ for SEED in ${seeds[@]}
         do
           if [ DISEASE=="mimic" ]; then
               CUDA_VISIBLE_DEVICES=2, python3 ALL_GAN_runner.py --seed=$SEED --model=$MODAL --target_disease=$DISEASE --max_len=15 --n_epochs=30 -bs=128
-          if [ DISEASE=="ARF" ]; then
+          elif [ DISEASE=="ARF" ]; then
               CUDA_VISIBLE_DEVICES=2, python3 ALL_GAN_runner.py --seed=$SEED --model=$MODAL --target_disease=$DISEASE --max_len=12 --max_num_codes=5132 --n_epochs=30 -bs=128
-          if [ DISEASE=="Shock" ]; then
+          elif [ DISEASE=="Shock" ]; then
               CUDA_VISIBLE_DEVICES=2, python3 ALL_GAN_runner.py --seed=$SEED --model=$MODAL --target_disease=$DISEASE --max_len=12 --max_num_codes=5795 --n_epochs=30 -bs=128
-          if [ DISEASE=="mortality" ]; then
+          elif [ DISEASE=="mortality" ]; then
               CUDA_VISIBLE_DEVICES=2, python3 ALL_GAN_runner.py --seed=$SEED --model=$MODAL --target_disease=$DISEASE --max_len=48 --max_num_codes=7727 --n_epochs=30 -bs=128
           else
               CUDA_VISIBLE_DEVICES=2, python3 ALL_GAN_runner.py --seed=$SEED --model=$MODAL --target_disease=$DISEASE --max_len=50 --n_epochs=30 -bs=128
