@@ -6,7 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="gradient update method">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/og_baseline.py" beforeDir="false" afterPath="$PROJECT_DIR$/og_baseline.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GAN_bash.sh" beforeDir="false" afterPath="$PROJECT_DIR$/GAN_bash.sh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -247,21 +247,8 @@
       <workItem from="1681404602520" duration="185886000" />
       <workItem from="1682881468624" duration="14873000" />
       <workItem from="1683046113494" duration="331000" />
-      <workItem from="1683046453847" duration="24125000" />
-    </task>
-    <task id="LOCAL-00051" summary="abtest rewritten">
-      <created>1674914485120</created>
-      <option name="number" value="00051" />
-      <option name="presentableId" value="LOCAL-00051" />
-      <option name="project" value="LOCAL" />
-      <updated>1674914485120</updated>
-    </task>
-    <task id="LOCAL-00052" summary="ab3">
-      <created>1674924411791</created>
-      <option name="number" value="00052" />
-      <option name="presentableId" value="LOCAL-00052" />
-      <option name="project" value="LOCAL" />
-      <updated>1674924411791</updated>
+      <workItem from="1683046453847" duration="24316000" />
+      <workItem from="1683124846199" duration="17000" />
     </task>
     <task id="LOCAL-00053" summary="ab3">
       <created>1674944436958</created>
@@ -592,7 +579,21 @@
       <option name="project" value="LOCAL" />
       <updated>1683069824329</updated>
     </task>
-    <option name="localTasksCounter" value="100" />
+    <task id="LOCAL-00100" summary="gradient update method">
+      <created>1683124573195</created>
+      <option name="number" value="00100" />
+      <option name="presentableId" value="LOCAL-00100" />
+      <option name="project" value="LOCAL" />
+      <updated>1683124573195</updated>
+    </task>
+    <task id="LOCAL-00101" summary="gradient update method">
+      <created>1683124648820</created>
+      <option name="number" value="00101" />
+      <option name="presentableId" value="LOCAL-00101" />
+      <option name="project" value="LOCAL" />
+      <updated>1683124648820</updated>
+    </task>
+    <option name="localTasksCounter" value="102" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
