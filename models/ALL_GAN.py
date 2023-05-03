@@ -424,7 +424,7 @@ class ehrGAN(nn.Module):
         return decode_x, fake_x, time_seqs, labels
 
 class LSTM_base(nn.Module):
-    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN=None, num_layers=1, m=0,
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, initial_d = None, num_layers=1, m=0,
                  dense_model=64):
         super().__init__()
         self.device = device
@@ -436,6 +436,8 @@ class LSTM_base(nn.Module):
         self.time_layer = nn.Linear(1, 64)
         self.time_updim = nn.Linear(64, d_model)
         self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.initial_d = initial_d
+        self.initial_embedding_2 = nn.Linear(self.initial_d, d_model)
         self.relu = nn.ReLU()
         self.classifyer = classifyer(d_model)
 
@@ -445,7 +447,10 @@ class LSTM_base(nn.Module):
         time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
         time_encoding = self.time_updim(time_feature)
         # visit_embedding e_t
-        visit_embedding = self.initial_embedding(input_seqs)
+        if not self.initial_d:
+            visit_embedding = self.initial_embedding(input_seqs)
+        else:
+            visit_embedding = self.initial_embedding_2(input_seqs)
         visit_embedding = self.emb_dropout(visit_embedding)
         visit_embedding = self.relu(visit_embedding)
 
@@ -464,10 +469,10 @@ class LSTM_base(nn.Module):
 
         final_prediction_og = og_softmax[:, -1, :]
 
-        return final_prediction_og, _, _, seq_time_step, label
+        return final_prediction_og, _, _, _, seq_time_step, label
 
 class LSTM_medGAN(nn.Module):
-    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_layers=1, m=0,
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, initial_d = 0, num_layers=1, m=0,
                  dense_model=64):
         super().__init__()
         self.device = device
@@ -481,7 +486,9 @@ class LSTM_medGAN(nn.Module):
         self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.relu = nn.ReLU()
         self.GAN = GAN
-        self.fuse = nn.Linear(d_model * 2, d_model)
+        self.initial_d = initial_d
+        self.initial_embedding_2 = nn.Linear(self.initial_d, d_model)
+        self.relu = nn.ReLU()
         self.classifyer = classifyer(d_model)
 
     def before(self, input_seqs, seq_time_step):
@@ -490,7 +497,10 @@ class LSTM_medGAN(nn.Module):
         time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
         time_encoding = self.time_updim(time_feature)
         # visit_embedding e_t
-        visit_embedding = self.initial_embedding(input_seqs)
+        if self.initial_d != 0:
+            visit_embedding = self.initial_embedding(input_seqs)
+        else:
+            visit_embedding = self.initial_embedding_2(input_seqs)
         visit_embedding = self.emb_dropout(visit_embedding)
         visit_embedding = self.relu(visit_embedding)
 
@@ -517,7 +527,7 @@ class LSTM_medGAN(nn.Module):
 
         final_prediction_og = og_softmax[:, -1, :]
 
-        return final_prediction_og, Dec_V, Gen_V, seq_time_step, label
+        return final_prediction_og, fake_softmax, Dec_V, Gen_V, seq_time_step, label
 
 class LSTM_actGAN(nn.Module):
     def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_layers=1, m=0,
@@ -574,7 +584,7 @@ class LSTM_actGAN(nn.Module):
 
         final_prediction_og = og_softmax[:, -1, :]
 
-        return final_prediction_og, Dec_V, Gen_V, seq_time_step, label
+        return final_prediction_og, fake_softmax, Dec_V, Gen_V, seq_time_step, label
 
 class LSTM_GcGAN(nn.Module):
     def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_layers=1, m=0,
@@ -627,7 +637,7 @@ class LSTM_GcGAN(nn.Module):
 
         final_prediction_og = og_softmax[:, -1, :]
 
-        return final_prediction_og, Dec_V, Gen_V, seq_time_step, label
+        return final_prediction_og, fake_softmax, Dec_V, Gen_V, seq_time_step, label
 
 class LSTM_ehrGAN(nn.Module):
     def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_layers=1, m=0,
@@ -680,8 +690,207 @@ class LSTM_ehrGAN(nn.Module):
 
         final_prediction_og = og_softmax[:, -1, :]
 
-        return final_prediction_og, Dec_V, Gen_V, seq_time_step, label
+        return final_prediction_og, fake_softmax, Dec_V, Gen_V, seq_time_step, label
 
+class Dipole_base(nn.Module):
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_layers=1, m=0,
+                 dense_model=64):
+        super().__init__()
+        self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.dropout = nn.Dropout(dropout)
+        self.emb_dropout = nn.Dropout(dropout_emb)
+        self.output_mlp = nn.Sequential(nn.Linear(d_model, 2))
+        self.gru = nn.GRU(d_model, d_model, num_layers=num_layers, batch_first=True, bidirectional=False)
+        self.weight_layer = nn.Linear(d_model, 1)
+        self.tanh = nn.Tanh()
+        self.time_layer = nn.Linear(1, 64)
+        self.time_updim = nn.Linear(64, d_model)
+        self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.GAN = GAN
+        self.relu=nn.ReLU()
+
+
+    def before(self, input_seqs, seq_time_step):
+        # time embedding
+        seq_time_step = seq_time_step.unsqueeze(2) / 180
+        time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
+        time_encoding = self.time_updim(time_feature)
+        # visit_embedding e_t
+        visit_embedding = self.initial_embedding(input_seqs)
+        visit_embedding = self.emb_dropout(visit_embedding)
+        visit_embedding = self.relu(visit_embedding)
+
+        visit_embedding = visit_embedding.sum(-2) + time_encoding
+        return visit_embedding
+
+    def forward(self, input_seqs, mask, lengths, seq_time_step, codemask, label):
+        batch_size, seq_len, num_cui_per_visit = input_seqs.size()
+        x = self.before(input_seqs, seq_time_step)
+        x = self.emb_dropout(x)
+
+        Dec_X, Gen_X, _, _ = self.GAN(x, seq_time_step, label)
+
+        rnn_input = pack_padded_sequence(x, lengths.cpu(), batch_first=True, enforce_sorted=False)
+        rnn_output, _ = self.gru(rnn_input)
+        rnn_output, _ = pad_packed_sequence(rnn_output, batch_first=True, total_length=seq_len)
+
+        gen_rnn_input = pack_padded_sequence(Gen_X, lengths.cpu(), batch_first=True, enforce_sorted=False)
+        gen_rnn_output, _ = self.gru(gen_rnn_input)
+        gen_rnn_output, _ = pad_packed_sequence(gen_rnn_output, batch_first=True, total_length=seq_len)
+
+        weight = self.weight_layer(rnn_output)
+        mask = (torch.arange(seq_len, device=x.device).unsqueeze(0).expand(batch_size, seq_len) >= lengths.unsqueeze(1))
+        att = torch.softmax(weight.squeeze().masked_fill(mask, -np.inf), dim=1).view(batch_size, seq_len)
+        weighted_features = rnn_output * att.unsqueeze(2)
+        averaged_features = torch.sum(weighted_features, 1)
+        averaged_features = self.dropout(averaged_features)
+        pred = self.output_mlp(averaged_features)
+
+        gen_weight = self.weight_layer(gen_rnn_output)
+        gen_mask = (torch.arange(seq_len, device=x.device).unsqueeze(0).expand(batch_size, seq_len) >= lengths.unsqueeze(1))
+        gen_att = torch.softmax(gen_weight.squeeze().masked_fill(gen_mask, -np.inf), dim=1).view(batch_size, seq_len)
+        gen_weighted_features = gen_rnn_output * gen_att.unsqueeze(2)
+        gen_averaged_features = torch.sum(gen_weighted_features, 1)
+        gen_averaged_features = self.dropout(gen_averaged_features)
+        gen_pred = self.output_mlp(gen_averaged_features)
+
+        return pred, gen_pred, Dec_X, Gen_X, seq_time_step, label
+
+class TLSTM_base(nn.Module):
+
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_layers=1, m=0,
+                 dense_model=64):
+        super(TLSTM_base, self).__init__()
+
+        self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.W_all = nn.Linear(d_model, d_model * 4)
+        self.U_all = nn.Linear(d_model, d_model * 4)
+        self.W_d = nn.Linear(d_model, d_model)
+        self.d_model = d_model
+        self.time_layer = torch.nn.Linear(64, d_model)
+        self.selection_layer = torch.nn.Linear(1, 64)
+        self.output_mlp = nn.Sequential(nn.Linear(d_model, 2))
+        self.pooler = MaxPoolLayer()
+        self.GAN = GAN
+
+    def forward(self, input_seqs, mask, lengths, seq_time_step, codemask, label):
+        x = self.embbedding(input_seqs).sum(dim=2)
+
+        Dec_X, Gen_X, _, _ = self.GAN(x, seq_time_step, label)
+
+        b, seq, embed = x.size()
+        h = torch.zeros(b, self.d_model, requires_grad=False).to(x.device)
+        c = torch.zeros(b, self.d_model, requires_grad=False).to(x.device)
+        outputs = []
+        seq_time_step = seq_time_step.unsqueeze(2) / 180
+        time_feature = 1 - torch.tanh(torch.pow(self.selection_layer(seq_time_step), 2))
+        time_feature = self.time_layer(time_feature)
+        for s in range(seq):
+            c_s1 = torch.tanh(self.W_d(c))
+            c_s2 = c_s1 * time_feature[:, s]
+            c_l = c - c_s1
+            c_adj = c_l + c_s2
+            outs = self.W_all(h) + self.U_all(x[:, s])
+            # print(outs.size())
+            f, i, o, c_tmp = torch.chunk(outs, 4, 1)
+            f = torch.sigmoid(f)
+            i = torch.sigmoid(i)
+            o = torch.sigmoid(o)
+            c_tmp = torch.sigmoid(c_tmp)
+            c = f * c_adj + i * c_tmp
+            h = o * torch.tanh(c)
+            outputs.append(h)
+        outputs = torch.stack(outputs, 1)
+
+        out = self.pooler(outputs, lengths)
+        out = self.output_mlp(out)
+
+        gen_h = torch.zeros(b,self.d_model, requires_grad=False).to(x.device)
+        gen_c = torch.zeros(b,self.d_model, requires_grad=False).to(x.device)
+        gen_outputs = []
+        for s in range(seq):
+            gen_c_s1 = torch.tanh(self.W_d(gen_c))
+            gen_c_s2 = gen_c_s1 * time_feature[:, s]
+            gen_c_l = gen_c - gen_c_s1
+            gen_c_adj = gen_c_l + gen_c_s2
+            gen_outs = self.W_all(gen_h) + self.U_all(Gen_X[:, s])
+            # print(outs.size())
+            gen_f, gen_i, gen_o, gen_c_tmp = torch.chunk(gen_outs, 4, 1)
+            gen_f = torch.sigmoid(gen_f)
+            gen_i = torch.sigmoid(gen_i)
+            gen_o = torch.sigmoid(gen_o)
+            gen_c_tmp = torch.sigmoid(gen_c_tmp)
+            gen_c = gen_f * gen_c_adj + gen_i * gen_c_tmp
+            gen_h = gen_o * torch.tanh(gen_c)
+            gen_outputs.append(gen_h)
+        gen_outputs = torch.stack(gen_outputs, 1)
+        gen_out = self.pooler(gen_outputs, lengths)
+        gen_out = self.output_mlp(gen_out)
+
+        return out, gen_out, Dec_X, Gen_X, seq_time_step, label
+
+class SAND_base(nn.Module):
+
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_heads, max_pos, num_layers=1, m=0,
+                 dense_model=64):
+
+        super().__init__()
+        self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.emb_dropout = nn.Dropout(dropout_emb)
+        self.pos_emb = PositionalEncoding(d_model, max_pos)
+        self.encoder_layer = Attention(d_model, num_heads, dropout)
+        self.positional_feed_forward_layer = nn.Sequential(nn.Linear(d_model, 4 * d_model), nn.ReLU(),
+                                                           nn.Linear(4 * d_model, d_model))
+        self.bias_embedding = torch.nn.Parameter(torch.Tensor(d_model))
+        bound = 1 / math.sqrt(vocab_size)
+        init.uniform_(self.bias_embedding, -bound, bound)
+        # self.weight_layer = torch.nn.Linear(d_model, 1)
+        self.drop_out = nn.Dropout(dropout)
+        self.out_layer = nn.Linear(d_model * 4, 2)
+        self.layer_norm = nn.LayerNorm(d_model)
+        self.GAN = GAN
+
+
+    def forward(self, input_seqs, masks, lengths, seq_time_step, codemask, label):
+        x = self.embbedding(input_seqs).sum(dim=2) + self.bias_embedding
+        bs, sl, dm = x.size()
+        x = self.emb_dropout(x)
+        output_pos, ind_pos = self.pos_emb(lengths)
+        x += output_pos
+
+        Dec_X, Gen_X, _, _ = self.GAN(x, seq_time_step, label)
+
+        x, attention = self.encoder_layer(x, x, x, masks)
+        mask = (torch.arange(sl, device=x.device).unsqueeze(0).expand(bs, sl) >= lengths.unsqueeze(
+            1))
+        x = x.masked_fill(mask.unsqueeze(-1).expand_as(x), 0.0)
+        U = torch.zeros((x.size(0), 4, x.size(2))).to(x.device)
+        lengths = lengths.float()
+        for t in range(1, input_seqs.size(1) + 1):
+            s = 4 * t / lengths
+            for m in range(1, 4 + 1):
+                w = torch.pow(1 - torch.abs(s - m) / 4, 2)
+                U[:, m - 1] += w.unsqueeze(-1) * x[:, t - 1]
+        U = U.view(input_seqs.size(0), -1)
+        U = self.drop_out(U)
+        output = self.out_layer(U)
+
+        gen_x, gen_attention = self.encoder_layer(Gen_X, Gen_X, Gen_X, masks)
+        gen_mask = (torch.arange(sl, device=gen_x.device).unsqueeze(0).expand(bs, sl) >= lengths.unsqueeze(
+            1))
+        gen_x = gen_x.masked_fill(gen_mask.unsqueeze(-1).expand_as(gen_x), 0.0)
+        gen_U = torch.zeros((gen_x.size(0), 4, gen_x.size(2))).to(gen_x.device)
+        lengths = lengths.float()
+        for t in range(1, input_seqs.size(1) + 1):
+            s = 4 * t / lengths
+            for m in range(1, 4 + 1):
+                w = torch.pow(1 - torch.abs(s - m) / 4, 2)
+                gen_U[:, m - 1] += w.unsqueeze(-1) * gen_x[:, t - 1]
+        gen_U = gen_U.view(input_seqs.size(0), -1)
+        gen_U = self.drop_out(gen_U)
+        gen_output = self.out_layer(gen_U)
+
+        return output, gen_output, Dec_X, Gen_X, seq_time_step, label
 # class LSTM_medGAN(nn.Module):
 #     def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_layers=1, m=0,
 #                  dense_model=64):

@@ -34,7 +34,7 @@ def eval_metric(eval_set, model, model_name = None):
 
         for i, data in enumerate(eval_set):
             labels, ehr, mask, txt, mask_txt, lengths, time_step, code_mask = data
-            fp_og, Dec_V, Gen_V, _, _ = model(ehr, mask, lengths, time_step, code_mask, labels)
+            fp_og, fp_fake, Dec_V, Gen_V, _, _ = model(ehr, mask, lengths, time_step, code_mask, labels)
 
             scores = fp_og.data.cpu().numpy()
 
@@ -66,18 +66,21 @@ def main():
     parser.add_argument('--seed', default=1234, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
-    parser.add_argument('--model', default='LSTM_ehrGAN', choices=['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN'])
-    parser.add_argument('--target_disease', default='Kidney',
-                        choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic'])
+    parser.add_argument('--model', default='LSTM_medGAN', choices=['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN',
+                                                                   'Dipole_ehrGAN', 'Dipole_GcGAN', 'Dipole_actGAN', 'Dipole_medGAN',
+                                                                    'TLSTM_ehrGAN', 'TLSTM_GcGAN', 'TLSTM_actGAN', 'TLSTM_medGAN',
+                                                                   'SAND_ehrGAN', 'SAND_GcGAN', 'SAND_actGAN', 'SAND_medGAN'])
+    parser.add_argument('--target_disease', default='ARF',
+                        choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic', 'ARF', 'Shock', 'morality'])
     parser.add_argument('--n_epochs', default=30, type=int)
-    parser.add_argument('--max_len', default=50, type=int, help='max visits of EHR')
+    parser.add_argument('--max_len', default=12, type=int, help='max visits of EHR')
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dense_model', default=64, type=int)
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
     parser.add_argument('--dropout_emb', default=0.1, type=float, help='dropout rate of embedding layers')
     parser.add_argument('--num_layers', default=1, type=int, help='number of transformer layers of EHR encoder')
     parser.add_argument('--num_heads', default=4, type=int, help='number of attention heads')
-    parser.add_argument('--max_num_codes', default=20, type=int, help='max number of ICD codes in each visit')
+    parser.add_argument('--max_num_codes', default=5132, type=int, help='max number of ICD codes in each visit')
     parser.add_argument('--max_num_blks', default=100, type=int, help='max number of blocks in each visit')
     parser.add_argument('--blk_emb_path', default='./data/processed/block_embedding.npy',
                         help='embedding path of blocks')
@@ -141,7 +144,7 @@ def train(args):
         #     statout.write('train_acc,dev_acc,test_acc,train_precision,dev_precision,test_precision,train_recall,dev_recall,test_recall,train_f1,dev_f1,test_f1,train_auc,dev_auc,test_auc,train_pr,dev_pr,test_pr,train_kappa,dev_kappa,test_kappa,train_loss,dev_loss,test_loss\n')
         blk_emb = np.load(args.blk_emb_path)
         blk_pad_id = len(blk_emb) - 1
-
+        initial_d = 0
 
         if args.target_disease == 'Heart_failure':
             code2id = pickle.load(open('data/hf/hf_code2idx_new.pickle', 'rb'))
@@ -171,8 +174,21 @@ def train(args):
         elif args.target_disease == 'mimic':
             pad_id = 4894
             data_path = './data/mimic/mimic'
+        elif args.target_disease == 'ARF':
+            pad_id = 5132
+            initial_d = 5132
+            data_path = './data/ARF/ARF'
+        elif args.target_disease == 'motality':
+            pad_id = 7727
+            initial_d = 7727
+            data_path = './data/motality/motality'
+        elif args.target_disease == 'Shock':
+            pad_id = 5795
+            initial_d = 5795
+            data_path = './data/shock/shock'
         else:
             raise ValueError('Invalid disease')
+
         device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
 
         train_dataset = MyDataset2(data_path + '_training_new.pickle',
@@ -209,6 +225,66 @@ def train(args):
             GAN = medGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
             model = LSTM_actGAN(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN)
+        elif args.model == 'Dipole_ehrGAN':
+            generator = Linear_generator(64, args.max_len)
+            GAN = ehrGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = Dipole_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN)
+        elif args.model == 'Dipole_GcGAN':
+            generator = FCN_generator(64, args.max_len)
+            GAN = GcGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = Dipole_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN)
+        elif args.model == 'Dipole_actGAN':
+            generator = Linear_generator(64, args.max_len)
+            GAN = actGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = Dipole_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN)
+        elif args.model == 'Dipole_medGAN':
+            generator = Linear_generator(64, args.max_len)
+            GAN = medGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = Dipole_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN)
+        elif args.model == 'TLSTM_ehrGAN':
+            generator = Linear_generator(64, args.max_len)
+            GAN = ehrGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = TLSTM_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN)
+        elif args.model == 'TLSTM_GcGAN':
+            generator = FCN_generator(64, args.max_len)
+            GAN = GcGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = TLSTM_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN)
+        elif args.model == 'TLSTM_actGAN':
+            generator = Linear_generator(64, args.max_len)
+            GAN = actGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = TLSTM_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN)
+        elif args.model == 'TLSTM_medGAN':
+            generator = Linear_generator(64, args.max_len)
+            GAN = medGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = TLSTM_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN)
+        elif args.model == 'SAND_ehrGAN':
+            generator = Linear_generator(64, args.max_len)
+            GAN = ehrGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = SAND_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len)
+        elif args.model == 'SAND_GcGAN':
+            generator = FCN_generator(64, args.max_len)
+            GAN = GcGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = SAND_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len)
+        elif args.model == 'SAND_actGAN':
+            generator = Linear_generator(64, args.max_len)
+            GAN = actGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = SAND_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len)
+        elif args.model == 'SAND_medGAN':
+            generator = Linear_generator(64, args.max_len)
+            GAN = medGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = SAND_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len)
         model.to(device)
 
         no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
@@ -260,9 +336,9 @@ def train(args):
                 generator_optim.zero_grad()
 
                 labels, ehr, mask, txt, mask_txt, lengths, time_step, code_mask = data
-                fp_og, Dec_V, Gen_V, _, _ = model(ehr, mask, lengths, time_step, code_mask, labels)
+                fp_og, fp_gen, Dec_V, Gen_V, _, _ = model(ehr, mask, lengths, time_step, code_mask, labels)
 
-                CE_loss = loss_func_pred(fp_og, labels)
+                CE_loss = loss_func_pred(fp_og, labels) + args.lambda_CE_gen_loss * loss_func_pred(fp_gen, labels)
                 CE_loss.backward(retain_graph=True)
 
                 generator_discriminator_out = discriminator(Gen_V)
