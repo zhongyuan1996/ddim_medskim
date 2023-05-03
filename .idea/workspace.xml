@@ -4,13 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="gradient update method">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ALL_GAN_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/ALL_GAN_runner.py" afterDir="false" />
+    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="gan and all datasets">
       <change beforePath="$PROJECT_DIR$/GAN_bash.sh" beforeDir="false" afterPath="$PROJECT_DIR$/GAN_bash.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/ALL_GAN.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/ALL_GAN.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/og_dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/og_dataset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/seeData.py" beforeDir="false" afterPath="$PROJECT_DIR$/seeData.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -253,27 +248,6 @@
       <workItem from="1683046113494" duration="331000" />
       <workItem from="1683046453847" duration="24316000" />
       <workItem from="1683124846199" duration="17000" />
-    </task>
-    <task id="LOCAL-00053" summary="ab3">
-      <created>1674944436958</created>
-      <option name="number" value="00053" />
-      <option name="presentableId" value="LOCAL-00053" />
-      <option name="project" value="LOCAL" />
-      <updated>1674944436958</updated>
-    </task>
-    <task id="LOCAL-00054" summary="rewritten model">
-      <created>1674956515297</created>
-      <option name="number" value="00054" />
-      <option name="presentableId" value="LOCAL-00054" />
-      <option name="project" value="LOCAL" />
-      <updated>1674956515297</updated>
-    </task>
-    <task id="LOCAL-00055" summary="rewritten model">
-      <created>1674965241291</created>
-      <option name="number" value="00055" />
-      <option name="presentableId" value="LOCAL-00055" />
-      <option name="project" value="LOCAL" />
-      <updated>1674965241291</updated>
     </task>
     <task id="LOCAL-00056" summary="ab3">
       <created>1675005648378</created>
@@ -597,7 +571,28 @@
       <option name="project" value="LOCAL" />
       <updated>1683124648820</updated>
     </task>
-    <option name="localTasksCounter" value="102" />
+    <task id="LOCAL-00102" summary="gan and all datasets">
+      <created>1683155928770</created>
+      <option name="number" value="00102" />
+      <option name="presentableId" value="LOCAL-00102" />
+      <option name="project" value="LOCAL" />
+      <updated>1683155928771</updated>
+    </task>
+    <task id="LOCAL-00103" summary="gan and all datasets">
+      <created>1683156019894</created>
+      <option name="number" value="00103" />
+      <option name="presentableId" value="LOCAL-00103" />
+      <option name="project" value="LOCAL" />
+      <updated>1683156019894</updated>
+    </task>
+    <task id="LOCAL-00104" summary="gan and all datasets">
+      <created>1683156198295</created>
+      <option name="number" value="00104" />
+      <option name="presentableId" value="LOCAL-00104" />
+      <option name="project" value="LOCAL" />
+      <updated>1683156198295</updated>
+    </task>
+    <option name="localTasksCounter" value="105" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -622,7 +617,6 @@
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
-    <MESSAGE value="getting e_t and E_t" />
     <MESSAGE value="getting h_t and H_t" />
     <MESSAGE value="remaster model for hyper-perameter study" />
     <MESSAGE value="abtest rewritten" />
@@ -647,7 +641,8 @@
     <MESSAGE value="medskim diff amnesia" />
     <MESSAGE value="all gan for lstm" />
     <MESSAGE value="gradient update method" />
-    <option name="LAST_COMMIT_MESSAGE" value="gradient update method" />
+    <MESSAGE value="gan and all datasets" />
+    <option name="LAST_COMMIT_MESSAGE" value="gan and all datasets" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
