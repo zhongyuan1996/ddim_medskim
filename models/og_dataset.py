@@ -60,6 +60,10 @@ def padTime(time_step, maxlen, pad_id):
             time_step[k].append(pad_id)
     return time_step
 
+def padTime3(time_step, maxlen, pad_id):
+
+    return time_step
+
 def codeMask(input_data, max_num_pervisit, maxlen):
     batch_mask = np.zeros((len(input_data), maxlen, max_num_pervisit), dtype=np.float32) + 1e+20
     output = []
@@ -132,7 +136,7 @@ class MyDataset3(Dataset):
         data = np.load(dir_ehr, allow_pickle=True)
         ehr, self.labels, time_step = data['x'], data['y'], data['timeseq']
         self.ehr, self.mask_ehr, self.lengths = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
-        self.time_step = padTime(time_step, max_len, 100000)
+        self.time_step = padTime3(time_step, max_len, 100000)
         self.code_mask = codeMask(ehr, max_numcode_pervisit, max_len)
         self.device = device
 
