@@ -129,7 +129,8 @@ class MyDataset2(Dataset):
 class MyDataset3(Dataset):
     def __init__(self, dir_ehr, max_len, max_numcode_pervisit, max_numblk_pervisit, ehr_pad_id,
                  device):
-        ehr, self.labels, time_step = pickle.load(open(dir_ehr, 'rb'))
+        data = np.load(dir_ehr, allow_pickle=True)
+        ehr, self.labels, time_step = data['x'], data['y'], data['timeseq']
         self.ehr, self.mask_ehr, self.lengths = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
         self.time_step = padTime(time_step, max_len, 100000)
         self.code_mask = codeMask(ehr, max_numcode_pervisit, max_len)

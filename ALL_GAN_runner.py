@@ -66,7 +66,7 @@ def main():
     parser.add_argument('--seed', default=1234, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=16, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
-    parser.add_argument('--model', default='LSTM_medGAN', choices=['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN',
+    parser.add_argument('--model', default='Dipole_ehrGAN', choices=['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN',
                                                                    'Dipole_ehrGAN', 'Dipole_GcGAN', 'Dipole_actGAN', 'Dipole_medGAN',
                                                                     'TLSTM_ehrGAN', 'TLSTM_GcGAN', 'TLSTM_actGAN', 'TLSTM_medGAN',
                                                                    'SAND_ehrGAN', 'SAND_GcGAN', 'SAND_actGAN', 'SAND_medGAN'])
@@ -185,18 +185,18 @@ def train(args):
         elif args.target_disease == 'Shock':
             pad_id = 5795
             initial_d = 5795
-            data_path = './data/shock/shock'
+            data_path = './data/Shock/Shock'
         else:
             raise ValueError('Invalid disease')
 
         device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
 
         if args.target_disease == 'ARF' or args.target_disease == 'mortality' or args.target_disease == 'Shock':
-            train_dataset = MyDataset3(data_path + '_training_new.pickle',
+            train_dataset = MyDataset3(data_path + '_training_new.npz',
                                       args.max_len, args.max_num_codes, args.max_num_blks, pad_id, device)
-            dev_dataset = MyDataset3(data_path + '_validation_new.pickle', args.max_len,
+            dev_dataset = MyDataset3(data_path + '_validation_new.npz', args.max_len,
                                     args.max_num_codes, args.max_num_blks, pad_id, device)
-            test_dataset = MyDataset3(data_path + '_testing_new.pickle', args.max_len,
+            test_dataset = MyDataset3(data_path + '_testing_new.npz', args.max_len,
                                      args.max_num_codes, args.max_num_blks, pad_id, device)
             train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=True, collate_fn=collate_fn)
             dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
