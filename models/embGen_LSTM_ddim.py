@@ -29,9 +29,10 @@ class classifyer(nn.Module):
 
 class RNNdiff(nn.Module):
 
-    def __init__(self, config, vocab_size, d_model, h_model, dropout, dropout_emb, device):
+    def __init__(self, config, vocab_size, d_model, h_model, dropout, dropout_emb, device, channel, initial_d=0):
         super().__init__()
         self.config = config
+        self.channel = channel
         self.vocab_size = vocab_size
         self.d_model = d_model
         self.device = device
@@ -41,8 +42,8 @@ class RNNdiff(nn.Module):
         self.cross_attention = nn.MultiheadAttention(d_model, 8, batch_first=False)
 
         self.lstm = nn.LSTM(d_model, h_model, num_layers=1, batch_first=False, dropout=dropout)
-        self.diffusion = UNetModel(in_channels=15, model_channels=128,
-                                   out_channels=15, num_res_blocks=2,
+        self.diffusion = UNetModel(in_channels=self.channel, model_channels=128,
+                                   out_channels=self.channel, num_res_blocks=2,
                                    attention_resolutions=[16, ])
         betas = get_beta_schedule(beta_schedule=self.config.diffusion.beta_schedule,
                                   beta_start=self.config.diffusion.beta_start,
@@ -69,20 +70,26 @@ class RNNdiff(nn.Module):
         self.w1 = nn.Linear(2*h_model, 64)
         self.w2 = nn.Linear(64,2)
         self.softmax = torch.nn.Softmax(dim=-1)
-
+        self.initial_d = initial_d
+        self.initial_embedding_2 = nn.Linear(self.initial_d, d_model)
 
     def before(self, input_seqs, seq_time_step):
-
-        #time embedding
+        # time embedding
         seq_time_step = seq_time_step.unsqueeze(2) / 180
         time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
         time_encoding = self.time_updim(time_feature)
-        #visit_embedding e_t
-        visit_embedding = self.initial_embedding(input_seqs)
-        visit_embedding = self.emb_dropout(visit_embedding)
-        visit_embedding = self.relu(visit_embedding)
+        # visit_embedding e_t
+        if self.initial_d != 0:
+            visit_embedding = self.initial_embedding_2(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
+            visit_embedding = visit_embedding + time_encoding
+        else:
+            visit_embedding = self.initial_embedding(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
 
-        visit_embedding = visit_embedding.sum(-2) + time_encoding
+            visit_embedding = visit_embedding.sum(-2) + time_encoding
         return visit_embedding
 
 

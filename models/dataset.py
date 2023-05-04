@@ -59,7 +59,9 @@ def padTime(time_step, maxlen, pad_id):
         while len(time_step[k]) < maxlen:
             time_step[k].append(pad_id)
     return time_step
+def padTime3(time_step, maxlen, pad_id):
 
+    return time_step
 def codeMask(input_data, max_num_pervisit, maxlen):
     batch_mask = np.zeros((len(input_data), maxlen, max_num_pervisit), dtype=np.float32) + 1e+20
     output = []
@@ -98,6 +100,27 @@ class MyDataset(Dataset):
                torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device),\
                torch.tensor(self.labels[idx], dtype=torch.float).to(self.device)
 
+class MyDataset3(Dataset):
+    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, max_numblk_pervisit, ehr_pad_id,
+                 device):
+        data = np.load(dir_ehr, allow_pickle=True)
+        ehr, labels, time_step = data['x'], data['y'], data['timeseq']
+        self.labels = [[0,1] if label == 1 else [1,0] for label in labels]
+        self.ehr, _, _ = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
+        self.time_step = padTime3(time_step, max_len, 100000)
+        self.device = device
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        _ = None
+        return torch.tensor(self.ehr[idx], dtype=torch.float32).to(self.device),\
+               torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device),\
+               torch.tensor(self.labels[idx], dtype=torch.float).to(self.device)
 class MyDataset_with_single_label(Dataset):
     def __init__(self, dir_ehr, max_len, max_numcode_pervisit, ehr_pad_id,
                  device):
