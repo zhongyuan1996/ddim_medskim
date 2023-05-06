@@ -64,23 +64,23 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
     parser.add_argument('--seed', default=1234, type=int, help='seed')
-    parser.add_argument('-bs', '--batch_size', default=16, type=int)
+    parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
-    parser.add_argument('--model', default='Dipole_ehrGAN', choices=['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN',
+    parser.add_argument('--model', default='LSTM_ehrGAN', choices=['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN',
                                                                    'Dipole_ehrGAN', 'Dipole_GcGAN', 'Dipole_actGAN', 'Dipole_medGAN',
                                                                     'TLSTM_ehrGAN', 'TLSTM_GcGAN', 'TLSTM_actGAN', 'TLSTM_medGAN',
                                                                    'SAND_ehrGAN', 'SAND_GcGAN', 'SAND_actGAN', 'SAND_medGAN'])
-    parser.add_argument('--target_disease', default='ARF',
+    parser.add_argument('--target_disease', default='mortality',
                         choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic', 'ARF', 'Shock', 'mortality'])
     parser.add_argument('--n_epochs', default=30, type=int)
-    parser.add_argument('--max_len', default=12, type=int, help='max visits of EHR')
+    parser.add_argument('--max_len', default=48, type=int, help='max visits of EHR')
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dense_model', default=64, type=int)
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
     parser.add_argument('--dropout_emb', default=0.1, type=float, help='dropout rate of embedding layers')
     parser.add_argument('--num_layers', default=1, type=int, help='number of transformer layers of EHR encoder')
     parser.add_argument('--num_heads', default=4, type=int, help='number of attention heads')
-    parser.add_argument('--max_num_codes', default=5132, type=int, help='max number of ICD codes in each visit')
+    parser.add_argument('--max_num_codes', default=7727, type=int, help='max number of ICD codes in each visit')
     parser.add_argument('--max_num_blks', default=100, type=int, help='max number of blocks in each visit')
     parser.add_argument('--blk_emb_path', default='./data/processed/block_embedding.npy',
                         help='embedding path of blocks')
@@ -198,9 +198,9 @@ def train(args):
                                     args.max_num_codes, args.max_num_blks, pad_id, device)
             test_dataset = MyDataset3(data_path + '_testing_new.npz', args.max_len,
                                      args.max_num_codes, args.max_num_blks, pad_id, device)
-            train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=True, collate_fn=collate_fn)
-            dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
-            test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
+            train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=True, collate_fn=collate_fn3)
+            dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn3)
+            test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn3)
         else:
             train_dataset = MyDataset2(data_path + '_training_new.pickle',
                                       args.max_len, args.max_num_codes, args.max_num_blks, pad_id, device)
