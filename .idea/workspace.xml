@@ -6,7 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="diff ARF">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GAN_bash.sh" beforeDir="false" afterPath="$PROJECT_DIR$/GAN_bash.sh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -249,21 +248,7 @@
       <workItem from="1683046113494" duration="331000" />
       <workItem from="1683046453847" duration="24316000" />
       <workItem from="1683124846199" duration="17000" />
-      <workItem from="1683384518949" duration="862000" />
-    </task>
-    <task id="LOCAL-00064" summary="abattn">
-      <created>1675109333842</created>
-      <option name="number" value="00064" />
-      <option name="presentableId" value="LOCAL-00064" />
-      <option name="project" value="LOCAL" />
-      <updated>1675109333842</updated>
-    </task>
-    <task id="LOCAL-00065" summary="generate with 1 top and left and right">
-      <created>1680403777575</created>
-      <option name="number" value="00065" />
-      <option name="presentableId" value="LOCAL-00065" />
-      <option name="project" value="LOCAL" />
-      <updated>1680403777575</updated>
+      <workItem from="1683384518949" duration="2704000" />
     </task>
     <task id="LOCAL-00066" summary="generate with 1 top with left and right disabled">
       <created>1680405079504</created>
@@ -594,7 +579,21 @@
       <option name="project" value="LOCAL" />
       <updated>1683332849103</updated>
     </task>
-    <option name="localTasksCounter" value="113" />
+    <task id="LOCAL-00113" summary="diff ARF">
+      <created>1683386051884</created>
+      <option name="number" value="00113" />
+      <option name="presentableId" value="LOCAL-00113" />
+      <option name="project" value="LOCAL" />
+      <updated>1683386051885</updated>
+    </task>
+    <task id="LOCAL-00114" summary="diff ARF">
+      <created>1683386591270</created>
+      <option name="number" value="00114" />
+      <option name="presentableId" value="LOCAL-00114" />
+      <option name="project" value="LOCAL" />
+      <updated>1683386591270</updated>
+    </task>
+    <option name="localTasksCounter" value="115" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
