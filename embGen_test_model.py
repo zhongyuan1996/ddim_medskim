@@ -176,12 +176,12 @@ def train(args):
 
         export_config(args, config_path)
         check_path(model_path)
-        with open(log_path, 'w') as fout:
-            fout.write('step,train_auc,dev_auc,test_auc\n')
-        with open(log_loss_path, 'w') as lossout:
-            lossout.write('step,DF_loss,CE_loss,CE_gen_loss,KL_loss\n')
-        with open(stats_path, 'w') as statout:
-            statout.write('train_acc,dev_acc,test_acc,train_precision,dev_precision,test_precision,train_recall,dev_recall,test_recall,train_f1,dev_f1,test_f1,train_auc,dev_auc,test_auc,train_pr,dev_pr,test_pr,train_kappa,dev_kappa,test_kappa,train_loss,dev_loss,test_loss\n')
+        # with open(log_path, 'w') as fout:
+        #     fout.write('step,train_auc,dev_auc,test_auc\n')
+        # with open(log_loss_path, 'w') as lossout:
+        #     lossout.write('step,DF_loss,CE_loss,CE_gen_loss,KL_loss\n')
+        # with open(stats_path, 'w') as statout:
+        #     statout.write('train_acc,dev_acc,test_acc,train_precision,dev_precision,test_precision,train_recall,dev_recall,test_recall,train_f1,dev_f1,test_f1,train_auc,dev_auc,test_auc,train_pr,dev_pr,test_pr,train_kappa,dev_kappa,test_kappa,train_loss,dev_loss,test_loss\n')
 
         initial_d=0
         # blk_emb = np.load(args.blk_emb_path)
@@ -301,12 +301,12 @@ def train(args):
         best_epoch_pr, best_epoch_f1, best_epoch_kappa = 0.0, 0.0, 0.0
         total_DF_loss, total_CE_loss, total_CE_gen_loss, total_KL_loss = 0.0, 0.0, 0.0, 0.0
         model.train()
-        if args.temperature == 'temperature':
-            tau_schedule = np.linspace(args.maxtau, args.mintau, num=int(args.n_epochs/2))
-            constant = np.full(len(tau_schedule), args.mintau)
-            tau_schedule = np.append(tau_schedule, constant)
-
-            assert len(tau_schedule) == args.n_epochs
+        # if args.temperature == 'temperature':
+        #     tau_schedule = np.linspace(args.maxtau, args.mintau, num=int(args.n_epochs/2))
+        #     constant = np.full(len(tau_schedule), args.mintau)
+        #     tau_schedule = np.append(tau_schedule, constant)
+        #
+        #     assert len(tau_schedule) == args.n_epochs
 
         for epoch_id in range(args.n_epochs):
             print('epoch: {:5} '.format(epoch_id))
@@ -415,10 +415,10 @@ def train(args):
                 best_epoch_pr = t_pr_auc
                 best_epoch_f1 = t_f1
                 best_epoch_kappa = t_kappa
-                torch.save([model, args], model_path)
-                with open(log_path, 'a') as fout:
-                    fout.write('{},{},{},{}\n'.format(global_step, tr_pr_auc, d_pr_auc, t_pr_auc))
-                print(f'model saved to {model_path}')
+                # torch.save([model, args], model_path)
+                # with open(log_path, 'a') as fout:
+                #     fout.write('{},{},{},{}\n'.format(global_step, tr_pr_auc, d_pr_auc, t_pr_auc))
+                # print(f'model saved to {model_path}')
 
                 #
                 # softmaxres_fileName = 'h_t_epoch_' + str(epoch_id) + '.csv'
