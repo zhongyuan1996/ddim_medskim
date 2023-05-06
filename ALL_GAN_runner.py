@@ -473,7 +473,7 @@ def train(args):
 
 if __name__ == '__main__':
     model_name = ['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN', 'SAND_ehrGAN', 'SAND_GcGAN', 'SAND_actGAN', 'SAND_medGAN', 'TLSTM_ehrGAN', 'TLSTM_GcGAN', 'TLSTM_actGAN', 'TLSTM_medGAN',
-                                                                   'Dipole_ehrGAN', 'Dipole_GcGAN', 'Dipole_actGAN', 'Dipole_medGAN' ]
+                  'Dipole_ehrGAN', 'Dipole_GcGAN', 'Dipole_actGAN', 'Dipole_medGAN' ]
     for name in model_name:
 
         main(name)
