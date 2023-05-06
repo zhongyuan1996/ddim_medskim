@@ -134,10 +134,10 @@ class MyDataset3(Dataset):
     def __init__(self, dir_ehr, max_len, max_numcode_pervisit, max_numblk_pervisit, ehr_pad_id,
                  device):
         data = np.load(dir_ehr, allow_pickle=True)
-        ehr, self.labels, time_step = data['x'], data['y'], data['timeseq']
-        self.ehr, self.mask_ehr, self.lengths = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
-        self.time_step = padTime3(time_step, max_len, 100000)
-        self.code_mask = codeMask(ehr, max_numcode_pervisit, max_len)
+        self.ehr, self.labels, self.time_step = data['x'], data['y'], data['timeseq']
+        # self.ehr, self.mask_ehr, self.lengths = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
+        # self.time_step = padTime3(time_step, max_len, 100000)
+        # self.code_mask = codeMask(ehr, max_numcode_pervisit, max_len)
         self.device = device
 
     def __len__(self):
@@ -148,11 +148,17 @@ class MyDataset3(Dataset):
             idx = idx.tolist()
 
         _ = None
+        # return torch.tensor(self.labels[idx], dtype=torch.long).to(self.device), torch.FloatTensor(self.ehr[idx]).to(
+        #     self.device), \
+        #        torch.LongTensor(self.mask_ehr[idx]).to(self.device), _, \
+        #        _, torch.tensor(self.lengths[idx], dtype=torch.long).to(self.device), \
+        #        torch.Tensor(self.time_step[idx]).to(self.device), torch.FloatTensor(self.code_mask[idx]).to(self.device)
+
         return torch.tensor(self.labels[idx], dtype=torch.long).to(self.device), torch.FloatTensor(self.ehr[idx]).to(
             self.device), \
-               torch.LongTensor(self.mask_ehr[idx]).to(self.device), _, \
-               _, torch.tensor(self.lengths[idx], dtype=torch.long).to(self.device), \
-               torch.Tensor(self.time_step[idx]).to(self.device), torch.FloatTensor(self.code_mask[idx]).to(self.device)
+               _, _, \
+               _, _, \
+               torch.Tensor(self.time_step[idx]).to(self.device), _
 def collate_fn(batch):
     label, ehr, mask, txt, mask_txt, length, time_step, code_mask = [], [], [], [], [], [], [], []
     for data in batch:
