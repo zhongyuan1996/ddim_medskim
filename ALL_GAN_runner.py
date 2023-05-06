@@ -218,7 +218,7 @@ def train(args):
             model = LSTM_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device)
         elif args.model == 'LSTM_ehrGAN':
             generator = Linear_generator(64, args.max_len)
-            GAN = ehrGAN(pad_id, args.d_model, args.dropout, device, generator=generator, initial_d = initial_d)
+            GAN = ehrGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
             model = LSTM_ehrGAN(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d)
         elif args.model == 'LSTM_GcGAN':

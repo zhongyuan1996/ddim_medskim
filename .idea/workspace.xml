@@ -4,7 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="diff ARF" />
+    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="diff ARF">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ALL_GAN_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/ALL_GAN_runner.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -246,13 +249,6 @@
       <workItem from="1683046113494" duration="331000" />
       <workItem from="1683046453847" duration="24316000" />
       <workItem from="1683124846199" duration="17000" />
-    </task>
-    <task id="LOCAL-00060" summary="softmax for alphas, ab2: attention = 0.5">
-      <created>1675029954102</created>
-      <option name="number" value="00060" />
-      <option name="presentableId" value="LOCAL-00060" />
-      <option name="project" value="LOCAL" />
-      <updated>1675029954102</updated>
     </task>
     <task id="LOCAL-00061" summary="ab1">
       <created>1675040492392</created>
@@ -590,7 +586,14 @@
       <option name="project" value="LOCAL" />
       <updated>1683331588773</updated>
     </task>
-    <option name="localTasksCounter" value="109" />
+    <task id="LOCAL-00109" summary="diff ARF">
+      <created>1683331871479</created>
+      <option name="number" value="00109" />
+      <option name="presentableId" value="LOCAL-00109" />
+      <option name="project" value="LOCAL" />
+      <updated>1683331871479</updated>
+    </task>
+    <option name="localTasksCounter" value="110" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
