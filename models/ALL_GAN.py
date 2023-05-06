@@ -917,7 +917,7 @@ class SAND_base(nn.Module):
         #         U[:, m - 1, :] += w.unsqueeze(-1) * x[:, t - 1, :]
         # U = U.view(input_seqs.size(0), -1)
         x = self.drop_out(x)
-        output = self.out_layer(x)
+        output = self.out_layer(x.sum(-2))
 
         gen_x, gen_attention = self.encoder_layer(Gen_X, Gen_X, Gen_X)
         # gen_mask = (torch.arange(sl, device=gen_x.device).unsqueeze(0).expand(bs, sl) >= lengths.unsqueeze(
@@ -932,7 +932,7 @@ class SAND_base(nn.Module):
         #         gen_U[:, m - 1] += w.unsqueeze(-1) * gen_x[:, t - 1]
         # gen_U = gen_U.view(input_seqs.size(0), -1)
         gen_x = self.drop_out(gen_x)
-        gen_output = self.out_layer(gen_x)
+        gen_output = self.out_layer(gen_x.sum(-2))
 
         return output, gen_output, Dec_X, Gen_X, seq_time_step, label
 # class LSTM_medGAN(nn.Module):

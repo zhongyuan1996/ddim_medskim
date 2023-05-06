@@ -40,7 +40,7 @@ def eval_metric(eval_set, model, model_name = None):
 
             labels = labels.data.cpu().numpy()
             # if model_name != 'LSTM_actGAN' and model_name != 'LSTM_medGAN':
-            #     labels = labels.argmax(1)
+            # labels = labels.argmax(1)
             score = scores[:, 1]
             pred = scores.argmax(1)
 
@@ -472,8 +472,8 @@ def train(args):
         print()
 
 if __name__ == '__main__':
-    model_name = ['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN', 'SAND_ehrGAN', 'SAND_GcGAN', 'SAND_actGAN', 'SAND_medGAN', 'TLSTM_ehrGAN', 'TLSTM_GcGAN', 'TLSTM_actGAN', 'TLSTM_medGAN',
-                  'Dipole_ehrGAN', 'Dipole_GcGAN', 'Dipole_actGAN', 'Dipole_medGAN' ]
+    model_name = ['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN', 'Dipole_ehrGAN', 'Dipole_GcGAN', 'Dipole_actGAN', 'Dipole_medGAN', 'SAND_ehrGAN', 'SAND_GcGAN', 'SAND_actGAN', 'SAND_medGAN', 'TLSTM_ehrGAN', 'TLSTM_GcGAN', 'TLSTM_actGAN', 'TLSTM_medGAN'
+                   ]
     for name in model_name:
 
         main(name)
