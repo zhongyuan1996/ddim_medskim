@@ -4,10 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="gan and all datasets">
-      <change beforePath="$PROJECT_DIR$/embGen_test_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/embGen_test_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/dataset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/embGen_LSTM_ddim.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/embGen_LSTM_ddim.py" afterDir="false" />
+    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="diff ARF">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -250,20 +248,6 @@
       <workItem from="1683046113494" duration="331000" />
       <workItem from="1683046453847" duration="24316000" />
       <workItem from="1683124846199" duration="17000" />
-    </task>
-    <task id="LOCAL-00057" summary="ab2">
-      <created>1675014221072</created>
-      <option name="number" value="00057" />
-      <option name="presentableId" value="LOCAL-00057" />
-      <option name="project" value="LOCAL" />
-      <updated>1675014221072</updated>
-    </task>
-    <task id="LOCAL-00058" summary="ht and alphas">
-      <created>1675018826652</created>
-      <option name="number" value="00058" />
-      <option name="presentableId" value="LOCAL-00058" />
-      <option name="project" value="LOCAL" />
-      <updated>1675018826652</updated>
     </task>
     <task id="LOCAL-00059" summary="ht and alphas">
       <created>1675019063707</created>
@@ -594,7 +578,21 @@
       <option name="project" value="LOCAL" />
       <updated>1683156254102</updated>
     </task>
-    <option name="localTasksCounter" value="106" />
+    <task id="LOCAL-00106" summary="diff ARF">
+      <created>1683219983008</created>
+      <option name="number" value="00106" />
+      <option name="presentableId" value="LOCAL-00106" />
+      <option name="project" value="LOCAL" />
+      <updated>1683219983008</updated>
+    </task>
+    <task id="LOCAL-00107" summary="diff ARF">
+      <created>1683219993480</created>
+      <option name="number" value="00107" />
+      <option name="presentableId" value="LOCAL-00107" />
+      <option name="project" value="LOCAL" />
+      <updated>1683219993480</updated>
+    </task>
+    <option name="localTasksCounter" value="108" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -619,7 +617,6 @@
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
-    <MESSAGE value="getting h_t and H_t" />
     <MESSAGE value="remaster model for hyper-perameter study" />
     <MESSAGE value="abtest rewritten" />
     <MESSAGE value="rewritten model" />
@@ -644,7 +641,8 @@
     <MESSAGE value="all gan for lstm" />
     <MESSAGE value="gradient update method" />
     <MESSAGE value="gan and all datasets" />
-    <option name="LAST_COMMIT_MESSAGE" value="gan and all datasets" />
+    <MESSAGE value="diff ARF" />
+    <option name="LAST_COMMIT_MESSAGE" value="diff ARF" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

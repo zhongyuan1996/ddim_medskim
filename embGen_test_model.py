@@ -103,7 +103,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
     parser.add_argument('--seed', default=1234, type=int, help='seed')
-    parser.add_argument('-bs', '--batch_size', default=16, type=int)
+    parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('--model', default='medDiff')
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
