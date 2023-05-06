@@ -839,7 +839,8 @@ class TLSTM_base(nn.Module):
             outputs.append(h)
         outputs = torch.stack(outputs, 1)
 
-        out = self.pooler(outputs, lengths)
+        # out = self.pooler(outputs, lengths)
+        out = self.pooler(outputs)
         out = self.output_mlp(out)
 
         gen_h = torch.zeros(b,self.d_model, requires_grad=False).to(x.device)
@@ -861,8 +862,9 @@ class TLSTM_base(nn.Module):
             gen_h = gen_o * torch.tanh(gen_c)
             gen_outputs.append(gen_h)
         gen_outputs = torch.stack(gen_outputs, 1)
-        gen_out = self.pooler(gen_outputs, lengths)
+        gen_out = self.pooler(gen_outputs)
         gen_out = self.output_mlp(gen_out)
+
 
         return out, gen_out, Dec_X, Gen_X, seq_time_step, label
 
@@ -883,7 +885,7 @@ class SAND_base(nn.Module):
         init.uniform_(self.bias_embedding, -bound, bound)
         # self.weight_layer = torch.nn.Linear(d_model, 1)
         self.drop_out = nn.Dropout(dropout)
-        self.out_layer = nn.Linear(d_model * 4, 2)
+        self.out_layer = nn.Linear(d_model, 2)
         self.layer_norm = nn.LayerNorm(d_model)
         self.GAN = GAN
         self.initial_d = initial_d
@@ -903,34 +905,34 @@ class SAND_base(nn.Module):
         Dec_X, Gen_X, _, _ = self.GAN(x, seq_time_step, label)
 
         x, attention = self.encoder_layer(x, x, x)
-        mask = (torch.arange(sl, device=x.device).unsqueeze(0).expand(bs, sl) >= lengths.unsqueeze(
-            1))
-        x = x.masked_fill(mask.unsqueeze(-1).expand_as(x), 0.0)
-        U = torch.zeros((x.size(0), 4, x.size(2))).to(x.device)
-        lengths = lengths.float()
-        for t in range(1, input_seqs.size(1) + 1):
-            s = 4 * t / lengths
-            for m in range(1, 4 + 1):
-                w = torch.pow(1 - torch.abs(s - m) / 4, 2)
-                U[:, m - 1] += w.unsqueeze(-1) * x[:, t - 1]
-        U = U.view(input_seqs.size(0), -1)
-        U = self.drop_out(U)
-        output = self.out_layer(U)
+        # mask = (torch.arange(sl, device=x.device).unsqueeze(0).expand(bs, sl) >= lengths.unsqueeze(
+        #     1))
+        # x = x.masked_fill(mask.unsqueeze(-1).expand_as(x), 0.0)
+        # U = torch.zeros((x.size(0), 4, x.size(2))).to(x.device)
+        # lengths = lengths.float()
+        # for t in range(1, input_seqs.size(1) + 1):
+        #     s = 4 * t / lengths
+        #     for m in range(1, 4 + 1):
+        #         w = torch.pow(1 - torch.abs(s - m) / 4, 2)
+        #         U[:, m - 1, :] += w.unsqueeze(-1) * x[:, t - 1, :]
+        # U = U.view(input_seqs.size(0), -1)
+        x = self.drop_out(x)
+        output = self.out_layer(x)
 
-        gen_x, gen_attention = self.encoder_layer(Gen_X, Gen_X, Gen_X, masks)
-        gen_mask = (torch.arange(sl, device=gen_x.device).unsqueeze(0).expand(bs, sl) >= lengths.unsqueeze(
-            1))
-        gen_x = gen_x.masked_fill(gen_mask.unsqueeze(-1).expand_as(gen_x), 0.0)
-        gen_U = torch.zeros((gen_x.size(0), 4, gen_x.size(2))).to(gen_x.device)
-        lengths = lengths.float()
-        for t in range(1, input_seqs.size(1) + 1):
-            s = 4 * t / lengths
-            for m in range(1, 4 + 1):
-                w = torch.pow(1 - torch.abs(s - m) / 4, 2)
-                gen_U[:, m - 1] += w.unsqueeze(-1) * gen_x[:, t - 1]
-        gen_U = gen_U.view(input_seqs.size(0), -1)
-        gen_U = self.drop_out(gen_U)
-        gen_output = self.out_layer(gen_U)
+        gen_x, gen_attention = self.encoder_layer(Gen_X, Gen_X, Gen_X)
+        # gen_mask = (torch.arange(sl, device=gen_x.device).unsqueeze(0).expand(bs, sl) >= lengths.unsqueeze(
+        #     1))
+        # gen_x = gen_x.masked_fill(gen_mask.unsqueeze(-1).expand_as(gen_x), 0.0)
+        # gen_U = torch.zeros((gen_x.size(0), 4, gen_x.size(2))).to(gen_x.device)
+        # lengths = lengths.float()
+        # for t in range(1, input_seqs.size(1) + 1):
+        #     s = 4 * t / lengths
+        #     for m in range(1, 4 + 1):
+        #         w = torch.pow(1 - torch.abs(s - m) / 4, 2)
+        #         gen_U[:, m - 1] += w.unsqueeze(-1) * gen_x[:, t - 1]
+        # gen_U = gen_U.view(input_seqs.size(0), -1)
+        gen_x = self.drop_out(gen_x)
+        gen_output = self.out_layer(gen_x)
 
         return output, gen_output, Dec_X, Gen_X, seq_time_step, label
 # class LSTM_medGAN(nn.Module):
