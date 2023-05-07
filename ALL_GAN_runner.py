@@ -60,10 +60,10 @@ def eval_metric(eval_set, model, model_name = None):
 
     return accuary, precision, recall, f1, roc_auc, pr_auc, kappa, loss
 
-def main(model_name):
+def main(model_name, seed, data, max_len, max_num):
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
-    parser.add_argument('--seed', default=1234, type=int, help='seed')
+    parser.add_argument('--seed', default=seed, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
     parser.add_argument('--model', default=model_name)
@@ -71,17 +71,17 @@ def main(model_name):
     #                                                                'Dipole_ehrGAN', 'Dipole_GcGAN', 'Dipole_actGAN', 'Dipole_medGAN',
     #                                                                 'TLSTM_ehrGAN', 'TLSTM_GcGAN', 'TLSTM_actGAN', 'TLSTM_medGAN',
     #                                                                'SAND_ehrGAN', 'SAND_GcGAN', 'SAND_actGAN', 'SAND_medGAN'])
-    parser.add_argument('--target_disease', default='mortality',
+    parser.add_argument('--target_disease', default=data,
                         choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic', 'ARF', 'Shock', 'mortality'])
     parser.add_argument('--n_epochs', default=30, type=int)
-    parser.add_argument('--max_len', default=48, type=int, help='max visits of EHR')
+    parser.add_argument('--max_len', default=max_len, type=int, help='max visits of EHR')
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dense_model', default=64, type=int)
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
     parser.add_argument('--dropout_emb', default=0.1, type=float, help='dropout rate of embedding layers')
     parser.add_argument('--num_layers', default=1, type=int, help='number of transformer layers of EHR encoder')
     parser.add_argument('--num_heads', default=4, type=int, help='number of attention heads')
-    parser.add_argument('--max_num_codes', default=7727, type=int, help='max number of ICD codes in each visit')
+    parser.add_argument('--max_num_codes', default=max_num, type=int, help='max number of ICD codes in each visit')
     parser.add_argument('--max_num_blks', default=100, type=int, help='max number of blocks in each visit')
     parser.add_argument('--blk_emb_path', default='./data/processed/block_embedding.npy',
                         help='embedding path of blocks')
@@ -474,6 +474,12 @@ def train(args):
 if __name__ == '__main__':
     model_name = ['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN', 'Dipole_ehrGAN', 'Dipole_GcGAN', 'Dipole_actGAN', 'Dipole_medGAN', 'SAND_ehrGAN', 'SAND_GcGAN', 'SAND_actGAN', 'SAND_medGAN', 'TLSTM_ehrGAN', 'TLSTM_GcGAN', 'TLSTM_actGAN', 'TLSTM_medGAN'
                    ]
-    for name in model_name:
+    seeds = [2345,3456]
+    dataset = ["mortality", "Shock", "ARF"]
+    max_lens = [48, 12, 12]
+    max_nums = [7727, 5795, 5132]
+    for seed in seeds:
+        for name in model_name:
+            for data, max_len, max_num in zip(dataset, max_lens, max_nums):
 
-        main(name)
+                main(name, seed, data, max_len, max_num)

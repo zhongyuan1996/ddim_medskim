@@ -7,12 +7,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import init
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-from utils.diffUtil import get_beta_schedule
 from models.unet import *
 import os
 import yaml
 import argparse
-
 
 class PositionalEncoding(nn.Module):
 
@@ -898,7 +896,7 @@ class SAND_base(nn.Module):
         else:
             x = self.embbedding(input_seqs).sum(dim=2) + self.bias_embedding
         bs, sl, dm = x.size()
-        x = self.emb_dropout(x)
+        # x = self.emb_dropout(x)
         # output_pos, ind_pos = self.pos_emb(lengths)
         # x += output_pos
 

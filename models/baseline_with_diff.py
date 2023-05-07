@@ -360,7 +360,7 @@ class LSAN(nn.Module):
 
 
 class LSTM_encoder(nn.Module):
-    def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos, device):
+    def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos, device, initial_d = 0):
         super().__init__()
         self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.dropout = nn.Dropout(dropout)
@@ -391,25 +391,30 @@ class LSTM_encoder(nn.Module):
         self.softmax = torch.nn.Softmax(dim=-1)
         self.tanh = nn.Tanh()
         ####################################
+        self.initial_d = initial_d
+        self.embedding2 = nn.Linear(self.initial_d, d_model)
 
     def forward(self, input_seqs, masks, lengths, seq_time_step, code_masks):
         batch_size, seq_len, num_cui_per_visit = input_seqs.size()
-        x = self.embbedding(input_seqs).sum(dim=2)
+        if self.initial_d != 0:
+            x = self.embedding2(input_seqs)
+        else:
+            x = self.embbedding(input_seqs).sum(dim=2)
         x = self.emb_dropout(x)
-        rnn_input = pack_padded_sequence(x, lengths.cpu(), batch_first=True, enforce_sorted=False)
-        rnn_output, _ = self.rnns(rnn_input)
+        # rnn_input = pack_padded_sequence(x, lengths.cpu(), batch_first=True, enforce_sorted=False)
+        rnn_output, _ = self.rnns(x)
 
 
-        x, _ = pad_packed_sequence(rnn_output, batch_first=True, total_length=seq_len)
+        # x, _ = pad_packed_sequence(rnn_output, batch_first=True, total_length=seq_len)
 
-        hiddenstate, _ = self.hiddenstate_learner(x)
-        aligned_e_t = torch.zeros_like(hiddenstate)
+
+        aligned_e_t = torch.zeros_like(x)
         for i in range(aligned_e_t.shape[1]):
             if i == 0:
                 aligned_e_t[:, 0:1,:] = x[:, 0:1, :]
             else:
                 e_k = x[:, 0:1, :]
-                w_h_k_prev = self.w_hk(hiddenstate[:,i-1:i,:])
+                w_h_k_prev = self.w_hk(rnn_output[:,i-1:i,:])
                 attn = self.softmax(self.w2(self.tanh(self.w1(torch.cat((e_k,w_h_k_prev),dim=-1)))))
                 alpha1 = attn[:,:,0:1]
                 alpha2 = attn[:,:,1:2]
@@ -426,17 +431,18 @@ class LSTM_encoder(nn.Module):
         noise_loss = normal_noise - predicted_noise
         GEN_x = aligned_e_t + noise_loss
         ####### diff end
-        fused_x = self.fuse(torch.cat([x, GEN_x], dim=-1))
+        # fused_x = self.fuse(torch.cat([x, GEN_x], dim=-1))
         #######fuse gen result with original ones
-
-        fused_x = self.pooler(fused_x, lengths)
-        fused_x = self.output_mlp(fused_x)
-        return fused_x
+        pool_x = self.pooler(x)
+        gen_pool_x = self.pooler(GEN_x)
+        pool_x = self.output_mlp(pool_x)
+        gen_pool_x = self.output_mlp(gen_pool_x)
+        return pool_x, gen_pool_x, predicted_noise, normal_noise
 
 
 class GRUSelf(nn.Module):
     #Dipole
-    def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos, device):
+    def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos, device, initial_d=0):
         super().__init__()
         self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.dropout = nn.Dropout(dropout)
@@ -467,23 +473,28 @@ class GRUSelf(nn.Module):
         self.softmax = torch.nn.Softmax(dim=-1)
         self.tanh = nn.Tanh()
         ####################################
+        self.initial_d = initial_d
+        self.embeding2 = nn.Linear(self.initial_d, d_model)
 
     def forward(self, input_seqs, masks, lengths, seq_time_step, code_masks):
         batch_size, seq_len, num_cui_per_visit = input_seqs.size()
-        x = self.embbedding(input_seqs).sum(dim=2)
+        if self.initial_d != 0:
+            x = self.embeding2(input_seqs)
+        else:
+            x = self.embbedding(input_seqs).sum(dim=2)
         x = self.emb_dropout(x)
-        rnn_input = pack_padded_sequence(x, lengths.cpu(), batch_first=True, enforce_sorted=False)
-        rnn_output, _ = self.gru(rnn_input)
-        rnn_output, _ = pad_packed_sequence(rnn_output, batch_first=True, total_length=seq_len)
+        # rnn_input = pack_padded_sequence(x, lengths.cpu(), batch_first=True, enforce_sorted=False)
+        rnn_output, _ = self.gru(x)
+        # rnn_output, _ = pad_packed_sequence(rnn_output, batch_first=True, total_length=seq_len)
 
-        hiddenstate, _ = self.hiddenstate_learner(rnn_output)
-        aligned_e_t = torch.zeros_like(hiddenstate)
+        # hiddenstate, _ = self.hiddenstate_learner(rnn_output)
+        aligned_e_t = torch.zeros_like(x)
         for i in range(aligned_e_t.shape[1]):
             if i == 0:
-                aligned_e_t[:, 0:1,:] = rnn_output[:, 0:1, :]
+                aligned_e_t[:, 0:1,:] = x[:, 0:1, :]
             else:
-                e_k = rnn_output[:, 0:1, :]
-                w_h_k_prev = self.w_hk(hiddenstate[:,i-1:i,:])
+                e_k = x[:, 0:1, :]
+                w_h_k_prev = self.w_hk(rnn_output[:,i-1:i,:])
                 attn = self.softmax(self.w2(self.tanh(self.w1(torch.cat((e_k,w_h_k_prev),dim=-1)))))
                 alpha1 = attn[:,:,0:1]
                 alpha2 = attn[:,:,1:2]
@@ -497,19 +508,30 @@ class GRUSelf(nn.Module):
         final_statues_with_noise = aligned_e_t * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
         predicted_noise = self.diffusion(final_statues_with_noise, timesteps=diffusion_time_t)
         noise_loss = normal_noise - predicted_noise
-        GEN_rnn_output = aligned_e_t + noise_loss
+        GEN_x = aligned_e_t + noise_loss
+        GEN_rnn_output, _ = self.gru(GEN_x)
         ####### diff end
-        fused_rnn_output = self.fuse(torch.cat([rnn_output, GEN_rnn_output], dim=-1))
+        # fused_rnn_output = self.fuse(torch.cat([rnn_output, GEN_rnn_output], dim=-1))
         #######fuse gen result with original ones
 
-        weight = self.weight_layer(fused_rnn_output)
-        mask = (torch.arange(seq_len, device=x.device).unsqueeze(0).expand(batch_size, seq_len) >= lengths.unsqueeze(1))
-        att = torch.softmax(weight.squeeze().masked_fill(mask, -np.inf), dim=1).view(batch_size, seq_len)
-        weighted_features = fused_rnn_output * att.unsqueeze(2)
+        weight = self.weight_layer(rnn_output)
+        # mask = (torch.arange(seq_len, device=x.device).unsqueeze(0).expand(batch_size, seq_len) >= lengths.unsqueeze(1))
+        # att = torch.softmax(weight.squeeze().masked_fill(mask, -np.inf), dim=1).view(batch_size, seq_len)
+        att = torch.softmax(weight.squeeze(), dim=1).view(batch_size, seq_len)
+        weighted_features = rnn_output * att.unsqueeze(2)
         averaged_features = torch.sum(weighted_features, 1)
         averaged_features = self.dropout(averaged_features)
         pred = self.output_mlp(averaged_features)
-        return pred
+
+        GEN_weight = self.weight_layer(GEN_rnn_output)
+        # GEN_mask = (torch.arange(seq_len, device=x.device).unsqueeze(0).expand(batch_size, seq_len) >= lengths.unsqueeze(1))
+        # GEN_att = torch.softmax(GEN_weight.squeeze().masked_fill(GEN_mask, -np.inf), dim=1).view(batch_size, seq_len)
+        GEN_att = torch.softmax(GEN_weight.squeeze(), dim=1).view(batch_size, seq_len)
+        GEN_weighted_features = GEN_rnn_output * GEN_att.unsqueeze(2)
+        GEN_averaged_features = torch.sum(GEN_weighted_features, 1)
+        GEN_averaged_features = self.dropout(GEN_averaged_features)
+        GEN_pred = self.output_mlp(GEN_averaged_features)
+        return pred, GEN_pred, predicted_noise, normal_noise
 
 
 class Timeline(nn.Module):
@@ -620,7 +642,7 @@ class Timeline(nn.Module):
 
 
 class TLSTM(nn.Module):
-    def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos, device):
+    def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos, device, initial_d):
         super(TLSTM, self).__init__()
         self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.W_all = nn.Linear(d_model, d_model * 4)
@@ -654,9 +676,15 @@ class TLSTM(nn.Module):
         self.softmax = torch.nn.Softmax(dim=-1)
         self.tanh = nn.Tanh()
         ####################################
+        self.intial_d = initial_d
+        self.embedding2 = nn.Linear(self.intial_d, d_model)
+
 
     def forward(self, input_seqs, masks, lengths, seq_time_step, code_masks):
-        x = self.embbedding(input_seqs).sum(dim=2)
+        if self.intial_d != 0:
+            x = self.embedding2(input_seqs)
+        else:
+            x = self.embbedding(input_seqs).sum(dim=2)
         b, seq, embed = x.size()
         h = torch.zeros(b, self.d_model, requires_grad=False).to(x.device)
         c = torch.zeros(b, self.d_model, requires_grad=False).to(x.device)
@@ -681,14 +709,14 @@ class TLSTM(nn.Module):
             outputs.append(h)
         outputs = torch.stack(outputs, 1)
 
-        hiddenstate, _ = self.hiddenstate_learner(outputs)
-        aligned_e_t = torch.zeros_like(hiddenstate)
+
+        aligned_e_t = torch.zeros_like(x)
         for i in range(aligned_e_t.shape[1]):
             if i == 0:
-                aligned_e_t[:, 0:1,:] = outputs[:, 0:1, :]
+                aligned_e_t[:, 0:1,:] = x[:, 0:1, :]
             else:
-                e_k = outputs[:, 0:1, :]
-                w_h_k_prev = self.w_hk(hiddenstate[:,i-1:i,:])
+                e_k = x[:, 0:1, :]
+                w_h_k_prev = self.w_hk(outputs[:,i-1:i,:])
                 attn = self.softmax(self.w2(self.tanh(self.w1(torch.cat((e_k,w_h_k_prev),dim=-1)))))
                 alpha1 = attn[:,:,0:1]
                 alpha2 = attn[:,:,1:2]
@@ -702,19 +730,38 @@ class TLSTM(nn.Module):
         final_statues_with_noise = aligned_e_t * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
         predicted_noise = self.diffusion(final_statues_with_noise, timesteps=diffusion_time_t)
         noise_loss = normal_noise - predicted_noise
-        GEN_outputs = aligned_e_t + noise_loss
+        GEN_x = aligned_e_t + noise_loss
         ####### diff end
-        fused_outputs = self.fuse(torch.cat([outputs, GEN_outputs], dim=-1))
+        # fused_outputs = self.fuse(torch.cat([outputs, GEN_outputs], dim=-1))
         #######fuse gen result with original ones
 
-        out = self.pooler(fused_outputs, lengths)
+        Gen_h = torch.zeros(b, self.d_model, requires_grad=False).to(x.device)
+        Gen_c = torch.zeros(b, self.d_model, requires_grad=False).to(x.device)
+        Gen_outputs = []
+        for s in range(seq):
+            Gen_c_s1 = torch.tanh(self.W_d(Gen_c))
+            Gen_c_s2 = Gen_c_s1 * time_feature[:, s]
+            Gen_c_l = Gen_c - Gen_c_s1
+            Gen_c_adj = Gen_c_l + Gen_c_s2
+            Gen_outs = self.W_all(Gen_h) + self.U_all(GEN_x[:, s])
+            # print(outs.size())
+            Gen_f, Gen_i, Gen_o, Gen_c_tmp = torch.chunk(Gen_outs, 4, 1)
+            Gen_f = torch.sigmoid(Gen_f)
+            Gen_i = torch.sigmoid(Gen_i)
+            Gen_o = torch.sigmoid(Gen_o)
+            Gen_c_tmp = torch.sigmoid(Gen_c_tmp)
+            Gen_c = Gen_f * Gen_c_adj + Gen_i * Gen_c_tmp
+            Gen_h = Gen_o * torch.tanh(Gen_c)
+            Gen_outputs.append(Gen_h)
+        Gen_outputs = torch.stack(Gen_outputs, 1)
+        out = self.pooler(outputs)
+        Gen_out = self.pooler(Gen_outputs)
         out = self.output_mlp(out)
-        return out
-
-
+        Gen_out = self.output_mlp(Gen_out)
+        return out, Gen_out, predicted_noise, normal_noise
 
 class SAND(nn.Module):
-    def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos, device):
+    def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos, device, initial_d=0):
         super().__init__()
         self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         # self.emb_dropout = nn.Dropout(dropout_emb)
@@ -727,7 +774,7 @@ class SAND(nn.Module):
         init.uniform_(self.bias_embedding, -bound, bound)
         # self.weight_layer = torch.nn.Linear(d_model, 1)
         self.drop_out = nn.Dropout(dropout)
-        self.out_layer = nn.Linear(d_model * 4, 2)
+        self.out_layer = nn.Linear(d_model, 2)
         self.layer_norm = nn.LayerNorm(d_model)
 
         #####################################
@@ -753,14 +800,21 @@ class SAND(nn.Module):
         self.softmax = torch.nn.Softmax(dim=-1)
         self.tanh = nn.Tanh()
         ####################################
+        self.selfatt = nn.MultiheadAttention(d_model, num_heads, dropout=dropout)
+        self.emb_dropout = nn.Dropout(dropout_emb)
+        self.initial_d = initial_d
+        self.embedding2 = nn.Linear(self.initial_d, d_model)
 
     def forward(self, input_seqs, masks, lengths, seq_time_step, code_masks):
-        x = self.embbedding(input_seqs).sum(dim=2) + self.bias_embedding
+        if self.initial_d != 0:
+            x = self.embedding2(input_seqs)
+        else:
+            x = self.embbedding(input_seqs).sum(dim=2) + self.bias_embedding
         bs, sl, dm = x.size()
         # x = self.emb_dropout(x)
-        output_pos, ind_pos = self.pos_emb(lengths)
-        x += output_pos
-        x, attention = self.encoder_layer(x, x, x, masks)
+        # output_pos, ind_pos = self.pos_emb(lengths)
+        # x += output_pos
+        x, _ = self.selfatt(x, x, x)
 
         hiddenstate, _ = self.hiddenstate_learner(x)
         aligned_e_t = torch.zeros_like(hiddenstate)
@@ -785,31 +839,20 @@ class SAND(nn.Module):
         noise_loss = normal_noise - predicted_noise
         GEN_x = aligned_e_t + noise_loss
         ####### diff end
-        fused_x = self.fuse(torch.cat([x, GEN_x], dim=-1))
+        # fused_x = self.fuse(torch.cat([x, GEN_x], dim=-1))
         #######fuse gen result with original ones
 
-        # res = x
-        # x = self.positional_feed_forward_layer(x)
-        # x = self.drop_out(x)
-        # x = self.layer_norm(x + res)
-        mask = (torch.arange(sl, device=fused_x.device).unsqueeze(0).expand(bs, sl) >= lengths.unsqueeze(
-            1))
-        fused_x = fused_x.masked_fill(mask.unsqueeze(-1).expand_as(fused_x), 0.0)
-        U = torch.zeros((fused_x.size(0), 4, fused_x.size(2))).to(fused_x.device)
-        lengths = lengths.float()
-        for t in range(1, input_seqs.size(1) + 1):
-            s = 4 * t / lengths
-            for m in range(1, 4 + 1):
-                w = torch.pow(1 - torch.abs(s - m) / 4, 2)
-                U[:, m - 1] += w.unsqueeze(-1) * fused_x[:, t - 1]
-        U = U.view(input_seqs.size(0), -1)
-        U = self.drop_out(U)
-        output = self.out_layer(U)
-        return output
+        x = self.drop_out(x)
+        output = self.out_layer(x.sum(-2))
+
+        GEN_x = self.drop_out(GEN_x)
+        GEN_output = self.out_layer(GEN_x.sum(-2))
+
+        return output, GEN_output, predicted_noise, normal_noise
 
 
 class Retain(nn.Module):
-    def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos, device):
+    def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos, device, initial_d=0):
         super().__init__()
         self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.dropout = nn.Dropout(dropout)
@@ -846,9 +889,14 @@ class Retain(nn.Module):
         self.softmax = torch.nn.Softmax(dim=-1)
         self.tanh = nn.Tanh()
         ####################################
+        self.initial_d = initial_d
+        self.embedding2 = nn.Linear(self.initial_d, d_model)
 
     def forward(self, input_seqs, masks, lengths, seq_time_step, code_masks):
-        x = self.embbedding(input_seqs).sum(dim=2)
+        if self.initial_d != 0:
+            x = self.embedding2(input_seqs)
+        else:
+            x = self.embbedding(input_seqs).sum(dim=2)
         x = self.dropout(x)
         visit_rnn_output, visit_rnn_hidden = self.visit_level_rnn(x)
         alpha = self.visit_level_attention(visit_rnn_output)
@@ -858,41 +906,76 @@ class Retain(nn.Module):
         var_attn_w = torch.tanh(beta)
         attn_w = visit_attn_w * var_attn_w
         c_all = attn_w * x
+        c = torch.sum(c_all, dim=1)
+        c = self.output_dropout(c)
 
-        hiddenstate, _ = self.hiddenstate_learner(c_all)
-        aligned_e_t = torch.zeros_like(hiddenstate)
-        for i in range(aligned_e_t.shape[1]):
+
+        aligned_e_t_1 = torch.zeros_like(x)
+        for i in range(aligned_e_t_1.shape[1]):
             if i == 0:
-                aligned_e_t[:, 0:1,:] = c_all[:, 0:1, :]
+                aligned_e_t_1[:, 0:1,:] = x[:, 0:1, :]
             else:
-                e_k = c_all[:, 0:1, :]
-                w_h_k_prev = self.w_hk(hiddenstate[:,i-1:i,:])
-                attn = self.softmax(self.w2(self.tanh(self.w1(torch.cat((e_k,w_h_k_prev),dim=-1)))))
-                alpha1 = attn[:,:,0:1]
-                alpha2 = attn[:,:,1:2]
-                aligned_e_t[:, i:i+1,:] = e_k * alpha1 + w_h_k_prev * alpha2
+                e_k_1 = x[:, 0:1, :]
+                w_h_k_prev_1 = self.w_hk(visit_rnn_output[:,i-1:i,:])
+                attn_1 = self.softmax(self.w2(self.tanh(self.w1(torch.cat((e_k_1,w_h_k_prev_1),dim=-1)))))
+                alpha1_1 = attn_1[:,:,0:1]
+                alpha2_1 = attn_1[:,:,1:2]
+                aligned_e_t_1[:, i:i+1,:] = e_k_1 * alpha1_1 + w_h_k_prev_1 * alpha2_1
         ##########diff start
-        diffusion_time_t = torch.randint(
-            low=0, high=self.config.diffusion.num_diffusion_timesteps, size=[aligned_e_t.shape[0], ]).to(
+        diffusion_time_t_1 = torch.randint(
+            low=0, high=self.config.diffusion.num_diffusion_timesteps, size=[aligned_e_t_1.shape[0], ]).to(
             self.device)
-        alpha = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t).view(-1, 1, 1)
-        normal_noise = torch.randn_like(aligned_e_t)
-        final_statues_with_noise = aligned_e_t * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
-        predicted_noise = self.diffusion(final_statues_with_noise, timesteps=diffusion_time_t)
-        noise_loss = normal_noise - predicted_noise
-        GEN_c_all = aligned_e_t + noise_loss
+        alpha_1 = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t_1).view(-1, 1, 1)
+        normal_noise_1 = torch.randn_like(aligned_e_t_1)
+        final_statues_with_noise_1 = aligned_e_t_1 * alpha_1.sqrt() + normal_noise_1 * (1.0 - alpha_1).sqrt()
+        predicted_noise_1 = self.diffusion(final_statues_with_noise_1, timesteps=diffusion_time_t_1)
+        noise_loss_1 = normal_noise_1 - predicted_noise_1
+        GEN_x1 = aligned_e_t_1 + noise_loss_1
         ####### diff end
-        fused_c_all = self.fuse(torch.cat([c_all, GEN_c_all], dim=-1))
         #######fuse gen result with original ones
 
-        c = torch.sum(fused_c_all, dim=1)
-        c = self.output_dropout(c)
+        aligned_e_t_2 = torch.zeros_like(x)
+        for i in range(aligned_e_t_2.shape[1]):
+            if i == 0:
+                aligned_e_t_2[:, 0:1,:] = x[:, 0:1, :]
+            else:
+                e_k_2 = x[:, 0:1, :]
+                w_h_k_prev_2 = self.w_hk(var_rnn_output[:,i-1:i,:])
+                attn_2 = self.softmax(self.w2(self.tanh(self.w1(torch.cat((e_k_2,w_h_k_prev_2),dim=-1)))))
+                alpha1_2 = attn_2[:,:,0:1]
+                alpha2_2 = attn_2[:,:,1:2]
+                aligned_e_t_2[:, i:i+1,:] = e_k_2 * alpha1_2 + w_h_k_prev_2 * alpha2_2
+        ##########diff start
+        diffusion_time_t_2 = torch.randint(
+            low=0, high=self.config.diffusion.num_diffusion_timesteps, size=[aligned_e_t_2.shape[0], ]).to(
+            self.device)
+        alpha_2 = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t_2).view(-1, 1, 1)
+        normal_noise_2 = torch.randn_like(aligned_e_t_2)
+        final_statues_with_noise_2 = aligned_e_t_2 * alpha_2.sqrt() + normal_noise_2 * (1.0 - alpha_2).sqrt()
+        predicted_noise_2 = self.diffusion(final_statues_with_noise_2, timesteps=diffusion_time_t_2)
+        noise_loss_2 = normal_noise_2 - predicted_noise_2
+        GEN_x2 = aligned_e_t_2 + noise_loss_2
+        ####### diff end
+        #######fuse gen result with original ones
+
+        GEN_visit_rnn_output, _ = self.visit_level_rnn(GEN_x1)
+        Gen_alpha = self.visit_level_attention(GEN_visit_rnn_output)
+        Gen_visit_attn_w = torch.softmax(Gen_alpha, dim=1)
+        GEN_var_rnn_output, _ = self.variable_level_rnn(GEN_x2)
+        Gen_beta = self.variable_level_attention(GEN_var_rnn_output)
+        Gen_var_attn_w = torch.tanh(Gen_beta)
+        Gen_attn_w = Gen_visit_attn_w * Gen_var_attn_w
+        Gen_c_all = Gen_attn_w * GEN_x1
+        Gen_c = torch.sum(Gen_c_all, dim=1)
+        Gen_c = self.output_dropout(Gen_c)
+
         output = self.output_layer(c)
-        return output
+        Gen_output = self.output_layer(Gen_c)
+        return output, Gen_output, predicted_noise_1+predicted_noise_2, normal_noise_1+normal_noise_2
 
 
 class RetainEx(nn.Module):
-    def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos, device):
+    def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos, device, initial_d = 0):
         super().__init__()
         self.embbedding1 = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.embbedding2 = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
@@ -928,30 +1011,32 @@ class RetainEx(nn.Module):
         self.softmax = torch.nn.Softmax(dim=-1)
         self.tanh = nn.Tanh()
         ####################################
+        self.initial_d = initial_d
+        self.linearembedding = nn.Linear(self.initial_d, d_model)
 
     def forward(self, input_seqs, masks, lengths, time_step, code_masks):
-        embedded = self.embbedding1(input_seqs).sum(dim=2)
-        embedded2 = self.embbedding2(input_seqs).sum(dim=2)
+        if self.initial_d != 0:
+            embedded = self.linearembedding(input_seqs)
+            embedded2 = self.linearembedding(input_seqs)
+        else:
+            embedded = self.embbedding1(input_seqs).sum(dim=2)
+            embedded2 = self.embbedding2(input_seqs).sum(dim=2)
+
         b, seq, features = embedded.size()
         dates = torch.stack([time_step, 1 / (time_step + 1), 1 / torch.log(np.e + time_step)], 2)  # [b x seq x 3]
+        og_embedded = embedded.clone()
         embedded = torch.cat([embedded, dates], 2)
         outputs1 = self.RNN1(embedded)[0]
         outputs2 = self.RNN2(embedded)[0]
         # print(outputs2.size())
-        E = self.wa(outputs1.contiguous().view(b * seq, -1))
-        alpha = F.softmax(E.view(b, seq), 1)
-        outputs2 = self.Wb(outputs2.contiguous().view(b * seq, -1))  # [b*seq x hid]
-        Beta = torch.tanh(outputs2).view(b, seq, features)
-        v_all = (embedded2 * Beta) * alpha.unsqueeze(2).expand(b, seq, features)
 
-        hiddenstate, _ = self.hiddenstate_learner(v_all)
-        aligned_e_t = torch.zeros_like(hiddenstate)
+        aligned_e_t = torch.zeros_like(og_embedded)
         for i in range(aligned_e_t.shape[1]):
             if i == 0:
-                aligned_e_t[:, 0:1,:] = v_all[:, 0:1, :]
+                aligned_e_t[:, 0:1,:] = og_embedded[:, 0:1, :]
             else:
-                e_k = v_all[:, 0:1, :]
-                w_h_k_prev = self.w_hk(hiddenstate[:,i-1:i,:])
+                e_k = og_embedded[:, 0:1, :]
+                w_h_k_prev = self.w_hk(outputs1[:,i-1:i,:])
                 attn = self.softmax(self.w2(self.tanh(self.w1(torch.cat((e_k,w_h_k_prev),dim=-1)))))
                 alpha1 = attn[:,:,0:1]
                 alpha2 = attn[:,:,1:2]
@@ -965,15 +1050,34 @@ class RetainEx(nn.Module):
         final_statues_with_noise = aligned_e_t * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
         predicted_noise = self.diffusion(final_statues_with_noise, timesteps=diffusion_time_t)
         noise_loss = normal_noise - predicted_noise
-        GEN_v_all = aligned_e_t + noise_loss
+        GEN_embedded = aligned_e_t + noise_loss
         ####### diff end
-        fused_v_all = self.fuse(torch.cat([v_all, GEN_v_all], dim=-1))
-        #######fuse gen result with original ones
+        GEN_embedded = torch.cat([GEN_embedded, dates], 2)
 
-        outputs = fused_v_all.sum(1)  # [b x hidden]
+        GEN_outputs1 = self.RNN1(GEN_embedded)[0]
+        GEN_outputs2 = self.RNN2(GEN_embedded)[0]
+
+        E = self.wa(outputs1.contiguous().view(b * seq, -1))
+        alpha = F.softmax(E.view(b, seq), 1)
+        outputs2 = self.Wb(outputs2.contiguous().view(b * seq, -1))  # [b*seq x hid]
+        Beta = torch.tanh(outputs2).view(b, seq, features)
+        v_all = (embedded2 * Beta) * alpha.unsqueeze(2).expand(b, seq, features)
+
+        outputs = v_all.sum(1)  # [b x hidden]
         outputs = self.drop_out(outputs)
         outputs = self.output_layer(outputs)
-        return outputs
+
+        GEN_E = self.wa(GEN_outputs1.contiguous().view(b * seq, -1))
+        GEN_alpha = F.softmax(GEN_E.view(b, seq), 1)
+        GEN_outputs2 = self.Wb(GEN_outputs2.contiguous().view(b * seq, -1))  # [b*seq x hid]
+        GEN_Beta = torch.tanh(GEN_outputs2).view(b, seq, features)
+        GEN_v_all = (embedded2 * GEN_Beta) * GEN_alpha.unsqueeze(2).expand(b, seq, features)
+
+        GEN_outputs = GEN_v_all.sum(1)  # [b x hidden]
+        GEN_outputs = self.drop_out(GEN_outputs)
+        GEN_outputs = self.output_layer(GEN_outputs)
+
+        return outputs, GEN_outputs, predicted_noise, normal_noise
 
 
 def build_tree(treeFile):
