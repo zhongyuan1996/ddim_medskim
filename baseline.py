@@ -105,7 +105,7 @@ def main(name, seed, data, max_len, max_num):
     parser.add_argument('--weight_decay', default=0.001, type=float)
     parser.add_argument('--max_grad_norm', default=1.0, type=float, help='max grad norm (0 to disable)')
     parser.add_argument('--warmup_steps', default=200, type=int)
-    parser.add_argument('--n_epochs', default=2, type=int)
+    parser.add_argument('--n_epochs', default=30, type=int)
     parser.add_argument('--log_interval', default=20, type=int)
     parser.add_argument('--mode', default='train', choices=['train', 'eval', 'pred','gen'], help='run training or evaluation')
     parser.add_argument('--save_dir', default='./saved_models/', help='model output directory')
@@ -131,7 +131,7 @@ def train(args):
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
     files = os.listdir(str(args.save_dir))
-    if str(args.encoder) + '_' + str(args.target_disease) + '_' + str(args.seed) + '.csv' in files:
+    if str(args.encoder) + 'diff_' + str(args.target_disease) + '_' + str(args.seed) + '.csv' in files:
         print("conducted_experiments")
     else:
 
@@ -391,7 +391,7 @@ def train(args):
         print('training ends in {} steps'.format(global_step))
         print('best dev auc: {:.4f} (at epoch {})'.format(best_dev_auc, best_dev_epoch))
         print('final test auc: {:.4f}'.format(final_test_auc))
-        results_file = open(str(args.save_dir) + str(args.encoder) + '_' + str(args.target_disease) + '_' + str(args.seed) + '.csv', 'w', encoding='gbk')
+        results_file = open(str(args.save_dir) + str(args.encoder) +'diff' + '_' + str(args.target_disease) + '_' + str(args.seed) + '.csv', 'w', encoding='gbk')
         csv_w = csv.writer(results_file)
         csv_w.writerow([best_epoch_pr, best_epoch_f1, best_epoch_kappa])
         print('best test pr: {:.4f}'.format(best_epoch_pr))
@@ -475,8 +475,8 @@ def pred(args):
 
 
 if __name__ == '__main__':
-    # model_name = ['lstm', 'sand', 'gruself', 'retain', 'retainex', 'TLSTM']
-    model_name = ['TLSTM']
+    model_name = ['lstm', 'gruself', 'retain', 'retainex', 'TLSTM']
+    # model_name = ['TLSTM']
     seeds = [1234]
     dataset = ["mortality", "Shock", "ARF"]
     max_lens = [48, 12, 12]
