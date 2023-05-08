@@ -475,8 +475,7 @@ def pred(args):
 
 
 if __name__ == '__main__':
-    model_name = ['lstm', 'gruself', 'retain', 'retainex', 'TLSTM']
-    # model_name = ['TLSTM']
+    # model_name = ['lstm', 'gruself', 'retain', 'retainex', 'TLSTM' 'hita']
     seeds = [1234]
     dataset = ["mortality", "Shock", "ARF"]
     max_lens = [48, 12, 12]

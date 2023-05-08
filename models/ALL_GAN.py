@@ -933,6 +933,221 @@ class SAND_base(nn.Module):
         gen_output = self.out_layer(gen_x.sum(-2))
 
         return output, gen_output, Dec_X, Gen_X, seq_time_step, label
+
+class HitaNet(nn.Module):
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_heads, max_pos, initial_d=0, num_layers=1, m=0,
+                 dense_model=64):
+    # def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, device, GAN, num_heads, max_pos, initial_d=0):
+        super(HitaNet, self).__init__()
+        self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.bias_embedding = torch.nn.Parameter(torch.Tensor(d_model))
+        bound = 1 / math.sqrt(vocab_size)
+        init.uniform_(self.bias_embedding, -bound, bound)
+        self.encoder_layers = nn.ModuleList([Attention(d_model, num_heads, dropout) for _ in range(1)])
+        self.positional_feed_forward_layers = nn.ModuleList([nn.Sequential(nn.Linear(d_model, 4 * d_model), nn.ReLU(),
+                                                                           nn.Linear(4 * d_model, d_model))
+                                                             for _ in range(1)])
+        self.pos_emb = PositionalEncoding(d_model, max_pos)
+        self.time_layer = torch.nn.Linear(64, 256)
+        self.selection_layer = torch.nn.Linear(1, 64)
+        self.selection_time_layer = nn.Linear(1, 64)
+        self.weight_layer = torch.nn.Linear(64, 64)
+        self.relu = nn.ReLU()
+        self.tanh = nn.Tanh()
+        self.self_layer = torch.nn.Linear(256, 1)
+        self.quiry_layer = torch.nn.Linear(256, 64)
+        self.quiry_weight_layer = torch.nn.Linear(256, 2)
+        self.dropout = nn.Dropout(dropout)
+        self.emb_dropout = nn.Dropout(dropout_emb)
+        self.layer_norm = nn.LayerNorm(d_model)
+        self.output_mlp = nn.Sequential(nn.Linear(d_model, 2))
+        self.GAN = GAN
+        self.initial_d = initial_d
+        self.embedding2 = nn.Linear(self.initial_d, d_model)
+
+    def forward(self, input_seqs, masks, lengths, seq_time_step, code_masks, label):
+        seq_time_step = seq_time_step.unsqueeze(2) / 180
+        time_feature = 1 - self.tanh(torch.pow(self.selection_layer(seq_time_step), 2))
+        # time_feature_cache = time_feature
+        time_feature = self.time_layer(time_feature)
+        if self.initial_d != 0:
+            x = self.embedding2(input_seqs) + self.bias_embedding
+        else:
+            x = self.embbedding(input_seqs).sum(dim=2) + self.bias_embedding
+        x = self.emb_dropout(x)
+        bs, seq_length, d_model = x.size()
+        # output_pos, ind_pos = self.pos_emb(lengths)
+        # x += output_pos
+        x += time_feature
+        attentions = []
+        outputs = []
+        for i in range(len(self.encoder_layers)):
+            x, attention = self.encoder_layers[i](x, x, x, masks)
+            res = x
+            x = self.positional_feed_forward_layers[i](x)
+            x = self.dropout(x)
+            x = self.layer_norm(x + res)
+            attentions.append(attention)
+            outputs.append(x)
+
+        # final_statues = outputs[-1].gather(1, lengths[:, None, None].expand(bs, 1, d_model) - 1).expand(bs, seq_length, d_model)
+        final_statues = outputs[-1].gather(1, torch.ones(bs, 1, d_model).long().to(x.device)).expand(bs, seq_length, d_model)
+
+        Dec_X, GEN_status, _, _ = self.GAN(final_statues, seq_time_step, label)
+
+        quiryes = self.relu(self.quiry_layer(final_statues))
+        # mask = (torch.arange(seq_length, device=x.device).unsqueeze(0).expand(bs, seq_length) >= lengths.unsqueeze(1))
+        self_weight = torch.softmax(self.self_layer(outputs[-1]).squeeze(), dim=1).view(bs,seq_length).unsqueeze(2)
+        selection_feature = self.relu(self.weight_layer(self.selection_time_layer(seq_time_step)))
+        selection_feature = torch.sum(selection_feature * quiryes, 2) / 8
+        time_weight = torch.softmax(selection_feature, dim=1).view(bs, seq_length).unsqueeze(
+            2)
+        #attention_weight = torch.softmax(self.quiry_weight_layer(final_statues), 2).view(bs, seq_length, 2)
+        attention_weight = torch.softmax(self.quiry_weight_layer(final_statues), 2).view(bs, seq_length, 2)
+        total_weight = torch.cat((time_weight, self_weight), 2)
+        total_weight = torch.sum(total_weight * attention_weight, 2)
+        total_weight = total_weight / (torch.sum(total_weight, 1, keepdim=True) + 1e-5)
+        weighted_features = outputs[-1] * total_weight.unsqueeze(2)
+        averaged_features = torch.sum(weighted_features, 1)
+        averaged_features = self.dropout(averaged_features)
+        prediction = self.output_mlp(averaged_features)
+
+        GEN_quires = self.relu(self.quiry_layer(GEN_status))
+        GEN_self_weight = torch.softmax(self.self_layer(outputs[-1]).squeeze(), dim=1).view(bs, seq_length).unsqueeze(2)
+        GEN_selection_feature = self.relu(self.weight_layer(self.selection_time_layer(seq_time_step)))
+        GEN_selection_feature = torch.sum(GEN_selection_feature * GEN_quires, 2) / 8
+        GEN_time_weight = torch.softmax(GEN_selection_feature, dim=1).view(bs, seq_length).unsqueeze(
+            2)
+        GEN_attention_weight = torch.softmax(self.quiry_weight_layer(GEN_status), 2).view(bs, seq_length, 2)
+        GEN_total_weight = torch.cat((GEN_time_weight, GEN_self_weight), 2)
+        GEN_total_weight = torch.sum(GEN_total_weight * GEN_attention_weight, 2)
+        GEN_total_weight = GEN_total_weight / (torch.sum(GEN_total_weight, 1, keepdim=True) + 1e-5)
+        GEN_weighted_features = GEN_status * GEN_total_weight.unsqueeze(2)
+        GEN_averaged_features = torch.sum(GEN_weighted_features, 1)
+        GEN_averaged_features = self.dropout(GEN_averaged_features)
+        GEN_prediction = self.output_mlp(GEN_averaged_features)
+
+        return prediction, GEN_prediction, Dec_X, GEN_status, seq_time_step, label
+
+class Retain(nn.Module):
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_heads, max_pos, initial_d=0, num_layers=1, m=0,
+                 dense_model=64):
+        super().__init__()
+        self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.dropout = nn.Dropout(dropout)
+        self.variable_level_rnn = nn.GRU(d_model, d_model, batch_first=True)
+        self.visit_level_rnn = nn.GRU(d_model, d_model, batch_first=True)
+        self.variable_level_attention = nn.Linear(d_model, d_model)
+        self.visit_level_attention = nn.Linear(d_model, 1)
+        self.output_dropout = nn.Dropout(dropout)
+        self.output_layer = nn.Linear(d_model, 2)
+
+        self.var_hidden_size = d_model
+        self.GAN = GAN
+        self.visit_hidden_size = d_model
+
+        self.initial_d = initial_d
+        self.embedding2 = nn.Linear(self.initial_d, d_model)
+
+    def forward(self, input_seqs, masks, lengths, seq_time_step, code_masks, label):
+        if self.initial_d != 0:
+            x = self.embedding2(input_seqs)
+        else:
+            x = self.embbedding(input_seqs).sum(dim=2)
+        x = self.dropout(x)
+
+        Dec_X, GEN_X, _, _ = self.GAN(x, seq_time_step, label)
+
+        visit_rnn_output, visit_rnn_hidden = self.visit_level_rnn(x)
+        alpha = self.visit_level_attention(visit_rnn_output)
+        visit_attn_w = torch.softmax(alpha, dim=1)
+        var_rnn_output, var_rnn_hidden = self.variable_level_rnn(x)
+        beta = self.variable_level_attention(var_rnn_output)
+        var_attn_w = torch.tanh(beta)
+        attn_w = visit_attn_w * var_attn_w
+        c_all = attn_w * x
+        c = torch.sum(c_all, dim=1)
+        c = self.output_dropout(c)
+
+        GEN_visit_rnn_output, GEN_visit_rnn_hidden = self.visit_level_rnn(GEN_X)
+        GEN_alpha = self.visit_level_attention(GEN_visit_rnn_output)
+        GEN_visit_attn_w = torch.softmax(GEN_alpha, dim=1)
+        GEN_var_rnn_output, GEN_var_rnn_hidden = self.variable_level_rnn(GEN_X)
+        GEN_beta = self.variable_level_attention(GEN_var_rnn_output)
+        GEN_var_attn_w = torch.tanh(GEN_beta)
+        GEN_attn_w = GEN_visit_attn_w * GEN_var_attn_w
+        GEN_c_all = GEN_attn_w * GEN_X
+        GEN_c = torch.sum(GEN_c_all, dim=1)
+        GEN_c = self.output_dropout(GEN_c)
+
+        output = self.output_layer(c)
+        Gen_output = self.output_layer(GEN_c)
+        return output, Gen_output, Dec_X, GEN_X, seq_time_step, label
+
+class RetainEx(nn.Module):
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_heads, max_pos, initial_d=0, num_layers=1, m=0,
+                 dense_model=64):
+        super().__init__()
+        self.embbedding1 = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.embbedding2 = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.RNN1 = nn.LSTM(d_model + 3, d_model,
+                            1, batch_first=True)
+        self.RNN2 = nn.LSTM(d_model + 3, d_model,
+                            1, batch_first=True)
+        self.wa = nn.Linear(d_model, 1, bias=False)
+        self.Wb = nn.Linear(d_model, d_model, bias=False)
+        self.W_out = nn.Linear(d_model, 2, bias=False)
+        self.drop_out = nn.Dropout(dropout)
+        self.output_layer = nn.Linear(d_model, 2)
+        self.GAN = GAN
+        self.initial_d = initial_d
+        self.linearembedding = nn.Linear(self.initial_d, d_model)
+
+    def forward(self, input_seqs, masks, lengths, time_step, code_masks, label):
+        if self.initial_d != 0:
+            embedded = self.linearembedding(input_seqs)
+            embedded2 = self.linearembedding(input_seqs)
+        else:
+            embedded = self.embbedding1(input_seqs).sum(dim=2)
+            embedded2 = self.embbedding2(input_seqs).sum(dim=2)
+
+        b, seq, features = embedded.size()
+        dates = torch.stack([time_step, 1 / (time_step + 1), 1 / torch.log(np.e + time_step)], 2)  # [b x seq x 3]
+
+        og_Dec_embedded, og_GEN_embedded, _, _ = self.GAN(embedded, time_step, label)
+
+        embedded = torch.cat([embedded, dates], 2)
+        outputs1 = self.RNN1(embedded)[0]
+        outputs2 = self.RNN2(embedded)[0]
+        # print(outputs2.size())
+
+        GEN_embedded = torch.cat([og_GEN_embedded, dates], 2)
+        GEN_outputs1 = self.RNN1(GEN_embedded)[0]
+        GEN_outputs2 = self.RNN2(GEN_embedded)[0]
+
+        E = self.wa(outputs1.contiguous().view(b * seq, -1))
+        alpha = F.softmax(E.view(b, seq), 1)
+        outputs2 = self.Wb(outputs2.contiguous().view(b * seq, -1))  # [b*seq x hid]
+        Beta = torch.tanh(outputs2).view(b, seq, features)
+        v_all = (embedded2 * Beta) * alpha.unsqueeze(2).expand(b, seq, features)
+
+        outputs = v_all.sum(1)  # [b x hidden]
+        outputs = self.drop_out(outputs)
+        outputs = self.output_layer(outputs)
+
+        GEN_E = self.wa(GEN_outputs1.contiguous().view(b * seq, -1))
+        GEN_alpha = F.softmax(GEN_E.view(b, seq), 1)
+        GEN_outputs2 = self.Wb(GEN_outputs2.contiguous().view(b * seq, -1))  # [b*seq x hid]
+        GEN_Beta = torch.tanh(GEN_outputs2).view(b, seq, features)
+        GEN_v_all = (embedded2 * GEN_Beta) * GEN_alpha.unsqueeze(2).expand(b, seq, features)
+
+        GEN_outputs = GEN_v_all.sum(1)  # [b x hidden]
+        GEN_outputs = self.drop_out(GEN_outputs)
+        GEN_outputs = self.output_layer(GEN_outputs)
+
+
+        return outputs, GEN_outputs, og_Dec_embedded, og_GEN_embedded, time_step, label
+
 # class LSTM_medGAN(nn.Module):
 #     def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, num_layers=1, m=0,
 #                  dense_model=64):

@@ -297,6 +297,67 @@ def train(args):
             GAN = medGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
             model = SAND_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+        elif args.model == 'hita_ehrGAN':
+            generator = Linear_generator(64, args.max_len)
+            GAN = ehrGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = HitaNet(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+        elif args.model == 'hita_GcGAN':
+            generator = FCN_generator(64, args.max_len)
+            GAN = GcGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = HitaNet(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+        elif args.model == 'hita_actGAN':
+            generator = Linear_generator(64, args.max_len)
+            GAN = actGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = HitaNet(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+        elif args.model == 'hita_medGAN':
+            generator = Linear_generator(64, args.max_len)
+            GAN = medGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = HitaNet(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+        elif args.model == 'retain_ehrGAN':
+            generator = Linear_generator(64, args.max_len)
+            GAN = ehrGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = Retain(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+        elif args.model == 'retain_GcGAN':
+            generator = FCN_generator(64, args.max_len)
+            GAN = GcGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = Retain(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+        elif args.model == 'retain_actGAN':
+            generator = Linear_generator(64, args.max_len)
+            GAN = actGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = Retain(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+        elif args.model == 'retain_medGAN':
+            generator = Linear_generator(64, args.max_len)
+            GAN = medGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = Retain(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+        elif args.model == 'retainex_ehrGAN':
+            generator = Linear_generator(64, args.max_len)
+            GAN = ehrGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = RetainEx(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+        elif args.model == 'retainex_GcGAN':
+            generator = FCN_generator(64, args.max_len)
+            GAN = GcGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = RetainEx(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+        elif args.model == 'retainex_actGAN':
+            generator = Linear_generator(64, args.max_len)
+            GAN = actGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = RetainEx(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+        elif args.model == 'retainex_medGAN':
+            generator = Linear_generator(64, args.max_len)
+            GAN = medGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = RetainEx(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+
         model.to(device)
 
         no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
@@ -472,10 +533,10 @@ def train(args):
         print()
 
 if __name__ == '__main__':
-    model_name = ['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN', 'Dipole_ehrGAN', 'Dipole_GcGAN', 'Dipole_actGAN', 'Dipole_medGAN', 'SAND_ehrGAN', 'SAND_GcGAN', 'SAND_actGAN', 'SAND_medGAN', 'TLSTM_ehrGAN', 'TLSTM_GcGAN', 'TLSTM_actGAN', 'TLSTM_medGAN'
+    model_name = ['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN', 'Dipole_ehrGAN', 'Dipole_GcGAN', 'Dipole_actGAN', 'Dipole_medGAN', 'SAND_ehrGAN', 'SAND_GcGAN', 'SAND_actGAN', 'SAND_medGAN', 'TLSTM_ehrGAN', 'TLSTM_GcGAN', 'TLSTM_actGAN', 'TLSTM_medGAN','hita_ehrGAN', 'hita_GcGAN', 'hita_actGAN', 'hita_medGAN' ,'retain_ehrGAN', 'retain_GcGAN', 'retain_actGAN', 'retain_medGAN','retainex_ehrGAN', 'retainex_GcGAN', 'retainex_actGAN', 'retainex_medGAN'
                    ]
-    # model_name = ['LSTM_actGAN']
-    seeds = [2345,3456]
+    # model_name = ['retainex_GcGAN']
+    seeds = [1234]
     dataset = ["mortality", "Shock", "ARF"]
     max_lens = [48, 12, 12]
     max_nums = [7727, 5795, 5132]

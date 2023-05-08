@@ -130,7 +130,7 @@ def dict2namespace(config):
     return namespace
 
 class HitaNet(nn.Module):
-    def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos, device):
+    def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos, device, initial_d=0):
         super(HitaNet, self).__init__()
         self.embbedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.bias_embedding = torch.nn.Parameter(torch.Tensor(d_model))
@@ -176,17 +176,22 @@ class HitaNet(nn.Module):
         self.w2 = nn.Linear(64,2)
         self.softmax = torch.nn.Softmax(dim=-1)
 ####################################
+        self.initial_d = initial_d
+        self.embedding2 = nn.Linear(self.initial_d, d_model)
 
     def forward(self, input_seqs, masks, lengths, seq_time_step, code_masks):
         seq_time_step = seq_time_step.unsqueeze(2) / 180
         time_feature = 1 - self.tanh(torch.pow(self.selection_layer(seq_time_step), 2))
         # time_feature_cache = time_feature
         time_feature = self.time_layer(time_feature)
-        x = self.embbedding(input_seqs).sum(dim=2) + self.bias_embedding
+        if self.initial_d != 0:
+            x = self.embedding2(input_seqs) + self.bias_embedding
+        else:
+            x = self.embbedding(input_seqs).sum(dim=2) + self.bias_embedding
         x = self.emb_dropout(x)
         bs, seq_length, d_model = x.size()
-        output_pos, ind_pos = self.pos_emb(lengths)
-        x += output_pos
+        # output_pos, ind_pos = self.pos_emb(lengths)
+        # x += output_pos
         x += time_feature
         attentions = []
         outputs = []
@@ -198,7 +203,9 @@ class HitaNet(nn.Module):
             x = self.layer_norm(x + res)
             attentions.append(attention)
             outputs.append(x)
-        final_statues = outputs[-1].gather(1, lengths[:, None, None].expand(bs, 1, d_model) - 1).expand(bs, seq_length, d_model)
+
+        # final_statues = outputs[-1].gather(1, lengths[:, None, None].expand(bs, 1, d_model) - 1).expand(bs, seq_length, d_model)
+        final_statues = outputs[-1].gather(1, torch.ones(bs, 1, d_model).long().to(x.device)).expand(bs, seq_length, d_model)
 
         hiddenstate, _ = self.hiddenstate_learner(final_statues)
         aligned_e_t = torch.zeros_like(hiddenstate)
@@ -221,23 +228,20 @@ class HitaNet(nn.Module):
         final_statues_with_noise = aligned_e_t * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
         predicted_noise = self.diffusion(final_statues_with_noise, timesteps=diffusion_time_t)
         noise_loss = normal_noise - predicted_noise
-        GEN_aligned_e_t = aligned_e_t + noise_loss
+        GEN_status = aligned_e_t + noise_loss
         ####### diff end
-        fused_status = self.fuse(torch.cat([final_statues, GEN_aligned_e_t], dim=-1))
+
         #######fuse gen result with original ones
 
-        #quiryes = self.relu(self.quiry_layer(final_statues))
-        quiryes = self.relu(self.quiry_layer(fused_status))
-        mask = (torch.arange(seq_length, device=x.device).unsqueeze(0).expand(bs, seq_length) >= lengths.unsqueeze(1))
-        self_weight = torch.softmax(self.self_layer(outputs[-1]).squeeze().masked_fill(mask, -np.inf), dim=1).view(bs,
-                                                                                                                   seq_length).unsqueeze(
-            2)
+        quiryes = self.relu(self.quiry_layer(final_statues))
+        # mask = (torch.arange(seq_length, device=x.device).unsqueeze(0).expand(bs, seq_length) >= lengths.unsqueeze(1))
+        self_weight = torch.softmax(self.self_layer(outputs[-1]).squeeze(), dim=1).view(bs,seq_length).unsqueeze(2)
         selection_feature = self.relu(self.weight_layer(self.selection_time_layer(seq_time_step)))
         selection_feature = torch.sum(selection_feature * quiryes, 2) / 8
-        time_weight = torch.softmax(selection_feature.masked_fill(mask, -np.inf), dim=1).view(bs, seq_length).unsqueeze(
+        time_weight = torch.softmax(selection_feature, dim=1).view(bs, seq_length).unsqueeze(
             2)
         #attention_weight = torch.softmax(self.quiry_weight_layer(final_statues), 2).view(bs, seq_length, 2)
-        attention_weight = torch.softmax(self.quiry_weight_layer(fused_status), 2).view(bs, seq_length, 2)
+        attention_weight = torch.softmax(self.quiry_weight_layer(final_statues), 2).view(bs, seq_length, 2)
         total_weight = torch.cat((time_weight, self_weight), 2)
         total_weight = torch.sum(total_weight * attention_weight, 2)
         total_weight = total_weight / (torch.sum(total_weight, 1, keepdim=True) + 1e-5)
@@ -245,7 +249,23 @@ class HitaNet(nn.Module):
         averaged_features = torch.sum(weighted_features, 1)
         averaged_features = self.dropout(averaged_features)
         prediction = self.output_mlp(averaged_features)
-        return prediction
+
+        GEN_quires = self.relu(self.quiry_layer(GEN_status))
+        GEN_self_weight = torch.softmax(self.self_layer(outputs[-1]).squeeze(), dim=1).view(bs, seq_length).unsqueeze(2)
+        GEN_selection_feature = self.relu(self.weight_layer(self.selection_time_layer(seq_time_step)))
+        GEN_selection_feature = torch.sum(GEN_selection_feature * GEN_quires, 2) / 8
+        GEN_time_weight = torch.softmax(GEN_selection_feature, dim=1).view(bs, seq_length).unsqueeze(
+            2)
+        GEN_attention_weight = torch.softmax(self.quiry_weight_layer(GEN_status), 2).view(bs, seq_length, 2)
+        GEN_total_weight = torch.cat((GEN_time_weight, GEN_self_weight), 2)
+        GEN_total_weight = torch.sum(GEN_total_weight * GEN_attention_weight, 2)
+        GEN_total_weight = GEN_total_weight / (torch.sum(GEN_total_weight, 1, keepdim=True) + 1e-5)
+        GEN_weighted_features = GEN_status * GEN_total_weight.unsqueeze(2)
+        GEN_averaged_features = torch.sum(GEN_weighted_features, 1)
+        GEN_averaged_features = self.dropout(GEN_averaged_features)
+        GEN_prediction = self.output_mlp(GEN_averaged_features)
+
+        return prediction, GEN_prediction, predicted_noise, normal_noise
 
 
 class LSAN(nn.Module):
