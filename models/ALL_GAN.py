@@ -311,8 +311,8 @@ class actGAN(nn.Module):
         for i in range(batch_size):
             if label[i] == 0:
                 mask[i, :, :] = 0
-        fake_h = self.Linear_generator(z)
-        positive_h = x
+        fake_h = self.Linear_generator(z) * mask
+        positive_h = x * mask
 
         fake_x = self.actGAN_decoder(fake_h)
         positive_x = self.actGAN_decoder(positive_h)
