@@ -533,13 +533,14 @@ def train(args):
         print()
 
 if __name__ == '__main__':
-    model_name = ['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN', 'Dipole_ehrGAN', 'Dipole_GcGAN', 'Dipole_actGAN', 'Dipole_medGAN', 'SAND_ehrGAN', 'SAND_GcGAN', 'SAND_actGAN', 'SAND_medGAN', 'TLSTM_ehrGAN', 'TLSTM_GcGAN', 'TLSTM_actGAN', 'TLSTM_medGAN','hita_ehrGAN', 'hita_GcGAN', 'hita_actGAN', 'hita_medGAN' ,'retain_ehrGAN', 'retain_GcGAN', 'retain_actGAN', 'retain_medGAN','retainex_ehrGAN', 'retainex_GcGAN', 'retainex_actGAN', 'retainex_medGAN'
+    #'LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN',
+    model_name = [ 'Dipole_ehrGAN', 'Dipole_GcGAN', 'Dipole_actGAN', 'Dipole_medGAN', 'SAND_ehrGAN', 'SAND_GcGAN', 'SAND_actGAN', 'SAND_medGAN', 'TLSTM_ehrGAN', 'TLSTM_GcGAN', 'TLSTM_actGAN', 'TLSTM_medGAN','hita_ehrGAN', 'hita_GcGAN', 'hita_actGAN', 'hita_medGAN' ,'retain_ehrGAN', 'retain_GcGAN', 'retain_actGAN', 'retain_medGAN','retainex_ehrGAN', 'retainex_GcGAN', 'retainex_actGAN', 'retainex_medGAN'
                    ]
     # model_name = ['retainex_GcGAN']
     seeds = [1234]
-    dataset = ["mortality", "Shock", "ARF"]
-    max_lens = [48, 12, 12]
-    max_nums = [7727, 5795, 5132]
+    dataset = ["Kidney", "Amnesia", "mimic"]
+    max_lens = [50, 50, 50]
+    max_nums = [20, 20, 20]
     for seed in seeds:
         for name in model_name:
             for data, max_len, max_num in zip(dataset, max_lens, max_nums):

@@ -475,11 +475,11 @@ def pred(args):
 
 
 if __name__ == '__main__':
-    # model_name = ['lstm', 'gruself', 'retain', 'retainex', 'TLSTM' 'hita']
+    model_name = ['lstm', 'gruself', 'retain', 'retainex', 'TLSTM' 'hita', 'sand']
     seeds = [1234]
-    dataset = ["mortality", "Shock", "ARF"]
-    max_lens = [48, 12, 12]
-    max_nums = [7727, 5795, 5132]
+    dataset = ["Kidney", "Amnesia", "mimic"]
+    max_lens = [50,50,50]
+    max_nums = [20,20,20]
     for seed in seeds:
         for name in model_name:
             for data, max_len, max_num in zip(dataset, max_lens, max_nums):
