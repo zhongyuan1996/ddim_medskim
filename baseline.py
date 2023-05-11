@@ -475,9 +475,11 @@ def pred(args):
 
 
 if __name__ == '__main__':
-    model_name = ['lstm', 'gruself', 'retain', 'retainex', 'TLSTM' 'hita', 'sand']
-    seeds = [1234]
-    dataset = ["Kidney", "Amnesia", "mimic"]
+    # model_name = ['lstm', 'gruself', 'retain', 'retainex', 'TLSTM', 'hita', 'sand']
+    model_name= ['lstm']
+    seeds = [2345,3456]
+    # dataset = ["Kidney", "Amnesia", "mimic"]
+    dataset=["mimic"]
     max_lens = [50,50,50]
     max_nums = [20,20,20]
     for seed in seeds:

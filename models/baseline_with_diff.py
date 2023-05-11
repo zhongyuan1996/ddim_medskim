@@ -406,6 +406,7 @@ class LSTM_encoder(nn.Module):
         self.fuse = nn.Linear(512, 256)
         self.hiddenstate_learner = nn.LSTM(256, 256, 1, batch_first=True)
         self.w_hk = nn.Linear(256, 256)
+        self.w_tk = nn.Linear(256, 256)
         self.w1 = nn.Linear(2*256, 64)
         self.w2 = nn.Linear(64,2)
         self.softmax = torch.nn.Softmax(dim=-1)
@@ -413,32 +414,45 @@ class LSTM_encoder(nn.Module):
         ####################################
         self.initial_d = initial_d
         self.embedding2 = nn.Linear(self.initial_d, d_model)
+        self.relu = nn.ReLU()
+        self.classifyer = classifyer(d_model)
+        self.time_layer = nn.Linear(1, 64)
+        self.time_updim = nn.Linear(64, d_model)
+        self.time_updim2 = nn.Linear(1, d_model)
 
     def forward(self, input_seqs, masks, lengths, seq_time_step, code_masks):
         batch_size, seq_len, num_cui_per_visit = input_seqs.size()
+        # seq_time_step = 1/torch.log(math.e+seq_time_step.unsqueeze(2))
+        # time_encoding = self.time_updim2(seq_time_step)
+        seq_time_step = seq_time_step.unsqueeze(2) / 180
+        time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
+        time_encoding = self.time_updim(time_feature)
         if self.initial_d != 0:
-            x = self.embedding2(input_seqs)
+            visit_embedding = self.initial_embedding_2(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
         else:
-            x = self.embbedding(input_seqs).sum(dim=2)
-        x = self.emb_dropout(x)
-        # rnn_input = pack_padded_sequence(x, lengths.cpu(), batch_first=True, enforce_sorted=False)
-        rnn_output, _ = self.rnns(x)
+            visit_embedding = self.embbedding(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
+            visit_embedding = visit_embedding.sum(-2)
 
+        rnn_output, _ = self.rnns(visit_embedding)
 
-        # x, _ = pad_packed_sequence(rnn_output, batch_first=True, total_length=seq_len)
-
-
-        aligned_e_t = torch.zeros_like(x)
+        aligned_e_t = torch.zeros_like(visit_embedding)
         for i in range(aligned_e_t.shape[1]):
             if i == 0:
-                aligned_e_t[:, 0:1,:] = x[:, 0:1, :]
+                aligned_e_t[:, 0:1,:] = visit_embedding[:, 0:1, :]
             else:
-                e_k = x[:, 0:1, :]
+                e_k = visit_embedding[:, 0:1, :]
                 w_h_k_prev = self.w_hk(rnn_output[:,i-1:i,:])
-                attn = self.softmax(self.w2(self.tanh(self.w1(torch.cat((e_k,w_h_k_prev),dim=-1)))))
+                w_t_k_prev = self.w_tk(time_encoding[:,i-1:i,:])
+                attn = self.softmax(self.w2(self.tanh(self.w1(torch.cat((e_k,w_h_k_prev*w_t_k_prev),dim=-1)))))
                 alpha1 = attn[:,:,0:1]
                 alpha2 = attn[:,:,1:2]
+                # alpha3 = attn[:,:,2:3]
                 aligned_e_t[:, i:i+1,:] = e_k * alpha1 + w_h_k_prev * alpha2
+                                          # + w_t_k_prev * alpha3
 
         ##########diff start
         diffusion_time_t = torch.randint(
@@ -450,14 +464,19 @@ class LSTM_encoder(nn.Module):
         predicted_noise = self.diffusion(final_statues_with_noise, timesteps=diffusion_time_t)
         noise_loss = normal_noise - predicted_noise
         GEN_x = aligned_e_t + noise_loss
-        ####### diff end
-        # fused_x = self.fuse(torch.cat([x, GEN_x], dim=-1))
-        #######fuse gen result with original ones
-        pool_x = self.pooler(x)
-        gen_pool_x = self.pooler(GEN_x)
-        pool_x = self.output_mlp(pool_x)
-        gen_pool_x = self.output_mlp(gen_pool_x)
-        return pool_x, gen_pool_x, predicted_noise, normal_noise
+        ##########################
+        gen_rnn_output, _ = self.rnns(GEN_x)
+
+        og_softmax = torch.zeros(batch_size, seq_len, 2).to(self.device)
+        fake_softmax = torch.zeros(batch_size, seq_len, 2).to(self.device)
+
+        for i in range(seq_len):
+            og_softmax[:, i:i + 1, :] = self.classifyer(rnn_output[:, i:i + 1, :])
+            fake_softmax[:, i:i + 1, :] = self.classifyer(gen_rnn_output[:, i:i + 1, :])
+
+        final_prediction_og = og_softmax[:, -1, :]
+        final_prediction_fake = fake_softmax[:, -1, :]
+        return final_prediction_og, final_prediction_fake, predicted_noise, normal_noise
 
 
 class GRUSelf(nn.Module):
@@ -495,13 +514,18 @@ class GRUSelf(nn.Module):
         ####################################
         self.initial_d = initial_d
         self.embeding2 = nn.Linear(self.initial_d, d_model)
+        self.time_layer = nn.Linear(1, 64)
+        self.time_updim = nn.Linear(64, d_model)
 
     def forward(self, input_seqs, masks, lengths, seq_time_step, code_masks):
         batch_size, seq_len, num_cui_per_visit = input_seqs.size()
+        seq_time_step = seq_time_step.unsqueeze(2) / 180
+        time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
+        time_encoding = self.time_updim(time_feature)
         if self.initial_d != 0:
-            x = self.embeding2(input_seqs)
+            x = self.embeding2(input_seqs)+time_encoding
         else:
-            x = self.embbedding(input_seqs).sum(dim=2)
+            x = self.embbedding(input_seqs).sum(dim=2)+time_encoding
         x = self.emb_dropout(x)
         # rnn_input = pack_padded_sequence(x, lengths.cpu(), batch_first=True, enforce_sorted=False)
         rnn_output, _ = self.gru(x)
