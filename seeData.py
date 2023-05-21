@@ -5,7 +5,7 @@ import pandas as pd
 from models.dataset import padMatrix,padTime
 from sklearn.model_selection import train_test_split
 import random
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 random.seed(1234)
 
@@ -115,10 +115,39 @@ random.seed(1234)
 # plt.hist(visit_length, bins=range(0,43,1))
 # plt.show()
 
-# a_ehr, a_label, a_timestep = pickle.load(open('data/mimic/mimic_train.pickle', 'rb'))
-# b_ehr, b_label, b_timestep = pickle.load(open('data/mimic/mimic_test.pickle', 'rb'))
-# c_ehr, c_label, c_timestep = pickle.load(open('data/mimic/mimic_val.pickle', 'rb'))
-#
+a_ehr, a_label, a_timestep = pickle.load(open('data/mimic/mimic_training_new.pickle', 'rb'))
+b_ehr, b_label, b_timestep = pickle.load(open('data/mimic/mimic_testing_new.pickle', 'rb'))
+c_ehr, c_label, c_timestep = pickle.load(open('data/mimic/mimic_validation_new.pickle', 'rb'))
+
+# a_ehr, a_label, a_timestep = pickle.load(open('data/Kidney/Kidney_training_new.pickle', 'rb'))
+# b_ehr, b_label, b_timestep = pickle.load(open('data/Kidney/Kidney_testing_new.pickle', 'rb'))
+# c_ehr, c_label, c_timestep = pickle.load(open('data/Kidney/Kidney_validation_new.pickle', 'rb'))
+
+total_visit= 0
+total_patient=0
+total_codes=0
+for patient in a_ehr:
+    total_patient+=1
+    for visit in patient:
+        total_visit+=1
+        for code in visit:
+            total_codes+=1
+for patient in b_ehr:
+    total_patient+=1
+    for visit in patient:
+        total_visit+=1
+        for code in visit:
+            total_codes+=1
+for patient in c_ehr:
+    total_patient+=1
+    for visit in patient:
+        total_visit+=1
+        for code in visit:
+            total_codes+=1
+print(total_patient)
+print(total_visit/total_patient)
+print(total_codes/total_visit)
+
 # icd_codes = set()
 # for patient in a_ehr:
 #     for visit in patient:
@@ -136,6 +165,26 @@ random.seed(1234)
 #             icd_codes.add(code)
 #
 # print(len(icd_codes))
+#
+# positive, negative = 0, 0
+# for patient in a_label:
+#     if patient == 1:
+#         positive += 1
+#     else:
+#         negative += 1
+# for patient in b_label:
+#     if patient == 1:
+#         positive += 1
+#     else:
+#         negative += 1
+# for patient in c_label:
+#     if patient == 1:
+#         positive += 1
+#     else:
+#         negative += 1
+# print(positive)
+# print(negative)
+
 
 # ehr, label = pickle.load(open('data/EEG/EEG_train.pickle', 'rb'))
 # # ehr_test, label_test = pickle.load(open('EEG_test.pickle', 'rb'))
@@ -190,80 +239,80 @@ random.seed(1234)
 
 ###################################   ARF   ############################################
 
-training = np.load('data/ARF/ARF_training_og.npz')
-training_x, training_y = training['x'], training['y']
-temp = np.array(list(reversed(range(0, len(training_x[0])))))
-training_timeseq = np.repeat(temp[np.newaxis,: ], len(training_x), axis=0)
-
-testing = np.load('data/ARF/ARF_testing_og.npz')
-testing_x, testing_y = testing['x'], testing['y']
-temp = np.array(list(reversed(range(0, len(testing_x[0])))))
-testing_timeseq = np.repeat(temp[np.newaxis,: ], len(testing_x), axis=0)
-
-val = np.load('data/ARF/ARF_validation_og.npz')
-val_x, val_y = val['x'], val['y']
-temp = np.array(list(reversed(range(0, len(val_x[0])))))
-val_timeseq = np.repeat(temp[np.newaxis,: ], len(val_x), axis=0)
-
-# training_x, training_y, training_timeseq, testing_x, testing_y, testing_timeseq, val_x, val_y, val_timeseq = \
-# training_x.tolist(), training_y.tolist(), training_timeseq.tolist(), testing_x.tolist(), testing_y.tolist(), testing_timeseq.tolist(), val_x.tolist(), val_y.tolist(), val_timeseq.tolist()
-
-np.savez('data/ARF/ARF_training_new.npz', x=training_x, y=training_y, timeseq=training_timeseq)
-np.savez('data/ARF/ARF_testing_new.npz', x=testing_x, y=testing_y, timeseq=testing_timeseq)
-np.savez('data/ARF/ARF_validation_new.npz', x=val_x, y=val_y, timeseq=val_timeseq)
-
-# pickle.dump((training_x, training_y, training_timeseq), open('data/ARF/ARF_training_new.pickle', 'wb'))
-# pickle.dump((testing_x, testing_y, testing_timeseq), open('data/ARF/ARF_testing_new.pickle', 'wb'))
-# pickle.dump((val_x, val_y, val_timeseq), open('data/ARF/ARF_validation_new.pickle', 'wb'))
-
-training = np.load('data/Shock/Shock_training_og.npz')
-training_x, training_y = training['x'], training['y']
-temp = np.array(list(reversed(range(0, len(training_x[0])))))
-training_timeseq = np.repeat(temp[np.newaxis,: ], len(training_x), axis=0)
-
-testing = np.load('data/Shock/Shock_testing_og.npz')
-testing_x, testing_y = testing['x'], testing['y']
-temp = np.array(list(reversed(range(0, len(testing_x[0])))))
-testing_timeseq = np.repeat(temp[np.newaxis,: ], len(testing_x), axis=0)
-
-val = np.load('data/Shock/Shock_validation_og.npz')
-val_x, val_y = val['x'], val['y']
-temp = np.array(list(reversed(range(0, len(val_x[0])))))
-val_timeseq = np.repeat(temp[np.newaxis,: ], len(val_x), axis=0)
-
-np.savez('data/Shock/Shock_training_new.npz', x=training_x, y=training_y, timeseq=training_timeseq)
-np.savez('data/Shock/Shock_testing_new.npz', x=testing_x, y=testing_y, timeseq=testing_timeseq)
-np.savez('data/Shock/Shock_validation_new.npz', x=val_x, y=val_y, timeseq=val_timeseq)
-
+# training = np.load('data/ARF/ARF_training_og.npz')
+# training_x, training_y = training['x'], training['y']
+# temp = np.array(list(reversed(range(0, len(training_x[0])))))
+# training_timeseq = np.repeat(temp[np.newaxis,: ], len(training_x), axis=0)
+#
+# testing = np.load('data/ARF/ARF_testing_og.npz')
+# testing_x, testing_y = testing['x'], testing['y']
+# temp = np.array(list(reversed(range(0, len(testing_x[0])))))
+# testing_timeseq = np.repeat(temp[np.newaxis,: ], len(testing_x), axis=0)
+#
+# val = np.load('data/ARF/ARF_validation_og.npz')
+# val_x, val_y = val['x'], val['y']
+# temp = np.array(list(reversed(range(0, len(val_x[0])))))
+# val_timeseq = np.repeat(temp[np.newaxis,: ], len(val_x), axis=0)
 #
 # # training_x, training_y, training_timeseq, testing_x, testing_y, testing_timeseq, val_x, val_y, val_timeseq = \
 # # training_x.tolist(), training_y.tolist(), training_timeseq.tolist(), testing_x.tolist(), testing_y.tolist(), testing_timeseq.tolist(), val_x.tolist(), val_y.tolist(), val_timeseq.tolist()
 #
-# pickle.dump((training_x, training_y, training_timeseq), open('data/Shock/Shock_training_new.pickle', 'wb'))
-# pickle.dump((testing_x, testing_y, testing_timeseq), open('data/Shock/Shock_testing_new.pickle', 'wb'))
-# pickle.dump((val_x, val_y, val_timeseq), open('data/Shock/Shock_validation_new.pickle', 'wb'))
+# np.savez('data/ARF/ARF_training_new.npz', x=training_x, y=training_y, timeseq=training_timeseq)
+# np.savez('data/ARF/ARF_testing_new.npz', x=testing_x, y=testing_y, timeseq=testing_timeseq)
+# np.savez('data/ARF/ARF_validation_new.npz', x=val_x, y=val_y, timeseq=val_timeseq)
 #
-training = np.load('data/mortality/mortality_training_og.npz')
-training_x, training_y = training['x'], training['y']
-temp = np.array(list(reversed(range(0, len(training_x[0])))))
-training_timeseq = np.repeat(temp[np.newaxis,: ], len(training_x), axis=0)
-# training_x, training_y, training_timeseq = training_x.tolist(), training_y.tolist(), training_timeseq.tolist()
-# pickle.dump((training_x, training_y, training_timeseq), open('data/mortality/mortality_training_new.pickle', 'wb'))
-np.savez('data/mortality/mortality_training_new.npz', x=training_x, y=training_y, timeseq=training_timeseq)
-
-testing = np.load('data/mortality/mortality_testing_og.npz')
-testing_x, testing_y = testing['x'], testing['y']
-temp = np.array(list(reversed(range(0, len(testing_x[0])))))
-testing_timeseq = np.repeat(temp[np.newaxis,: ], len(testing_x), axis=0)
-# testing_x, testing_y, testing_timeseq = testing_x.tolist(), testing_y.tolist(), testing_timeseq.tolist()
-# pickle.dump((testing_x, testing_y, testing_timeseq), open('data/mortality/mortality_testing_new.pickle', 'wb'))
-np.savez('data/mortality/mortality_testing_new.npz', x=testing_x, y=testing_y, timeseq=testing_timeseq)
-
-
-val = np.load('data/mortality/mortality_validation_og.npz')
-val_x, val_y = val['x'], val['y']
-temp = np.array(list(reversed(range(0, len(val_x[0])))))
-val_timeseq = np.repeat(temp[np.newaxis,: ], len(val_x), axis=0)
-np.savez('data/mortality/mortality_validation_new.npz', x=val_x, y=val_y, timeseq=val_timeseq)
-# val_x, val_y, val_timeseq = val_x.tolist(), val_y.tolist(), val_timeseq.tolist()
-# pickle.dump((val_x, val_y, val_timeseq), open('data/mortality/mortality_validation_new.pickle', 'wb'))
+# # pickle.dump((training_x, training_y, training_timeseq), open('data/ARF/ARF_training_new.pickle', 'wb'))
+# # pickle.dump((testing_x, testing_y, testing_timeseq), open('data/ARF/ARF_testing_new.pickle', 'wb'))
+# # pickle.dump((val_x, val_y, val_timeseq), open('data/ARF/ARF_validation_new.pickle', 'wb'))
+#
+# training = np.load('data/Shock/Shock_training_og.npz')
+# training_x, training_y = training['x'], training['y']
+# temp = np.array(list(reversed(range(0, len(training_x[0])))))
+# training_timeseq = np.repeat(temp[np.newaxis,: ], len(training_x), axis=0)
+#
+# testing = np.load('data/Shock/Shock_testing_og.npz')
+# testing_x, testing_y = testing['x'], testing['y']
+# temp = np.array(list(reversed(range(0, len(testing_x[0])))))
+# testing_timeseq = np.repeat(temp[np.newaxis,: ], len(testing_x), axis=0)
+#
+# val = np.load('data/Shock/Shock_validation_og.npz')
+# val_x, val_y = val['x'], val['y']
+# temp = np.array(list(reversed(range(0, len(val_x[0])))))
+# val_timeseq = np.repeat(temp[np.newaxis,: ], len(val_x), axis=0)
+#
+# np.savez('data/Shock/Shock_training_new.npz', x=training_x, y=training_y, timeseq=training_timeseq)
+# np.savez('data/Shock/Shock_testing_new.npz', x=testing_x, y=testing_y, timeseq=testing_timeseq)
+# np.savez('data/Shock/Shock_validation_new.npz', x=val_x, y=val_y, timeseq=val_timeseq)
+#
+# #
+# # # training_x, training_y, training_timeseq, testing_x, testing_y, testing_timeseq, val_x, val_y, val_timeseq = \
+# # # training_x.tolist(), training_y.tolist(), training_timeseq.tolist(), testing_x.tolist(), testing_y.tolist(), testing_timeseq.tolist(), val_x.tolist(), val_y.tolist(), val_timeseq.tolist()
+# #
+# # pickle.dump((training_x, training_y, training_timeseq), open('data/Shock/Shock_training_new.pickle', 'wb'))
+# # pickle.dump((testing_x, testing_y, testing_timeseq), open('data/Shock/Shock_testing_new.pickle', 'wb'))
+# # pickle.dump((val_x, val_y, val_timeseq), open('data/Shock/Shock_validation_new.pickle', 'wb'))
+# #
+# training = np.load('data/mortality/mortality_training_og.npz')
+# training_x, training_y = training['x'], training['y']
+# temp = np.array(list(reversed(range(0, len(training_x[0])))))
+# training_timeseq = np.repeat(temp[np.newaxis,: ], len(training_x), axis=0)
+# # training_x, training_y, training_timeseq = training_x.tolist(), training_y.tolist(), training_timeseq.tolist()
+# # pickle.dump((training_x, training_y, training_timeseq), open('data/mortality/mortality_training_new.pickle', 'wb'))
+# np.savez('data/mortality/mortality_training_new.npz', x=training_x, y=training_y, timeseq=training_timeseq)
+#
+# testing = np.load('data/mortality/mortality_testing_og.npz')
+# testing_x, testing_y = testing['x'], testing['y']
+# temp = np.array(list(reversed(range(0, len(testing_x[0])))))
+# testing_timeseq = np.repeat(temp[np.newaxis,: ], len(testing_x), axis=0)
+# # testing_x, testing_y, testing_timeseq = testing_x.tolist(), testing_y.tolist(), testing_timeseq.tolist()
+# # pickle.dump((testing_x, testing_y, testing_timeseq), open('data/mortality/mortality_testing_new.pickle', 'wb'))
+# np.savez('data/mortality/mortality_testing_new.npz', x=testing_x, y=testing_y, timeseq=testing_timeseq)
+#
+#
+# val = np.load('data/mortality/mortality_validation_og.npz')
+# val_x, val_y = val['x'], val['y']
+# temp = np.array(list(reversed(range(0, len(val_x[0])))))
+# val_timeseq = np.repeat(temp[np.newaxis,: ], len(val_x), axis=0)
+# np.savez('data/mortality/mortality_validation_new.npz', x=val_x, y=val_y, timeseq=val_timeseq)
+# # val_x, val_y, val_timeseq = val_x.tolist(), val_y.tolist(), val_timeseq.tolist()
+# # pickle.dump((val_x, val_y, val_timeseq), open('data/mortality/mortality_validation_new.pickle', 'wb'))
