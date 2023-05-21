@@ -87,6 +87,7 @@ class MyDataset(Dataset):
         ehr, self.labels, time_step = pickle.load(open(dir_ehr, 'rb'))
         txt = pickle.load(open(dir_txt, 'rb'))
         self.ehr, self.mask_ehr, self.lengths = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
+        # time_step = time_step_to_deltatime(time_step)
         self.txt, self.mask_txt = padMatrix2(txt, max_numblk_pervisit, max_len, txt_pad_id)
         self.time_step = padTime(time_step, max_len, 100000)
         self.code_mask = codeMask(ehr, max_numcode_pervisit, max_len)
@@ -107,12 +108,18 @@ class MyDataset(Dataset):
                                                                                   dtype=torch.long).to(self.device), \
                torch.Tensor(self.time_step[idx]).to(self.device), torch.FloatTensor(self.code_mask[idx]).to(self.device)
 
+def time_step_to_deltatime(time_step):
+    time_gaps = [[0] + [t[i] - t[i+1] for i in range(len(t)-1)] for t in time_step]
+
+    return time_gaps
+
 class MyDataset2(Dataset):
     def __init__(self, dir_ehr, max_len, max_numcode_pervisit, max_numblk_pervisit, ehr_pad_id,
                  device):
         ehr, self.labels, time_step = pickle.load(open(dir_ehr, 'rb'))
         self.ehr, self.mask_ehr, self.lengths = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
-        self.time_step = padTime(time_step, max_len, 100000)
+        # time_step = time_step_to_deltatime(time_step)
+        self.time_step = padTime(time_step, max_len, 10000)
         self.code_mask = codeMask(ehr, max_numcode_pervisit, max_len)
         self.device = device
 
@@ -130,6 +137,49 @@ class MyDataset2(Dataset):
                _, torch.tensor(self.lengths[idx], dtype=torch.long).to(self.device), \
                torch.Tensor(self.time_step[idx]).to(self.device), torch.FloatTensor(self.code_mask[idx]).to(self.device)
 
+class BalancedBatchSampler(torch.utils.data.Sampler):
+    def __init__(self, dataset, batch_size, ratio):
+        self.dataset = dataset
+        self.batch_size = batch_size
+        self.ratio = ratio
+
+        # Split indices by label
+        self.positive_indices = []
+        self.negative_indices = []
+        for idx in range(len(self.dataset)):
+            if self.dataset[idx][0].item() == 1:  # Assuming the label is the first element of the dataset
+                self.positive_indices.append(idx)
+            else:
+                self.negative_indices.append(idx)
+
+        # Calculate the number of positive and negative samples per batch
+        self.num_positives_per_batch = int(batch_size * ratio)
+        self.num_negatives_per_batch = batch_size - self.num_positives_per_batch
+
+    def __iter__(self):
+        np.random.shuffle(self.positive_indices)
+        np.random.shuffle(self.negative_indices)
+
+        num_batches = min(len(self.positive_indices) // self.num_positives_per_batch,
+                          len(self.negative_indices) // self.num_negatives_per_batch)
+
+        for batch_idx in range(num_batches):
+            # Select positive indices
+            start_idx = batch_idx * self.num_positives_per_batch
+            end_idx = start_idx + self.num_positives_per_batch
+            positive_indices_in_batch = self.positive_indices[start_idx:end_idx]
+
+            # Select negative indices
+            start_idx = batch_idx * self.num_negatives_per_batch
+            end_idx = start_idx + self.num_negatives_per_batch
+            negative_indices_in_batch = self.negative_indices[start_idx:end_idx]
+
+            # Yield combined indices
+            yield positive_indices_in_batch + negative_indices_in_batch
+
+    def __len__(self):
+        return min(len(self.positive_indices) // self.num_positives_per_batch,
+                   len(self.negative_indices) // self.num_negatives_per_batch)
 class MyDataset3(Dataset):
     def __init__(self, dir_ehr, max_len, max_numcode_pervisit, max_numblk_pervisit, ehr_pad_id,
                  device):

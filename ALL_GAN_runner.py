@@ -8,7 +8,7 @@ import torch
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, \
     precision_recall_curve, auc, cohen_kappa_score, log_loss
 from torch.optim import Adam, lr_scheduler
-from models.og_dataset import MyDataset, collate_fn, MyDataset2, MyDataset3, collate_fn3
+from models.og_dataset import MyDataset, collate_fn, MyDataset2, MyDataset3, collate_fn3, BalancedBatchSampler
 from utils.utils import check_path, export_config, bool_flag
 from models.ALL_GAN import *
 from torch.utils.data import Dataset, DataLoader
@@ -76,6 +76,7 @@ def main(model_name, seed, data, max_len, max_num):
     parser.add_argument('--n_epochs', default=30, type=int)
     parser.add_argument('--max_len', default=max_len, type=int, help='max visits of EHR')
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
+    parser.add_argument('--balanced', default=True, type=bool_flag, nargs='?', const=True, help='balanced data')
     parser.add_argument('--dense_model', default=64, type=int)
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
     parser.add_argument('--dropout_emb', default=0.1, type=float, help='dropout rate of embedding layers')
@@ -209,154 +210,164 @@ def train(args):
                                     args.max_num_codes, args.max_num_blks, pad_id, device)
             test_dataset = MyDataset2(data_path + '_testing_new.pickle', args.max_len,
                                      args.max_num_codes, args.max_num_blks, pad_id, device)
-            train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=True, collate_fn=collate_fn)
-            dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
-            test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
+            if args.balanced == True:
+                train_sampler = BalancedBatchSampler(train_dataset, batch_size=args.batch_size, ratio=0.25)
+                dev_sampler = BalancedBatchSampler(dev_dataset, batch_size=args.batch_size, ratio=0.25)
+                test_sampler = BalancedBatchSampler(test_dataset, batch_size=args.batch_size, ratio=0.25)
+                train_dataloader = DataLoader(train_dataset, batch_sampler=train_sampler, collate_fn=collate_fn)
+                dev_dataloader = DataLoader(dev_dataset, batch_sampler=dev_sampler, collate_fn=collate_fn)
+                test_dataloader = DataLoader(test_dataset, batch_sampler=test_sampler, collate_fn=collate_fn)
+            else:
+                train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=True, collate_fn=collate_fn)
+                dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
+                test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
 
         discriminator = Discriminator(args.d_model)
         discriminator.to(device)
         if args.model == 'LSTM_base':
-            model = LSTM_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device)
+            # model = LSTM_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device)
+            return
+
         elif args.model == 'LSTM_ehrGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = ehrGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = LSTM_ehrGAN(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d)
+            model = LSTM(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'LSTM_GcGAN':
             generator = FCN_generator(64, args.max_len)
             GAN = GcGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = LSTM_GcGAN(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d)
+            model = LSTM(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'LSTM_actGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = actGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = LSTM_actGAN(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d)
+            model = LSTM(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'LSTM_medGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = medGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = LSTM_actGAN(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d)
+            model = LSTM(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'Dipole_ehrGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = ehrGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = Dipole_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d)
+            model = Dipole_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'Dipole_GcGAN':
             generator = FCN_generator(64, args.max_len)
             GAN = GcGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = Dipole_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d)
+            model = Dipole_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'Dipole_actGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = actGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = Dipole_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d)
+            model = Dipole_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'Dipole_medGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = medGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = Dipole_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d)
+            model = Dipole_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'TLSTM_ehrGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = ehrGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = TLSTM_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d)
+            model = TLSTM_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'TLSTM_GcGAN':
             generator = FCN_generator(64, args.max_len)
             GAN = GcGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = TLSTM_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d)
+            model = TLSTM_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'TLSTM_actGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = actGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = TLSTM_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d)
+            model = TLSTM_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'TLSTM_medGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = medGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = TLSTM_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d)
+            model = TLSTM_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'SAND_ehrGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = ehrGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = SAND_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+            model = SAND_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'SAND_GcGAN':
             generator = FCN_generator(64, args.max_len)
             GAN = GcGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = SAND_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+            model = SAND_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'SAND_actGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = actGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = SAND_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+            model = SAND_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'SAND_medGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = medGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = SAND_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+            model = SAND_base(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'hita_ehrGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = ehrGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = HitaNet(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+            model = HitaNet(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'hita_GcGAN':
             generator = FCN_generator(64, args.max_len)
             GAN = GcGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = HitaNet(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+            model = HitaNet(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'hita_actGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = actGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = HitaNet(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+            model = HitaNet(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'hita_medGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = medGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = HitaNet(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+            model = HitaNet(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'retain_ehrGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = ehrGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = Retain(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+            model = Retain(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'retain_GcGAN':
             generator = FCN_generator(64, args.max_len)
             GAN = GcGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = Retain(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+            model = Retain(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'retain_actGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = actGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = Retain(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+            model = Retain(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'retain_medGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = medGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = Retain(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+            model = Retain(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'retainex_ehrGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = ehrGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = RetainEx(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+            model = RetainEx(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'retainex_GcGAN':
             generator = FCN_generator(64, args.max_len)
             GAN = GcGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = RetainEx(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+            model = RetainEx(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'retainex_actGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = actGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = RetainEx(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+            model = RetainEx(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d, balanced = args.balanced)
         elif args.model == 'retainex_medGAN':
             generator = Linear_generator(64, args.max_len)
             GAN = medGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
-            model = RetainEx(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d)
+            model = RetainEx(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d, balanced = args.balanced)
 
         model.to(device)
 
@@ -533,15 +544,17 @@ def train(args):
         print()
 
 if __name__ == '__main__':
-    model_name = ['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN', 'Dipole_ehrGAN', 'Dipole_GcGAN', 'Dipole_actGAN', 'Dipole_medGAN', 'SAND_ehrGAN', 'SAND_GcGAN', 'SAND_actGAN', 'SAND_medGAN', 'TLSTM_ehrGAN', 'TLSTM_GcGAN', 'TLSTM_actGAN', 'TLSTM_medGAN','hita_ehrGAN', 'hita_GcGAN', 'hita_actGAN', 'hita_medGAN' ,'retain_ehrGAN', 'retain_GcGAN', 'retain_actGAN', 'retain_medGAN','retainex_ehrGAN', 'retainex_GcGAN', 'retainex_actGAN', 'retainex_medGAN'
-                   ]
-    # model_name = ['retainex_GcGAN']
-    seeds = [1234]
-    dataset = ["mortality", "Shock", "ARF"]
-    max_lens = [48, 12, 12]
-    max_nums = [7727, 5795, 5132]
-    for seed in seeds:
+
+    # model_name = ['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN', 'Dipole_ehrGAN', 'Dipole_GcGAN', 'Dipole_actGAN', 'Dipole_medGAN', 'SAND_ehrGAN', 'SAND_GcGAN', 'SAND_actGAN', 'SAND_medGAN', 'TLSTM_ehrGAN', 'TLSTM_GcGAN', 'TLSTM_actGAN', 'TLSTM_medGAN','hita_ehrGAN', 'hita_GcGAN', 'hita_actGAN', 'hita_medGAN' ,'retain_ehrGAN', 'retain_GcGAN', 'retain_actGAN', 'retain_medGAN','retainex_ehrGAN', 'retainex_GcGAN', 'retainex_actGAN', 'retainex_medGAN'
+    #                ]
+    model_name = ['retainex_ehrGAN']
+    seeds = [4567]
+    dataset = ["mimic"]
+    max_lens = [50, 50, 50]
+    max_nums = [20, 20, 20]
+    for data, max_len, max_num in zip(dataset, max_lens, max_nums):
         for name in model_name:
-            for data, max_len, max_num in zip(dataset, max_lens, max_nums):
+            for seed in seeds:
+
 
                 main(name, seed, data, max_len, max_num)

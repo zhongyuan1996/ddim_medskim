@@ -99,24 +99,24 @@ def eval_metric(eval_set, model):
         loss = log_loss(y_true, y_pred)
     return accuary, precision, recall, f1, roc_auc, pr_auc, kappa, loss, h_ts, h_t_gens, alpha1s, alpha2s , y_true, y_pred
 
-def main():
+def main(name, seed, data, max_len, max_num, lambdaD, lambdaS):
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
-    parser.add_argument('--seed', default=1234, type=int, help='seed')
+    parser.add_argument('--seed', default=seed, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('--model', default='medDiff')
-    parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
+    parser.add_argument('-me', '--max_epochs_before_stop', default=10, type=int)
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
     parser.add_argument('--dropout_emb', default=0.1, type=float, help='dropout rate of embedding layers')
     parser.add_argument('--num_layers', default=1, type=int, help='number of transformer layers of EHR encoder')
     parser.add_argument('--num_heads', default=4, type=int, help='number of attention heads')
-    parser.add_argument('--max_len', default=12, type=int, help='max visits of EHR')
-    parser.add_argument('--max_num_codes', default=5132, type=int, help='max number of ICD codes in each visit')
+    parser.add_argument('--max_len', default=max_len, type=int, help='max visits of EHR')
+    parser.add_argument('--max_num_codes', default=max_num, type=int, help='max number of ICD codes in each visit')
     parser.add_argument('--max_num_blks', default=100, type=int, help='max number of blocks in each visit')
     parser.add_argument('--blk_emb_path', default='./data/processed/block_embedding.npy',
                         help='embedding path of blocks')
-    parser.add_argument('--target_disease', default='ARF', choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic', 'ARF', 'Shock', 'mortality'])
+    parser.add_argument('--target_disease', default=data, choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic', 'ARF', 'Shock', 'mortality'])
     parser.add_argument('--target_att_heads', default=4, type=int, help='target disease attention heads number')
     parser.add_argument('--mem_size', default=15, type=int, help='memory size')
     parser.add_argument('--mem_update_size', default=15, type=int, help='memory update size')
@@ -134,8 +134,8 @@ def main():
     parser.add_argument('--save_dir', default='./saved_models/', help='models output directory')
     parser.add_argument("--config", type=str, default='ehr.yml', help="Path to the config file")
     parser.add_argument("--h_model", type=int, default=256, help="dimension of hidden state in LSTM")
-    parser.add_argument("--lambda_DF_loss", type=float, default=0.1, help="scale of diffusion model loss")
-    parser.add_argument("--lambda_CE_gen_loss", type=float, default=0.5, help="scale of generated sample loss")
+    parser.add_argument("--lambda_DF_loss", type=float, default=lambdaD, help="scale of diffusion model loss")
+    parser.add_argument("--lambda_CE_gen_loss", type=float, default=lambdaS, help="scale of generated sample loss")
     parser.add_argument("--lambda_KL_loss", type=float, default=0.01, help="scale of hidden state KL loss")
     parser.add_argument("--temperature", type=str, default='temperature', help="temperature control of classifier softmax")
     parser.add_argument("--mintau", type=float, default=0.5, help="parameter mintau of temperature control")
@@ -164,7 +164,7 @@ def train(args):
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
     files = os.listdir(str(args.save_dir))
-    if str(args.model) + '_' + str(args.target_disease) + '_' + str(args.seed) + '.csv' in files:
+    if str(args.model) + '_LD'+str(args.lambda_DF_loss)+'_LS'+str(args.lambda_CE_gen_loss) + '_' + str(args.target_disease) + '_' + str(args.seed) + '.csv' in files:
         print("conducted_experiments")
     else:
 
@@ -174,7 +174,7 @@ def train(args):
         log_loss_path = os.path.join(args.save_dir, 'log_loss.csv')
         stats_path = os.path.join(args.save_dir, 'stats.csv')
 
-        export_config(args, config_path)
+        # export_config(args, config_path)
         check_path(model_path)
         # with open(log_path, 'w') as fout:
         #     fout.write('step,train_auc,dev_auc,test_auc\n')
@@ -354,8 +354,8 @@ def train(args):
                                                                                    ms_per_batch))
                     print('| DF_loss {:7.4f} | CE_loss {:7.4f} | CE_gen_loss {:7.4f} | KL_loss {:7.4f} |'.format(total_DF_loss,
                                                                                    total_CE_loss,total_CE_gen_loss,total_KL_loss))
-                    with open(log_loss_path, 'a') as lossout:
-                        lossout.write('{},{},{},{},{}\n'.format(global_step, total_DF_loss, total_CE_loss, total_CE_gen_loss, total_KL_loss))
+                    # with open(log_loss_path, 'a') as lossout:
+                    #     lossout.write('{},{},{},{},{}\n'.format(global_step, total_DF_loss, total_CE_loss, total_CE_gen_loss, total_KL_loss))
 
                     total_loss = 0.0
                     total_DF_loss, total_CE_loss, total_CE_gen_loss, total_KL_loss = 0.0, 0.0, 0.0, 0.0
@@ -406,8 +406,8 @@ def train(args):
                                                                                               t_loss))
 
             print('-' * 71)
-            with open(stats_path, 'a') as statout:
-                statout.write('{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n'.format(train_acc,dev_acc,test_acc,tr_precision,d_precision,t_precision,tr_recall,d_recall,t_recall,tr_f1,d_f1,t_f1,tr_roc_auc,d_roc_auc,t_roc_auc,tr_pr_auc,d_pr_auc,t_pr_auc,tr_kappa,d_kappa,t_kappa,tr_loss,d_loss,t_loss))
+            # with open(stats_path, 'a') as statout:
+            #     statout.write('{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n'.format(train_acc,dev_acc,test_acc,tr_precision,d_precision,t_precision,tr_recall,d_recall,t_recall,tr_f1,d_f1,t_f1,tr_roc_auc,d_roc_auc,t_roc_auc,tr_pr_auc,d_pr_auc,t_pr_auc,tr_kappa,d_kappa,t_kappa,tr_loss,d_loss,t_loss))
             if d_f1 >= best_dev_auc:
                 best_dev_auc = d_f1
                 final_test_auc = t_f1
@@ -418,7 +418,7 @@ def train(args):
                 # torch.save([model, args], model_path)
                 # with open(log_path, 'a') as fout:
                 #     fout.write('{},{},{},{}\n'.format(global_step, tr_pr_auc, d_pr_auc, t_pr_auc))
-                # print(f'model saved to {model_path}')
+                print(f'model saved to {model_path}')
 
                 #
                 # softmaxres_fileName = 'h_t_epoch_' + str(epoch_id) + '.csv'
@@ -447,14 +447,14 @@ def train(args):
                 # np.savetxt(pred_path, t_pred, delimiter=',')
 
 
-            # if epoch_id - best_dev_epoch >= args.max_epochs_before_stop:
-            #     break
+            if epoch_id - best_dev_epoch >= args.max_epochs_before_stop:
+                break
 
         print()
         print('training ends in {} steps'.format(global_step))
         print('best dev auc: {:.4f} (at epoch {})'.format(best_dev_auc, best_dev_epoch))
         print('final test auc: {:.4f}'.format(final_test_auc))
-        results_file = open(str(args.save_dir) + str(args.model) + '_' + str(args.target_disease) + '_' + str(args.seed) + '.csv', 'w', encoding='gbk')
+        results_file = open(str(args.save_dir) + str(args.model) + '_LD'+str(args.lambda_DF_loss)+'_LS'+str(args.lambda_CE_gen_loss) + '_' + str(args.target_disease) + '_' + str(args.seed) + '.csv', 'w', encoding='gbk')
         csv_w = csv.writer(results_file)
         csv_w.writerow([best_epoch_pr, best_epoch_f1, best_epoch_kappa])
         print('best test pr: {:.4f}'.format(best_epoch_pr))
@@ -465,4 +465,17 @@ def train(args):
 
 
 if __name__ == '__main__':
-    main()
+    seeds = [1234]
+    dataset = ["Amnesia", "mimic", "COPD", "Heart_failure"]
+    max_lens = [50, 15, 50, 50]
+    max_nums = [20, 20, 20, 20]
+    model_name = ["medDiff"]
+    lambdaD = [0.1,0.25,0.5,0.75,1.0]
+    lambdaS = [0.1,0.25,0.5,0.75,1.0]
+
+    for seed in seeds:
+        for name in model_name:
+            for lD in lambdaD:
+                for lS in lambdaS:
+                    for data, max_len, max_num in zip(dataset, max_lens, max_nums):
+                        main(name, seed, data, max_len, max_num, lD, lS)
