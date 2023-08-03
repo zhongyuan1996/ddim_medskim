@@ -10,7 +10,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from torch.optim import *
 from sklearn.metrics import precision_recall_curve, auc
 from models.og_dataset import *
-from models.baseline_with_diff import *
+from models.baseline import *
 from models.leap_lstm import LeapLSTM
 from models.skim_rnn import SkimRNN
 from models.skiplstm import SkipLSTM
@@ -131,7 +131,7 @@ def train(args):
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
     files = os.listdir(str(args.save_dir))
-    if str(args.encoder) + 'diff_' + str(args.target_disease) + '_' + str(args.seed) + '.csv' in files:
+    if str(args.encoder) + '_' + str(args.target_disease) + '_' + str(args.seed) + '.csv' in files:
         print("conducted_experiments")
     else:
 
@@ -224,28 +224,28 @@ def train(args):
 
         if args.encoder == 'hita':
             model = HitaNet(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
-                                     args.max_len, device, initial_d)
+                                     args.max_len)
         elif args.encoder == 'lstm':
             model = LSTM_encoder(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
-                                     args.max_len, device, initial_d)
+                                     args.max_len)
         elif args.encoder == 'lsan':
             model = LSAN(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
-                                     args.max_len, device, initial_d)
+                                     args.max_len)
         elif args.encoder == 'gruself':
             model = GRUSelf(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
-                                args.max_len, device, initial_d)
+                                args.max_len)
         elif args.encoder == 'timeline':
             model = Timeline(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
-                                args.max_len, device)
+                                args.max_len)
         elif args.encoder == 'sand':
             model = SAND(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
-                                args.max_len, device, initial_d)
+                                args.max_len)
         elif args.encoder == 'retain':
             model = Retain(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
-                                args.max_len, device, initial_d)
+                                args.max_len)
         elif args.encoder == 'retainex':
             model = RetainEx(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
-                                args.max_len, device, initial_d)
+                                args.max_len)
         elif args.encoder == 'LeapLSTM':
             model = LeapLSTM(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
                                 args.max_len)
@@ -254,7 +254,7 @@ def train(args):
                                 args.max_len, device)
         elif args.encoder == 'TLSTM':
             model = TLSTM(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, args.num_heads,
-                                args.max_len, device, initial_d)
+                                args.max_len)
         elif args.encoder == 'skiprnn':
             model = SkipLSTM(pad_id, args.d_model, args.d_model, 1)
         else:
@@ -269,8 +269,7 @@ def train(args):
              'weight_decay': 0.0, 'lr': args.learning_rate}
         ]
         optim = Adam(grouped_parameters)
-        Loss_func_diff = nn.MSELoss(reduction='mean')
-        loss_func_pred = nn.CrossEntropyLoss(reduction='mean')
+        loss_func = nn.CrossEntropyLoss(reduction='mean')
 
         print('parameters:')
         for name, param in model.named_parameters():
@@ -285,59 +284,38 @@ def train(args):
         global_step, best_dev_epoch = 0, 0
         best_dev_auc, final_test_auc, total_loss = 0.0, 0.0, 0.0
         best_epoch_pr, best_epoch_f1, best_epoch_kappa = 0.0, 0.0, 0.0
-        total_DF_loss, total_CE_loss, total_CE_gen_loss, total_KL_loss = 0.0, 0.0, 0.0, 0.0
         model.train()
         for epoch_id in range(args.n_epochs):
             print('epoch: {:5} '.format(epoch_id))
             model.train()
             start_time = time.time()
             for i, data in enumerate(train_dataloader):
-                labels, ehr, mask, txt, mask_txt, lengths, time_step, code_mask = data
                 optim.zero_grad()
-                outputs, genout, diff_noise, normal_noise = model(ehr, mask, lengths, time_step, code_mask)
-                # outputs = model(ehr, time_step)
-                DF_loss = Loss_func_diff(diff_noise, normal_noise) * args.lambda_DF_loss
-                CE_loss = loss_func_pred(outputs, labels)
-                CE_gen_loss = loss_func_pred(genout, labels) * args.lambda_CE_gen_loss
-                loss = DF_loss + CE_loss + CE_gen_loss
-
+                labels, ehr, mask, txt, mask_txt, lengths, time_step, code_mask = data
+                outputs = model(ehr, mask, lengths, time_step, code_mask)
+                loss = loss_func(outputs, labels)
                 loss.backward()
                 total_loss += (loss.item() / labels.size(0)) * args.batch_size
-                total_DF_loss += (DF_loss.item() / labels.size(0)) * args.batch_size
-                total_CE_loss += (CE_loss.item() / labels.size(0)) * args.batch_size
-                total_CE_gen_loss += (CE_gen_loss.item() / labels.size(0)) * args.batch_size
                 if args.max_grad_norm > 0:
                     nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
                 optim.step()
                 if (global_step + 1) % args.log_interval == 0:
                     total_loss /= args.log_interval
-                    total_DF_loss /= args.log_interval
-                    total_CE_loss /= args.log_interval
-                    total_CE_gen_loss /= args.log_interval
-                    total_KL_loss /= args.log_interval
-
                     ms_per_batch = 1000 * (time.time() - start_time) / args.log_interval
                     print('| step {:5} | loss {:7.4f} | ms/batch {:7.2f} |'.format(global_step,
                                                                                    total_loss,
                                                                                    ms_per_batch))
-                    print('| DF_loss {:7.4f} | CE_loss {:7.4f} | CE_gen_loss {:7.4f} | KL_loss {:7.4f} |'.format(total_DF_loss,
-                                                                                   total_CE_loss,total_CE_gen_loss,total_KL_loss))
-                    # total_loss /= args.log_interval
-                    # ms_per_batch = 1000 * (time.time() - start_time) / args.log_interval
-                    # print('| step {:5} | loss {:7.4f} | ms/batch {:7.2f} |'.format(global_step,
-                    #                                                                total_loss,
-                    #                                                                ms_per_batch))
-                    # total_loss = 0.0
-                    # start_time = time.time()
+                    total_loss = 0.0
+                    start_time = time.time()
                 global_step += 1
 
             model.eval()
-            # train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa = eval_metric(train_dataloader, model)
-            # dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa = eval_metric(dev_dataloader, model)
-            # test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa = eval_metric(test_dataloader, model)
-            train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa, tr_loss = eval_metric_arf(train_dataloader, model)
-            dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa, d_loss  = eval_metric_arf(dev_dataloader, model)
-            test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss  = eval_metric_arf(test_dataloader, model)
+            train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa = eval_metric(train_dataloader, model)
+            dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa = eval_metric(dev_dataloader, model)
+            test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa = eval_metric(test_dataloader, model)
+            # train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa, tr_loss = eval_metric_arf(train_dataloader, model)
+            # dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa, d_loss  = eval_metric_arf(dev_dataloader, model)
+            # test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss  = eval_metric_arf(test_dataloader, model)
             print('-' * 71)
             print('| step {:5} | train_acc {:7.4f} | dev_acc {:7.4f} | test_acc {:7.4f} '.format(global_step,
                                                                                                  train_acc,
@@ -391,7 +369,7 @@ def train(args):
         print('training ends in {} steps'.format(global_step))
         print('best dev auc: {:.4f} (at epoch {})'.format(best_dev_auc, best_dev_epoch))
         print('final test auc: {:.4f}'.format(final_test_auc))
-        results_file = open(str(args.save_dir) + str(args.encoder) +'diff' + '_' + str(args.target_disease) + '_' + str(args.seed) + '.csv', 'w', encoding='gbk')
+        results_file = open(str(args.save_dir) + str(args.encoder) + '_' + str(args.target_disease) + '_' + str(args.seed) + '.csv', 'w', encoding='gbk')
         csv_w = csv.writer(results_file)
         csv_w.writerow([best_epoch_pr, best_epoch_f1, best_epoch_kappa])
         print('best test pr: {:.4f}'.format(best_epoch_pr))
@@ -475,12 +453,10 @@ def pred(args):
 
 
 if __name__ == '__main__':
-    # model_name = ['lstm', 'gruself', 'retain', 'retainex', 'TLSTM', 'hita', 'sand']
-    model_name= ['lstm']
-    seeds = [2345,3456]
-    # dataset = ["Kidney", "Amnesia", "mimic"]
-    dataset=["mimic"]
-    max_lens = [50,50,50]
+    model_name = ['lstm', 'gruself', 'retain', 'retainex', 'TLSTM', 'hita', 'sand', 'timeline']
+    seeds = [1234, 2345, 3456, 4567, 5678, 6789, 7890, 8901, 9012, 6666, 7777]
+    dataset = ["Kidney", "Amnesia", "mimic"]
+    max_lens = [50,50,15]
     max_nums = [20,20,20]
     for seed in seeds:
         for name in model_name:

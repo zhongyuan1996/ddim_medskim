@@ -148,8 +148,8 @@ class AdaCare(nn.Module):
         time_step = input.size(1)
         # feature_dim = input.size(2)
 
-        # input = self.embedding(input).sum(dim=2)
-        input = self.lowtolarge(input)
+        input = self.embedding(input).sum(dim=2)
+        # input = self.lowtolarge(input)
 
         cur_h = Variable(torch.zeros(batch_size, self.hidden_dim)).to(device)
         inputse_att = []

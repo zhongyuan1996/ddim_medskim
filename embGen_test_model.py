@@ -36,25 +36,26 @@ def eval_metric(eval_set, model):
         y_true = np.array([])
         y_pred = np.array([])
         y_score = np.array([])
-        h_ts = np.array([])
-        h_t_gens = np.array([])
+        e_ts = np.array([])
+        e_t_gens = np.array([])
         alpha1s = np.array([])
         alpha2s = np.array([])
 
         for i, data in enumerate(eval_set):
-            ehr, time_step, labels = data
-            h_t,h_t_gen,final_prediction,_,_,_,alpha1,alpha2 = model(ehr, time_step)
+            print('evaluating {} / {}'.format(i, len(eval_set)))
+            ehr, time_step, labels, mask = data
+            e_t,e_t_gen,final_prediction,_,_,_,alpha1,alpha2 = model(ehr, time_step, mask)
 
-            h_t = torch.flatten(h_t, start_dim=1)
-            h_t_gen = torch.flatten(h_t_gen, start_dim=1)
+            e_t = torch.flatten(e_t, start_dim=1)
+            e_t_gen = torch.flatten(e_t_gen, start_dim=1)
             alpha1 = torch.flatten(alpha1, start_dim=1)
             alpha2 = torch.flatten(alpha2, start_dim=1)
 
 
             scores = torch.softmax(final_prediction, dim=-1)
             scores = scores.data.cpu().numpy()
-            h_t = h_t.data.cpu().numpy()
-            h_t_gen = h_t_gen.data.cpu().numpy()
+            e_t = e_t.data.cpu().numpy()
+            e_t_gen = e_t_gen.data.cpu().numpy()
             alpha1 = alpha1.data.cpu().numpy()
             alpha2 = alpha2.data.cpu().numpy()
 
@@ -68,14 +69,14 @@ def eval_metric(eval_set, model):
             y_pred = np.concatenate((y_pred, pred))
             y_score = np.concatenate((y_score, score))
             try:
-                h_ts = np.concatenate((h_ts, h_t), axis=0)
+                e_ts = np.concatenate((e_ts, e_t), axis=0)
             except ValueError:
-                h_ts = h_t
+                e_ts = e_t
 
             try:
-                h_t_gens = np.concatenate((h_t_gens, h_t_gen), axis=0)
+                e_t_gens = np.concatenate((e_t_gens, e_t_gen), axis=0)
             except ValueError:
-                h_t_gens = h_t_gen
+                e_t_gens = e_t_gen
 
             try:
                 alpha1s = np.concatenate((alpha1s, alpha1), axis=0)
@@ -97,13 +98,13 @@ def eval_metric(eval_set, model):
         pr_auc = auc(lr_recall, lr_precision)
         kappa = cohen_kappa_score(y_true, y_pred)
         loss = log_loss(y_true, y_pred)
-    return accuary, precision, recall, f1, roc_auc, pr_auc, kappa, loss, h_ts, h_t_gens, alpha1s, alpha2s , y_true, y_pred
+    return accuary, precision, recall, f1, roc_auc, pr_auc, kappa, loss, e_ts, e_t_gens, alpha1s, alpha2s , y_true, y_pred
 
-def main(name, seed, data, max_len, max_num, lambdaD, lambdaS):
+def main(name, seed, data, max_len, max_num, save_dir):
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
     parser.add_argument('--seed', default=seed, type=int, help='seed')
-    parser.add_argument('-bs', '--batch_size', default=64, type=int)
+    parser.add_argument('-bs', '--batch_size', default=32, type=int)
     parser.add_argument('--model', default='medDiff')
     parser.add_argument('-me', '--max_epochs_before_stop', default=10, type=int)
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
@@ -131,11 +132,11 @@ def main(name, seed, data, max_len, max_num, lambdaD, lambdaS):
     parser.add_argument('--mode', default='train', choices=['train', 'pred', 'study'],
                         help='run training or evaluation')
     # parser.add_argument('--model', default='Selected', choices=['Selected'])
-    parser.add_argument('--save_dir', default='./saved_models/', help='models output directory')
+    parser.add_argument('--save_dir', default=save_dir, help='models output directory')
     parser.add_argument("--config", type=str, default='ehr.yml', help="Path to the config file")
     parser.add_argument("--h_model", type=int, default=256, help="dimension of hidden state in LSTM")
-    parser.add_argument("--lambda_DF_loss", type=float, default=lambdaD, help="scale of diffusion model loss")
-    parser.add_argument("--lambda_CE_gen_loss", type=float, default=lambdaS, help="scale of generated sample loss")
+    parser.add_argument("--lambda_DF_loss", type=float, default=0.1, help="scale of diffusion model loss")
+    parser.add_argument("--lambda_CE_gen_loss", type=float, default=0.5, help="scale of generated sample loss")
     parser.add_argument("--lambda_KL_loss", type=float, default=0.01, help="scale of hidden state KL loss")
     parser.add_argument("--temperature", type=str, default='temperature', help="temperature control of classifier softmax")
     parser.add_argument("--mintau", type=float, default=0.5, help="parameter mintau of temperature control")
@@ -156,7 +157,7 @@ def main(name, seed, data, max_len, max_num, lambdaD, lambdaS):
 
 def train(args):
     print(args)
-    random.seed(args.seed)
+    # random.seed(args.seed)
     # np.random.seed(args.seed)
     # torch.manual_seed(args.seed)
     # if torch.cuda.is_available() and args.cuda:
@@ -299,7 +300,7 @@ def train(args):
         global_step, best_dev_epoch = 0, 0
         best_dev_auc, final_test_auc, total_loss = 0.0, 0.0, 0.0
         best_epoch_pr, best_epoch_f1, best_epoch_kappa = 0.0, 0.0, 0.0
-        total_DF_loss, total_CE_loss, total_CE_gen_loss, total_KL_loss = 0.0, 0.0, 0.0, 0.0
+        total_DF_loss, total_CE_loss, total_CE_gen_loss, total_ehr_loss = 0.0, 0.0, 0.0, 0.0
         model.train()
         # if args.temperature == 'temperature':
         #     tau_schedule = np.linspace(args.maxtau, args.mintau, num=int(args.n_epochs/2))
@@ -315,27 +316,25 @@ def train(args):
 
             for i, data in enumerate(train_dataloader):
 
-                ehr, time_step, labels = data
+                ehr, time_step, labels, codemask = data
 
                 optim.zero_grad()
-                h_res, h_gen_v2, pred, pred_v2, noise, diff_noise,_,_ = model(ehr, time_step)
+                ehr_flattened, gen_ehr_flattened, pred, pred_v2, noise, diff_noise, _, _ = model(ehr, time_step, codemask)
 
-                # if args.temperature == 'temperature':
-                #     pred = pred/tau_schedule[epoch_id]
-                #     pred_v2 = pred_v2/tau_schedule[epoch_id]
 
                 DF_loss = Loss_func_diff(diff_noise, noise) * args.lambda_DF_loss
                 # KL_loss = Loss_func_h(h_res.log(), h_gen_v2) * args.lambda_KL_loss
                 CE_loss = loss_func_pred(pred, labels)
                 CE_gen_loss = loss_func_pred(pred_v2, labels) * args.lambda_CE_gen_loss
-                loss = DF_loss + CE_loss + CE_gen_loss
+                ehr_loss = loss_func_pred(gen_ehr_flattened, ehr_flattened) * 0.5
+                loss = DF_loss + CE_loss + CE_gen_loss + ehr_loss
                 # loss = CE_loss
                 loss.backward()
                 total_loss += (loss.item() / labels.size(0)) * args.batch_size
                 total_DF_loss += (DF_loss.item() / labels.size(0)) * args.batch_size
                 total_CE_loss += (CE_loss.item() / labels.size(0)) * args.batch_size
                 total_CE_gen_loss += (CE_gen_loss.item() / labels.size(0)) * args.batch_size
-                # total_KL_loss += (KL_loss.item() / labels.size(0)) * args.batch_size
+                total_ehr_loss += (ehr_loss.item() / labels.size(0)) * args.batch_size
                 if args.max_grad_norm > 0:
                     nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
                 optim.step()
@@ -346,19 +345,19 @@ def train(args):
                     total_DF_loss /= args.log_interval
                     total_CE_loss /= args.log_interval
                     total_CE_gen_loss /= args.log_interval
-                    total_KL_loss /= args.log_interval
+                    total_ehr_loss /= args.log_interval
 
                     ms_per_batch = 1000 * (time.time() - start_time) / args.log_interval
                     print('| step {:5} | loss {:7.4f} | ms/batch {:7.2f} |'.format(global_step,
                                                                                    total_loss,
                                                                                    ms_per_batch))
                     print('| DF_loss {:7.4f} | CE_loss {:7.4f} | CE_gen_loss {:7.4f} | KL_loss {:7.4f} |'.format(total_DF_loss,
-                                                                                   total_CE_loss,total_CE_gen_loss,total_KL_loss))
+                                                                                   total_CE_loss,total_CE_gen_loss,total_ehr_loss))
                     # with open(log_loss_path, 'a') as lossout:
                     #     lossout.write('{},{},{},{},{}\n'.format(global_step, total_DF_loss, total_CE_loss, total_CE_gen_loss, total_KL_loss))
 
                     total_loss = 0.0
-                    total_DF_loss, total_CE_loss, total_CE_gen_loss, total_KL_loss = 0.0, 0.0, 0.0, 0.0
+                    total_DF_loss, total_CE_loss, total_CE_gen_loss, total_ehr_loss = 0.0, 0.0, 0.0, 0.0
                     start_time = time.time()
                 global_step += 1
 
@@ -366,7 +365,7 @@ def train(args):
             train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa, tr_loss,_,_,_,_,_,_ = eval_metric(train_dataloader,
                                                                                                      model)
             dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa, d_loss,_,_,_,_,_,_ = eval_metric(dev_dataloader, model)
-            test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss, h_t, gen_h_t, alpha1s, alpha2s, t_label,t_pred = eval_metric(test_dataloader, model)
+            test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss, ogEGR, genEHR, alpha1s, alpha2s, t_label,t_pred = eval_metric(test_dataloader, model)
             scheduler.step(d_loss)
             print('-' * 71)
             print('| step {:5} | train_acc {:7.4f} | dev_acc {:7.4f} | test_acc {:7.4f} '.format(global_step,
@@ -408,6 +407,21 @@ def train(args):
             print('-' * 71)
             # with open(stats_path, 'a') as statout:
             #     statout.write('{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n'.format(train_acc,dev_acc,test_acc,tr_precision,d_precision,t_precision,tr_recall,d_recall,t_recall,tr_f1,d_f1,t_f1,tr_roc_auc,d_roc_auc,t_roc_auc,tr_pr_auc,d_pr_auc,t_pr_auc,tr_kappa,d_kappa,t_kappa,tr_loss,d_loss,t_loss))
+
+            if epoch_id % 5 == 0:
+
+                alpha_filename = save_dir + str(args.target_disease) + '_alpha1_epoch_' + str(epoch_id) + '.csv'
+                ogEGR_filename = save_dir + str(args.target_disease) + '_og_embed_epoch_' + str(epoch_id) + '.csv'
+                genEHR_filename = save_dir + str(args.target_disease) + '_gen_embed_epoch_' + str(epoch_id) + '.csv'
+                label_filename = save_dir + str(args.target_disease) + '_label_epoch_' + str(epoch_id) + '.csv'
+                pred_filename = save_dir + str(args.target_disease) + '_pred_epoch_' + str(epoch_id) + '.csv'
+
+                np.savetxt(alpha_filename, alpha1s, delimiter=',')
+                np.savetxt(ogEGR_filename, ogEGR, delimiter=',')
+                np.savetxt(genEHR_filename, genEHR, delimiter=',')
+                np.savetxt(label_filename, t_label, delimiter=',')
+                np.savetxt(pred_filename, t_pred, delimiter=',')
+
             if d_f1 >= best_dev_auc:
                 best_dev_auc = d_f1
                 final_test_auc = t_f1
@@ -419,33 +433,6 @@ def train(args):
                 # with open(log_path, 'a') as fout:
                 #     fout.write('{},{},{},{}\n'.format(global_step, tr_pr_auc, d_pr_auc, t_pr_auc))
                 print(f'model saved to {model_path}')
-
-                #
-                # softmaxres_fileName = 'h_t_epoch_' + str(epoch_id) + '.csv'
-                # gen_softmaxres_gen_fileName = 'gen_h_t_epoch_' + str(epoch_id) + '.csv'
-                # alpha1_filename = 'alpha1_epoch_'+ str(epoch_id) + '.csv'
-                # alpha2_filename = 'alpha2_epoch_'+ str(epoch_id) + '.csv'
-                #
-                # label_fileName = 'label_epoch_' + str(epoch_id) + '.csv'
-                # pred_fileName = 'pred_epoch_' + str(epoch_id) + '.csv'
-                #
-                # softmax_path = os.path.join(args.save_dir, softmaxres_fileName)
-                # gen_softmax_path = os.path.join(args.save_dir, gen_softmaxres_gen_fileName)
-                #
-                # alpha1_path = os.path.join(args.save_dir, alpha1_filename)
-                # alpha2_path = os.path.join(args.save_dir, alpha2_filename)
-                #
-                # label_path = os.path.join(args.save_dir, label_fileName)
-                # pred_path = os.path.join(args.save_dir, pred_fileName)
-                #
-                #
-                # # np.savetxt(softmax_path, h_t, delimiter=',')
-                # # np.savetxt(gen_softmax_path, gen_h_t, delimiter=',')
-                # np.savetxt(alpha1_path, alpha1s, delimiter=',')
-                # np.savetxt(alpha2_path, alpha2s, delimiter=',')
-                # np.saver(label_path, t_label, delimiter=',')
-                # np.savetxt(pred_path, t_pred, delimiter=',')
-
 
             if epoch_id - best_dev_epoch >= args.max_epochs_before_stop:
                 break
@@ -465,17 +452,23 @@ def train(args):
 
 
 if __name__ == '__main__':
+    # seeds = [1234]
+    # dataset = ["Amnesia", "mimic", "COPD", "Heart_failure"]
+    # max_lens = [50, 15, 50, 50]
+    # max_nums = [20, 20, 20, 20]
+    # model_name = ["medDiff"]
+    # lambdaD = [0.1,0.25,0.5,0.75,1.0]
+    # lambdaS = [0.1,0.25,0.5,0.75,1.0]
+
     seeds = [1234]
-    dataset = ["Amnesia", "mimic", "COPD", "Heart_failure"]
-    max_lens = [50, 15, 50, 50]
-    max_nums = [20, 20, 20, 20]
+    dataset = ['Heart_failure', 'COPD', 'Kidney', 'Amnesia', 'mimic']
+    max_lens = [50,50,50,50,20]
+    max_nums = [20,20,20,20,20]
     model_name = ["medDiff"]
-    lambdaD = [0.1,0.25,0.5,0.75,1.0]
-    lambdaS = [0.1,0.25,0.5,0.75,1.0]
+    save_dir = './saved_rebuttal/'
+
 
     for seed in seeds:
         for name in model_name:
-            for lD in lambdaD:
-                for lS in lambdaS:
-                    for data, max_len, max_num in zip(dataset, max_lens, max_nums):
-                        main(name, seed, data, max_len, max_num, lD, lS)
+            for data, max_len, max_num in zip(dataset, max_lens, max_nums):
+                        main(name, seed, data, max_len, max_num, save_dir)

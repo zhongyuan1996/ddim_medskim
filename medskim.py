@@ -8,8 +8,8 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from torch.optim import Adam
 from tqdm import tqdm
 from models.og_dataset import *
-# from models.medskim import *
-from models.medskim_with_diff import *
+from models.medskim import *
+# from models.medskim_with_diff import *
 from utils.utils import check_path, export_config, bool_flag
 from utils.icd_rel import *
 import random
@@ -43,23 +43,23 @@ def eval_metric(eval_set, model):
     return accuary, precision, recall, f1, roc_auc, pr_auc, kappa
 
 
-def main():
+def main(seed, data, max_len, max_num):
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
-    parser.add_argument('--seed', default=1234, type=int, help='seed')
-    parser.add_argument('-bs', '--batch_size', default=4, type=int)
+    parser.add_argument('--seed', default=seed, type=int, help='seed')
+    parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
     parser.add_argument('--dropout_emb', default=0.1, type=float, help='dropout rate of embedding layers')
     parser.add_argument('--num_layers', default=1, type=int, help='number of transformer layers of EHR encoder')
     parser.add_argument('--num_heads', default=4, type=int, help='number of attention heads')
-    parser.add_argument('--max_len', default=50, type=int, help='max visits of EHR')
-    parser.add_argument('--max_num_codes', default=20, type=int, help='max number of ICD codes in each visit')
+    parser.add_argument('--max_len', default=max_len, type=int, help='max visits of EHR')
+    parser.add_argument('--max_num_codes', default=max_num, type=int, help='max number of ICD codes in each visit')
     parser.add_argument('--max_num_blks', default=100, type=int, help='max number of blocks in each visit')
     parser.add_argument('--blk_emb_path', default='./data/processed/block_embedding.npy',
                         help='embedding path of blocks')
-    parser.add_argument('--target_disease', default='Amnesia', choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic'])
+    parser.add_argument('--target_disease', default=data, choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic'])
     parser.add_argument('--target_att_heads', default=4, type=int, help='target disease attention heads number')
     parser.add_argument('--mem_size', default=15, type=int, help='memory size')
     parser.add_argument('--mem_update_size', default=15, type=int, help='memory update size')
@@ -87,9 +87,9 @@ def main():
 
 def train(args):
     print(args)
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
+    # random.seed(args.seed)
+    # np.random.seed(args.seed)
+    # torch.manual_seed(args.seed)
     # if torch.cuda.is_available() and args.cuda:
     #     torch.cuda.manual_seed(args.seed)
 
@@ -162,8 +162,8 @@ def train(args):
         test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=collate_fn)
 
         if args.model == 'Selected':
-            model = Selected(pad_id, args.d_model, args.dropout, args.dropout_emb, device, args.max_len)
-            # model = Selected(pad_id, args.d_model, args.dropout, args.dropout_emb)
+            # model = Selected(pad_id, args.d_model, args.dropout, args.dropout_emb, device, args.max_len)
+            model = Selected(pad_id, args.d_model, args.dropout, args.dropout_emb)
         else:
             raise ValueError('Invalid model')
         model.to(device)
@@ -483,4 +483,11 @@ def study(args):
 
 
 if __name__ == '__main__':
-    main()
+    seeds = [1234, 2345, 3456, 4567, 5678, 6789, 7890, 8901, 9012, 6666, 7777]
+    dataset = ["Kidney", "Amnesia", "mimic"]
+    max_lens = [50,50,15]
+    max_nums = [20,20,20]
+    for seed in seeds:
+            for data, max_len, max_num in zip(dataset, max_lens, max_nums):
+
+                main(seed, data, max_len, max_num)
