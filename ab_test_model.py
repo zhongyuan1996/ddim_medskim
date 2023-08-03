@@ -475,7 +475,7 @@ def train(args):
 
 
 if __name__ == '__main__':
-    seeds = [2345, 3456]
+    seeds = [2345, 3456,4567,5678]
     dataset = ["mimic"]
     max_lens = [15]
     max_nums = [20]
@@ -483,7 +483,7 @@ if __name__ == '__main__':
     lambdaD = [0.1]
     lambdaS = [0.5]
     # ASs = ['AS1', 'AS2', 'AS3']
-    ASs = ['AS1']
+    ASs = ['AS3']
 
     for seed in seeds:
         for AS in ASs:

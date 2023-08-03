@@ -115,38 +115,38 @@ random.seed(1234)
 # plt.hist(visit_length, bins=range(0,43,1))
 # plt.show()
 
-a_ehr, a_label, a_timestep = pickle.load(open('data/mimic/mimic_training_new.pickle', 'rb'))
-b_ehr, b_label, b_timestep = pickle.load(open('data/mimic/mimic_testing_new.pickle', 'rb'))
-c_ehr, c_label, c_timestep = pickle.load(open('data/mimic/mimic_validation_new.pickle', 'rb'))
-
-# a_ehr, a_label, a_timestep = pickle.load(open('data/Kidney/Kidney_training_new.pickle', 'rb'))
-# b_ehr, b_label, b_timestep = pickle.load(open('data/Kidney/Kidney_testing_new.pickle', 'rb'))
-# c_ehr, c_label, c_timestep = pickle.load(open('data/Kidney/Kidney_validation_new.pickle', 'rb'))
-
-total_visit= 0
-total_patient=0
-total_codes=0
-for patient in a_ehr:
-    total_patient+=1
-    for visit in patient:
-        total_visit+=1
-        for code in visit:
-            total_codes+=1
-for patient in b_ehr:
-    total_patient+=1
-    for visit in patient:
-        total_visit+=1
-        for code in visit:
-            total_codes+=1
-for patient in c_ehr:
-    total_patient+=1
-    for visit in patient:
-        total_visit+=1
-        for code in visit:
-            total_codes+=1
-print(total_patient)
-print(total_visit/total_patient)
-print(total_codes/total_visit)
+# a_ehr, a_label, a_timestep = pickle.load(open('data/mimic/mimic_training_new.pickle', 'rb'))
+# b_ehr, b_label, b_timestep = pickle.load(open('data/mimic/mimic_testing_new.pickle', 'rb'))
+# c_ehr, c_label, c_timestep = pickle.load(open('data/mimic/mimic_validation_new.pickle', 'rb'))
+#
+# # a_ehr, a_label, a_timestep = pickle.load(open('data/Kidney/Kidney_training_new.pickle', 'rb'))
+# # b_ehr, b_label, b_timestep = pickle.load(open('data/Kidney/Kidney_testing_new.pickle', 'rb'))
+# # c_ehr, c_label, c_timestep = pickle.load(open('data/Kidney/Kidney_validation_new.pickle', 'rb'))
+#
+# total_visit= 0
+# total_patient=0
+# total_codes=0
+# for patient in a_ehr:
+#     total_patient+=1
+#     for visit in patient:
+#         total_visit+=1
+#         for code in visit:
+#             total_codes+=1
+# for patient in b_ehr:
+#     total_patient+=1
+#     for visit in patient:
+#         total_visit+=1
+#         for code in visit:
+#             total_codes+=1
+# for patient in c_ehr:
+#     total_patient+=1
+#     for visit in patient:
+#         total_visit+=1
+#         for code in visit:
+#             total_codes+=1
+# print(total_patient)
+# print(total_visit/total_patient)
+# print(total_codes/total_visit)
 
 # icd_codes = set()
 # for patient in a_ehr:
@@ -316,3 +316,18 @@ print(total_codes/total_visit)
 # np.savez('data/mortality/mortality_validation_new.npz', x=val_x, y=val_y, timeseq=val_timeseq)
 # # val_x, val_y, val_timeseq = val_x.tolist(), val_y.tolist(), val_timeseq.tolist()
 # # pickle.dump((val_x, val_y, val_timeseq), open('data/mortality/mortality_validation_new.pickle', 'wb'))
+
+a_ehr, a_label, a_timestep = pickle.load(open('data/kidney/kidney_training_new.pickle', 'rb'))
+b_ehr, b_label, b_timestep = pickle.load(open('data/kidney/kidney_testing_new.pickle', 'rb'))
+c_ehr, c_label, c_timestep = pickle.load(open('data/kidney/kidney_validation_new.pickle', 'rb'))
+
+#pring first five patients
+for i in range(5):
+    print('patient number '+str(i))
+    print('EHR')
+    print(a_ehr[i])
+    print('label')
+    print(a_label[i])
+    print('timestep')
+    print(a_timestep[i])
+    print('------------------')

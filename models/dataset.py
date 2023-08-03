@@ -100,7 +100,7 @@ class MyDataset(Dataset):
         return torch.tensor(self.ehr[idx], dtype=torch.long).to(self.device),\
                torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device),\
                torch.tensor(self.labels[idx], dtype=torch.float).to(self.device),\
-            torch.tensor(self.code_mask[idx], dtype=torch.long).to(self.device)
+                  torch.tensor(self.code_mask[idx], dtype=torch.float).to(self.device)
 
 class MyDataset3(Dataset):
     def __init__(self, dir_ehr, max_len, max_numcode_pervisit, max_numblk_pervisit, ehr_pad_id,
@@ -170,15 +170,15 @@ class MyDataset_with_single_label(Dataset):
 
 
 def collate_fn(batch):
-    ehr, time_step, label, codemask = [], [], [], []
+    ehr, time_step, label, code_mask = [], [], [], []
     # label, ehr, mask, txt, mask_txt, length, time_step, code_mask = [], [], [], [], [], [], [], []
     for data in batch:
         ehr.append(data[0])
         time_step.append(data[1])
         label.append(data[2])
-        codemask.append(data[3])
+        code_mask.append(data[3])
 
-    return torch.stack(ehr, 0), torch.stack(time_step, 0), torch.stack(label, 0), torch.stack(codemask, 0)
+    return torch.stack(ehr, 0), torch.stack(time_step, 0), torch.stack(label, 0), torch.stack(code_mask, 0)
         #
         # label.append(data[0])
         # ehr.append(data[1])
@@ -190,3 +190,67 @@ def collate_fn(batch):
         # code_mask.append(data[7])
     # return torch.stack(label, 0), torch.stack(ehr, 0), torch.stack(mask, 0), torch.stack(txt, 0), \
     #        torch.stack(mask_txt, 0), torch.stack(length, 0), torch.stack(time_step, 0), torch.stack(code_mask, 0)
+
+
+class ehrGANDataset(Dataset):
+    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, ehr_pad_id,
+                 device):
+        ehr, labels, time_step = pickle.load(open(dir_ehr, 'rb'))
+        self.labels = [[0,1] if label == 1 else [1,0] for label in labels]
+
+        self.ehr, _, _ = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
+        self.time_step = padTime(time_step, max_len, 100000)
+        self.code_mask = codeMask(ehr, max_numcode_pervisit, max_len)
+        self.device = device
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        ehr = torch.tensor(self.ehr[idx], dtype=torch.long).to(self.device)
+        time_step = torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device)
+        label = torch.tensor(self.labels[idx], dtype=torch.float).to(self.device)
+        code_mask = torch.tensor(self.code_mask[idx], dtype=torch.float).to(self.device)
+
+        # segment time_step into disjoint 90-day windows
+        time_step_segmented, ehr_segmented, code_mask_segmented = self.segment_time_windows(time_step, ehr, code_mask)
+
+        return ehr_segmented, time_step_segmented, label, code_mask_segmented
+
+    def segment_time_windows(self, time_step, ehr, code_mask):
+        max_len = len(time_step)
+        time_step_segmented, ehr_segmented, code_mask_segmented = [], [], []
+
+        # init start and end of the window
+        start, end = 0, 0
+
+        while start < max_len:
+            # expand the window until it covers more than 90 days
+            while end < max_len and time_step[end] - time_step[start] <= 90:
+                end += 1
+
+            # add the window to segmented data
+            time_step_segmented.append(time_step[start:end])
+            ehr_segmented.append(ehr[start:end])
+            code_mask_segmented.append(code_mask[start:end])
+
+            # move the window
+            start = end
+
+        # pad each window to the maximum length among them
+        max_window_len = max(len(window) for window in time_step_segmented)
+        time_step_segmented = [self.pad_sequence(window, max_window_len) for window in time_step_segmented]
+        ehr_segmented = [self.pad_sequence(window, max_window_len) for window in ehr_segmented]
+        code_mask_segmented = [self.pad_sequence(window, max_window_len) for window in code_mask_segmented]
+
+        return torch.stack(time_step_segmented, 0), torch.stack(ehr_segmented, 0), torch.stack(code_mask_segmented, 0)
+
+    def pad_sequence(self, seq, max_len):
+        seq_len = len(seq)
+        padded = torch.zeros(max_len)
+        padded[:seq_len] = seq
+        return padded
+
