@@ -72,6 +72,12 @@ class RNNdiff(nn.Module):
         self.softmax = torch.nn.Softmax(dim=-1)
         self.initial_d = initial_d
         self.initial_embedding_2 = nn.Linear(self.initial_d, d_model)
+        self.code_predictor = nn.Sequential(
+            nn.Linear(d_model, int(d_model * 2)),
+            nn.ReLU(),
+            nn.Linear(int(d_model * 2), vocab_size),
+            nn.Softmax(dim=-1)
+        )
 
     def before(self, input_seqs, seq_time_step):
         # time embedding
@@ -92,14 +98,23 @@ class RNNdiff(nn.Module):
             visit_embedding = visit_embedding.sum(-2) + time_encoding
         return visit_embedding
 
+    def back_to_ehr(self, input_seqs, gen_e_t, codemask):
+        flattened = input_seqs.view(-1, input_seqs.size(-1))
+        codemask = codemask.view(-1, codemask.size(-1))
+        flattened = flattened.long()
+        one_hot = F.one_hot(flattened, num_classes=self.vocab_size + 1)
+        one_hot = one_hot.sum(1)
+        one_hot = one_hot[:, :-1].float()
+        code_pred = self.code_predictor(gen_e_t)
+        flattened_code_pred = code_pred.view(-1, code_pred.size(-1))
 
-    def forward(self, input_seqs, seq_time_step):
+        return one_hot, flattened_code_pred
+
+    def forward(self, input_seqs, seq_time_step, codemask):
         batch_size, visit_size, icd_code_size = input_seqs.size()
 
         visit_embedding = self.before(input_seqs, seq_time_step)
 
-        e_t_prime_all = torch.zeros_like(visit_embedding)
-        E_gen_t_prime_all = torch.zeros_like(e_t_prime_all)
         #ht and et'
         hidden_state_all_visit = torch.zeros(batch_size, visit_size, self.h_model).to(self.device)
         hidden_state_all_visit_generated = torch.zeros(batch_size, visit_size, self.h_model).to(self.device)
@@ -153,7 +168,7 @@ class RNNdiff(nn.Module):
 
         predicted_noise = self.diffusion(e_t_prime_b_first_with_noise, timesteps=diffusion_time_t)
 
-        noise_loss = normal_noise - predicted_noise
+        noise_loss = e_t_prime_b_first_with_noise - predicted_noise
 
         GEN_E_t = bar_e_k + noise_loss
         ####### diff end
@@ -170,10 +185,13 @@ class RNNdiff(nn.Module):
             c_all_visit_generated[:, i:i + 1, :] = seq_c.permute(1, 0, 2)
 
 
-        for i in range(visit_size):
+        hidden_state_softmax_res = self.classifyer(hidden_state_all_visit)
+        hidden_state_softmax_res_generated = self.classifyer(hidden_state_all_visit_generated)
 
-            hidden_state_softmax_res[:, i:i+1, :] = self.classifyer(hidden_state_all_visit[:, i:i + 1, :])
-            hidden_state_softmax_res_generated[:, i:i+1, :] = self.classifyer(hidden_state_all_visit_generated[:, i:i + 1, :])
+        # for i in range(visit_size):
+        #
+        #     hidden_state_softmax_res[:, i:i+1, :] = self.classifyer(hidden_state_all_visit[:, i:i + 1, :])
+        #     hidden_state_softmax_res_generated[:, i:i+1, :] = self.classifyer(hidden_state_all_visit_generated[:, i:i + 1, :])
 
         final_prediction = hidden_state_softmax_res[:, -1, :]
         final_prediction_generated = hidden_state_softmax_res_generated[:, -1, :]
@@ -181,10 +199,10 @@ class RNNdiff(nn.Module):
         # final_prediction = self.classifyer(hidden_state_all_visit[:, visit_size-1:visit_size, :]).squeeze()
         # final_prediction_generated = self.classifyer(hidden_state_all_visit[:, visit_size-1:visit_size, :]).squeeze()
 
-        h_t = hidden_state_all_visit[:,14:15,:]
-        h_t_gen = hidden_state_all_visit_generated[:, 14:15, :]
+        og_ehr, predicted_ehr = self.back_to_ehr(input_seqs, GEN_E_t, codemask)
 
-        return h_t, h_t_gen, \
+
+        return og_ehr, predicted_ehr, \
                final_prediction, final_prediction_generated, \
                normal_noise, predicted_noise, alpha1s,alpha2s
 

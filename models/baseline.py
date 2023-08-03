@@ -254,28 +254,11 @@ class LSTM_encoder(nn.Module):
         self.output_mlp = nn.Sequential(nn.Linear(d_model, 2))
         self.pooler = MaxPoolLayer()
         self.rnns = nn.LSTM(d_model, d_model, num_layers, bidirectional=False, batch_first=True, dropout=dropout)
-        self.relu=nn.ReLU()
-        self.tanh = nn.Tanh()
-        self.time_layer = nn.Linear(1, 64)
-        self.time_updim = nn.Linear(64, d_model)
-        self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
-    def before(self, input_seqs, seq_time_step):
-        # time embedding
-        seq_time_step = seq_time_step.unsqueeze(2) / 180
-        time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
-        time_encoding = self.time_updim(time_feature)
-        # visit_embedding e_t
-        visit_embedding = self.initial_embedding(input_seqs)
-        visit_embedding = self.emb_dropout(visit_embedding)
-        visit_embedding = self.relu(visit_embedding)
 
-        visit_embedding = visit_embedding.sum(-2) + time_encoding
-        return visit_embedding
     def forward(self, input_seqs, masks, lengths, seq_time_step, code_masks):
         batch_size, seq_len, num_cui_per_visit = input_seqs.size()
-        # x = self.embbedding(input_seqs).sum(dim=2)
-        # x = self.emb_dropout(x)
-        x = self.before(input_seqs, seq_time_step)
+        x = self.embbedding(input_seqs).sum(dim=2)
+        x = self.emb_dropout(x)
         rnn_input = pack_padded_sequence(x, lengths.cpu(), batch_first=True, enforce_sorted=False)
         rnn_output, _ = self.rnns(rnn_input)
         x, _ = pad_packed_sequence(rnn_output, batch_first=True, total_length=seq_len)

@@ -63,7 +63,7 @@ def padTime3(time_step, maxlen, pad_id):
 
     return time_step
 def codeMask(input_data, max_num_pervisit, maxlen):
-    batch_mask = np.zeros((len(input_data), maxlen, max_num_pervisit), dtype=np.float32) + 1e+20
+    batch_mask = np.zeros((len(input_data), maxlen, max_num_pervisit), dtype=np.float32) + 1
     output = []
     for seq in input_data:
         record_ids = []
@@ -87,6 +87,7 @@ class MyDataset(Dataset):
 
         self.ehr, _, _ = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
         self.time_step = padTime(time_step, max_len, 100000)
+        self.code_mask = codeMask(ehr, max_numcode_pervisit, max_len)
         self.device = device
 
     def __len__(self):
@@ -98,7 +99,8 @@ class MyDataset(Dataset):
 
         return torch.tensor(self.ehr[idx], dtype=torch.long).to(self.device),\
                torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device),\
-               torch.tensor(self.labels[idx], dtype=torch.float).to(self.device)
+               torch.tensor(self.labels[idx], dtype=torch.float).to(self.device),\
+            torch.tensor(self.code_mask[idx], dtype=torch.long).to(self.device)
 
 class MyDataset3(Dataset):
     def __init__(self, dir_ehr, max_len, max_numcode_pervisit, max_numblk_pervisit, ehr_pad_id,
@@ -168,14 +170,15 @@ class MyDataset_with_single_label(Dataset):
 
 
 def collate_fn(batch):
-    ehr, time_step, label = [], [], []
+    ehr, time_step, label, codemask = [], [], [], []
     # label, ehr, mask, txt, mask_txt, length, time_step, code_mask = [], [], [], [], [], [], [], []
     for data in batch:
         ehr.append(data[0])
         time_step.append(data[1])
         label.append(data[2])
+        codemask.append(data[3])
 
-    return torch.stack(ehr, 0), torch.stack(time_step, 0), torch.stack(label, 0)
+    return torch.stack(ehr, 0), torch.stack(time_step, 0), torch.stack(label, 0), torch.stack(codemask, 0)
         #
         # label.append(data[0])
         # ehr.append(data[1])
