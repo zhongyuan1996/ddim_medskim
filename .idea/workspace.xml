@@ -4,18 +4,155 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="getting et and gen et, alphas">
-      <change afterPath="$PROJECT_DIR$/ehrGAN_dir/Amnesia_word2vec.pt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ehrGAN_dir/COPD_word2vec.pt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ehrGAN_dir/Heart_failure_ehrGAN.pt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ehrGAN_dir/Heart_failure_word2vec.pt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ehrGAN_dir/Kidney_word2vec.pt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ehrGAN_dir/mimic_word2vec.pt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/runner_ehrGAN.py" afterDir="false" />
+    <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="as123">
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_alpha1_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_alpha1_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_alpha1_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_alpha1_epoch_20.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_alpha1_epoch_25.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_alpha1_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_gen_embed_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_gen_embed_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_gen_embed_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_gen_embed_epoch_20.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_gen_embed_epoch_25.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_gen_embed_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_label_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_label_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_label_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_label_epoch_20.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_label_epoch_25.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_label_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_og_embed_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_og_embed_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_og_embed_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_og_embed_epoch_20.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_og_embed_epoch_25.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_og_embed_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_pred_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_pred_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_pred_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_pred_epoch_20.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_pred_epoch_25.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Amnesia_pred_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/COPD_alpha1_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/COPD_alpha1_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/COPD_alpha1_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/COPD_alpha1_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/COPD_gen_embed_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/COPD_gen_embed_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/COPD_gen_embed_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/COPD_gen_embed_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/COPD_label_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/COPD_label_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/COPD_label_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/COPD_label_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/COPD_og_embed_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/COPD_og_embed_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/COPD_og_embed_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/COPD_og_embed_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/COPD_pred_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/COPD_pred_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/COPD_pred_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/COPD_pred_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_alpha1_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_alpha1_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_alpha1_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_alpha1_epoch_20.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_alpha1_epoch_25.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_alpha1_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_gen_embed_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_gen_embed_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_gen_embed_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_gen_embed_epoch_20.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_gen_embed_epoch_25.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_gen_embed_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_label_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_label_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_label_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_label_epoch_20.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_label_epoch_25.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_label_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_og_embed_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_og_embed_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_og_embed_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_og_embed_epoch_20.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_og_embed_epoch_25.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_og_embed_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_pred_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_pred_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_pred_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_pred_epoch_20.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_pred_epoch_25.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Heart_failure_pred_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_alpha1_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_alpha1_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_alpha1_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_alpha1_epoch_20.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_alpha1_epoch_25.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_alpha1_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_gen_embed_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_gen_embed_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_gen_embed_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_gen_embed_epoch_20.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_gen_embed_epoch_25.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_gen_embed_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_label_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_label_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_label_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_label_epoch_20.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_label_epoch_25.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_label_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_og_embed_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_og_embed_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_og_embed_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_og_embed_epoch_20.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_og_embed_epoch_25.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_og_embed_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_pred_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_pred_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_pred_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_pred_epoch_20.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_pred_epoch_25.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/Kidney_pred_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/medDiff_LD0.1_LS0.5_Amnesia_1234.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/medDiff_LD0.1_LS0.5_COPD_1234.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/medDiff_LD0.1_LS0.5_Heart_failure_1234.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/medDiff_LD0.1_LS0.5_Kidney_1234.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/medDiff_LD0.1_LS0.5_mimic_1234.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_alpha1_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_alpha1_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_alpha1_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_alpha1_epoch_20.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_alpha1_epoch_25.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_alpha1_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_gen_embed_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_gen_embed_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_gen_embed_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_gen_embed_epoch_20.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_gen_embed_epoch_25.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_gen_embed_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_label_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_label_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_label_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_label_epoch_20.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_label_epoch_25.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_label_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_og_embed_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_og_embed_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_og_embed_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_og_embed_epoch_20.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_og_embed_epoch_25.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_og_embed_epoch_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_pred_epoch_0.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_pred_epoch_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_pred_epoch_15.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_pred_epoch_20.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_pred_epoch_25.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_1/mimic_pred_epoch_5.csv" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/dataset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/ehrGAN.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/ehrGAN.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/embGen_test_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/embGen_test_model.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -74,7 +211,7 @@
       <recent name="C:\Users\yfz5556\PycharmProjects\ddim_medskim" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.runner_ehrGAN">
+  <component name="RunManager" selected="Python.embGen_test_model">
     <configuration name="adacare" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="ddim_medskim" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -89,6 +226,28 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/adacare.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="baseline" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="ddim_medskim" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/baseline.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -163,35 +322,13 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="runner_ehrGAN" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="ddim_medskim" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/runner_ehrGAN.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.runner_ehrGAN" />
         <item itemvalue="Python.embGen_test_model" />
         <item itemvalue="Python.embGen_LSTM_ddim" />
         <item itemvalue="Python.adacare" />
         <item itemvalue="Python.medskim" />
+        <item itemvalue="Python.baseline" />
       </list>
     </recent_temporary>
   </component>
@@ -277,8 +414,9 @@
       <workItem from="1686751222561" duration="19000" />
       <workItem from="1687354821192" duration="9000" />
       <workItem from="1691003285848" duration="4178000" />
-      <workItem from="1691008206111" duration="63987000" />
-      <workItem from="1691371190626" duration="84000" />
+      <workItem from="1691008206111" duration="8252000" />
+      <workItem from="1691369455533" duration="1173000" />
+      <workItem from="1691370651538" duration="14000" />
     </task>
     <task id="LOCAL-00075" summary="GAN runner with bash and save csv">
       <created>1682623147663</created>
@@ -623,7 +761,7 @@
       <option name="project" value="LOCAL" />
       <updated>1684704709098</updated>
     </task>
-    <option name="localTasksCounter" value="125" />
+    <option name="localTasksCounter" value="124" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -648,6 +786,7 @@
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
+    <MESSAGE value="rewritten model" />
     <MESSAGE value="ab3" />
     <MESSAGE value="ab2" />
     <MESSAGE value="ht and alphas" />
@@ -672,8 +811,7 @@
     <MESSAGE value="diff ARF" />
     <MESSAGE value="kidney, amnesia, mimic diff" />
     <MESSAGE value="as123" />
-    <MESSAGE value="getting et and gen et, alphas" />
-    <option name="LAST_COMMIT_MESSAGE" value="getting et and gen et, alphas" />
+    <option name="LAST_COMMIT_MESSAGE" value="as123" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -733,6 +871,31 @@
           <line>97</line>
           <option name="timeStamp" value="161" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/embGen_test_model.py</url>
+          <line>105</line>
+          <option name="timeStamp" value="162" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/embGen_test_model.py</url>
+          <line>106</line>
+          <option name="timeStamp" value="163" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/embGen_test_model.py</url>
+          <line>141</line>
+          <option name="timeStamp" value="165" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/embGen_test_model.py</url>
+          <line>101</line>
+          <option name="timeStamp" value="166" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/embGen_test_model.py</url>
+          <line>102</line>
+          <option name="timeStamp" value="167" />
+        </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
         <breakpoint type="python-exception">
@@ -744,40 +907,39 @@
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/ddim_medskim$dataset.coverage" NAME="dataset Coverage Results" MODIFIED="1667506884316" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$test_cond_model.coverage" NAME="test_cond_model Coverage Results" MODIFIED="1669499994545" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$ddim_LSTM.coverage" NAME="ddim_LSTM Coverage Results" MODIFIED="1669239149204" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
     <SUITE FILE_PATH="coverage/ddim_medskim$medskim.coverage" NAME="medskim Coverage Results" MODIFIED="1686365861304" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$embGen_LSTM_ddim.coverage" NAME="embGen_LSTM_ddim Coverage Results" MODIFIED="1691010695472" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$og_baseline.coverage" NAME="og_baseline Coverage Results" MODIFIED="1683075309579" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$embGen_test_model.coverage" NAME="embGen_test_model Coverage Results" MODIFIED="1691034834239" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$dataset.coverage" NAME="dataset Coverage Results" MODIFIED="1667506884316" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
     <SUITE FILE_PATH="coverage/ddim_medskim$mimic_data_gen.coverage" NAME="mimic_data_gen Coverage Results" MODIFIED="1680981591207" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/mimic/1.4" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$runner_ehrGAN.coverage" NAME="runner_ehrGAN Coverage Results" MODIFIED="1691203581185" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$adacare__1_.coverage" NAME="adacare (1) Coverage Results" MODIFIED="1681928724925" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$plotter.coverage" NAME="plotter Coverage Results" MODIFIED="1683940719458" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$remastered_model.coverage" NAME="remastered_model Coverage Results" MODIFIED="1679863265153" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$new_model_runner.coverage" NAME="new_model_runner Coverage Results" MODIFIED="1680794613501" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$LSTM_ddim.coverage" NAME="LSTM_ddim Coverage Results" MODIFIED="1674956005963" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$test_model.coverage" NAME="test_model Coverage Results" MODIFIED="1670897826250" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$diffusion.coverage" NAME="diffusion Coverage Results" MODIFIED="1667527004134" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$ALL_GAN_runner.coverage" NAME="ALL_GAN_runner Coverage Results" MODIFIED="1683759268871" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$baseline.coverage" NAME="baseline Coverage Results" MODIFIED="1686365749916" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$adacare.coverage" NAME="adacare Coverage Results" MODIFIED="1686402678020" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$diffUtil.coverage" NAME="diffUtil Coverage Results" MODIFIED="1667527925286" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/utils" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$seeData.coverage" NAME="seeData Coverage Results" MODIFIED="1683210911788" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$test_cond_model__1_.coverage" NAME="test_cond_model (1) Coverage Results" MODIFIED="1669500394782" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$baseline_with_diff.coverage" NAME="baseline_with_diff Coverage Results" MODIFIED="1683762452180" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
     <SUITE FILE_PATH="coverage/ddim_medskim$cond_test_model.coverage" NAME="cond_test_model Coverage Results" MODIFIED="1670200881349" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$softmax_LSTM_ddim.coverage" NAME="softmax_LSTM_ddim Coverage Results" MODIFIED="1674778103666" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$softmax_test_model.coverage" NAME="softmax_test_model Coverage Results" MODIFIED="1675018725893" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$embGen_test_model.coverage" NAME="embGen_test_model Coverage Results" MODIFIED="1691369676985" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$remastered_model.coverage" NAME="remastered_model Coverage Results" MODIFIED="1679863265153" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$ALL_GAN.coverage" NAME="ALL_GAN Coverage Results" MODIFIED="1683685798092" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$embGen_LSTM_ddim.coverage" NAME="embGen_LSTM_ddim Coverage Results" MODIFIED="1691010695472" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$runner.coverage" NAME="runner Coverage Results" MODIFIED="1682892955796" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/EEG" />
     <SUITE FILE_PATH="coverage/ddim_medskim$hyper_plotter.coverage" NAME="hyper_plotter Coverage Results" MODIFIED="1684783915989" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$GAN_runner.coverage" NAME="GAN_runner Coverage Results" MODIFIED="1682639056540" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$new_model.coverage" NAME="new_model Coverage Results" MODIFIED="1683762804243" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$ab_test_model.coverage" NAME="ab_test_model Coverage Results" MODIFIED="1684699366531" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$ALL_GAN.coverage" NAME="ALL_GAN Coverage Results" MODIFIED="1683685798092" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$og_test_model.coverage" NAME="og_test_model Coverage Results" MODIFIED="1673470930495" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$runner.coverage" NAME="runner Coverage Results" MODIFIED="1682892955796" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/EEG" />
     <SUITE FILE_PATH="coverage/ddim_medskim$helloworld.coverage" NAME="helloworld Coverage Results" MODIFIED="1667052055792" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$softmax_test_model.coverage" NAME="softmax_test_model Coverage Results" MODIFIED="1675018725893" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$og_baseline.coverage" NAME="og_baseline Coverage Results" MODIFIED="1683075309579" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$baseline_with_diff.coverage" NAME="baseline_with_diff Coverage Results" MODIFIED="1683762452180" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$new_model.coverage" NAME="new_model Coverage Results" MODIFIED="1683762804243" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$ALL_GAN_runner.coverage" NAME="ALL_GAN_runner Coverage Results" MODIFIED="1683759268871" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$seeData.coverage" NAME="seeData Coverage Results" MODIFIED="1683210911788" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$test_cond_model__1_.coverage" NAME="test_cond_model (1) Coverage Results" MODIFIED="1669500394782" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$adacare__1_.coverage" NAME="adacare (1) Coverage Results" MODIFIED="1681928724925" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$diffUtil.coverage" NAME="diffUtil Coverage Results" MODIFIED="1667527925286" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/utils" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$adacare.coverage" NAME="adacare Coverage Results" MODIFIED="1686402678020" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$og_test_model.coverage" NAME="og_test_model Coverage Results" MODIFIED="1673470930495" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$LSTM_ddim.coverage" NAME="LSTM_ddim Coverage Results" MODIFIED="1674956005963" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$ab_test_model.coverage" NAME="ab_test_model Coverage Results" MODIFIED="1684699366531" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$ddim_LSTM.coverage" NAME="ddim_LSTM Coverage Results" MODIFIED="1669239149204" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$plotter.coverage" NAME="plotter Coverage Results" MODIFIED="1683940719458" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$test_model.coverage" NAME="test_model Coverage Results" MODIFIED="1670897826250" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$softmax_LSTM_ddim.coverage" NAME="softmax_LSTM_ddim Coverage Results" MODIFIED="1674778103666" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$new_model_runner.coverage" NAME="new_model_runner Coverage Results" MODIFIED="1680794613501" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$diffusion.coverage" NAME="diffusion Coverage Results" MODIFIED="1667527004134" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
     <SUITE FILE_PATH="coverage/ddim_medskim$baseline_EEG.coverage" NAME="baseline_EEG Coverage Results" MODIFIED="1683761286782" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$test_cond_model.coverage" NAME="test_cond_model Coverage Results" MODIFIED="1669499994545" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
   </component>
 </project>
