@@ -30,6 +30,42 @@ def dict2namespace(config):
     return namespace
 
 
+def eval_metricTrainVal(eval_set, model):
+    model.eval()
+    with torch.no_grad():
+        y_true = np.array([])
+        y_pred = np.array([])
+        y_score = np.array([])
+        e_ts = np.array([])
+        e_t_gens = np.array([])
+        alpha1s = np.array([])
+        alpha2s = np.array([])
+
+        for i, data in enumerate(eval_set):
+            ehr, time_step, labels, mask = data
+            e_t,e_t_gen,final_prediction,_,_,_,alpha1,alpha2 = model(ehr, time_step, mask)
+
+            scores = torch.softmax(final_prediction, dim=-1)
+            scores = scores.data.cpu().numpy()
+            labels = labels.data.cpu().numpy()
+            labels = labels.argmax(1)
+            score = scores[:, 1]
+            pred = scores.argmax(1)
+            y_true = np.concatenate((y_true, labels))
+            y_pred = np.concatenate((y_pred, pred))
+            y_score = np.concatenate((y_score, score))
+
+
+        accuary = accuracy_score(y_true, y_pred)
+        precision = precision_score(y_true, y_pred)
+        recall = recall_score(y_true, y_pred)
+        f1 = f1_score(y_true, y_pred)
+        roc_auc = roc_auc_score(y_true, y_score)
+        lr_precision, lr_recall, _ = precision_recall_curve(y_true, y_score)
+        pr_auc = auc(lr_recall, lr_precision)
+        kappa = cohen_kappa_score(y_true, y_pred)
+        loss = log_loss(y_true, y_pred)
+    return accuary, precision, recall, f1, roc_auc, pr_auc, kappa, loss, e_ts, e_t_gens, alpha1s, alpha2s, y_true, y_pred
 def eval_metric(eval_set, model):
     model.eval()
     with torch.no_grad():
@@ -46,48 +82,53 @@ def eval_metric(eval_set, model):
             ehr, time_step, labels, mask = data
             e_t,e_t_gen,final_prediction,_,_,_,alpha1,alpha2 = model(ehr, time_step, mask)
 
-            e_t = torch.flatten(e_t, start_dim=1)
-            e_t_gen = torch.flatten(e_t_gen, start_dim=1)
-            alpha1 = torch.flatten(alpha1, start_dim=1)
-            alpha2 = torch.flatten(alpha2, start_dim=1)
+
 
 
             scores = torch.softmax(final_prediction, dim=-1)
             scores = scores.data.cpu().numpy()
-            e_t = e_t.data.cpu().numpy()
-            e_t_gen = e_t_gen.data.cpu().numpy()
-            alpha1 = alpha1.data.cpu().numpy()
-            alpha2 = alpha2.data.cpu().numpy()
-
-
             labels = labels.data.cpu().numpy()
             labels = labels.argmax(1)
             score = scores[:, 1]
             pred = scores.argmax(1)
-
             y_true = np.concatenate((y_true, labels))
             y_pred = np.concatenate((y_pred, pred))
             y_score = np.concatenate((y_score, score))
-            try:
-                e_ts = np.concatenate((e_ts, e_t), axis=0)
-            except ValueError:
-                e_ts = e_t
 
-            try:
-                e_t_gens = np.concatenate((e_t_gens, e_t_gen), axis=0)
-            except ValueError:
-                e_t_gens = e_t_gen
 
-            try:
-                alpha1s = np.concatenate((alpha1s, alpha1), axis=0)
-            except ValueError:
-                alpha1s = alpha1
+            if i % 7 == 0:
+                e_t = torch.flatten(e_t, start_dim=1)
+                e_t_gen = torch.flatten(e_t_gen, start_dim=1)
+                alpha1 = torch.flatten(alpha1, start_dim=1)
+                alpha2 = torch.flatten(alpha2, start_dim=1)
+                e_t = e_t.data.cpu().numpy()
+                e_t_gen = e_t_gen.data.cpu().numpy()
+                alpha1 = alpha1.data.cpu().numpy()
+                alpha2 = alpha2.data.cpu().numpy()
 
-            try:
-                alpha2s = np.concatenate((alpha2s, alpha2), axis=0)
-            except ValueError:
-                alpha2s = alpha2
 
+
+
+
+                try:
+                    e_ts = np.concatenate((e_ts, e_t), axis=0)
+                except ValueError:
+                    e_ts = e_t
+
+                try:
+                    e_t_gens = np.concatenate((e_t_gens, e_t_gen), axis=0)
+                except ValueError:
+                    e_t_gens = e_t_gen
+
+                try:
+                    alpha1s = np.concatenate((alpha1s, alpha1), axis=0)
+                except ValueError:
+                    alpha1s = alpha1
+
+                try:
+                    alpha2s = np.concatenate((alpha2s, alpha2), axis=0)
+                except ValueError:
+                    alpha2s = alpha2
 
         accuary = accuracy_score(y_true, y_pred)
         precision = precision_score(y_true, y_pred)
@@ -104,7 +145,7 @@ def main(name, seed, data, max_len, max_num, save_dir):
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
     parser.add_argument('--seed', default=seed, type=int, help='seed')
-    parser.add_argument('-bs', '--batch_size', default=32, type=int)
+    parser.add_argument('-bs', '--batch_size', default=64, type=int)
     parser.add_argument('--model', default='medDiff')
     parser.add_argument('-me', '--max_epochs_before_stop', default=10, type=int)
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
@@ -362,10 +403,30 @@ def train(args):
                 global_step += 1
 
             model.eval()
-            train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa, tr_loss,_,_,_,_,_,_ = eval_metric(train_dataloader,
-                                                                                                     model)
-            dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa, d_loss,_,_,_,_,_,_ = eval_metric(dev_dataloader, model)
-            test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss, ogEGR, genEHR, alpha1s, alpha2s, t_label,t_pred = eval_metric(test_dataloader, model)
+            if epoch_id & 5 == 0:
+                train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa, tr_loss, _, _, _, _, _, _ = eval_metricTrainVal(
+                    train_dataloader,
+                    model)
+                dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa, d_loss, _, _, _, _, _, _ = eval_metricTrainVal(
+                    dev_dataloader, model)
+                test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss, ogEGR, genEHR, alpha1s, alpha2s, t_label, t_pred = eval_metric(
+                    test_dataloader, model)
+                alpha_filename = save_dir + str(args.target_disease) + '_alpha1_epoch_' + str(epoch_id) + '.csv'
+                ogEGR_filename = save_dir + str(args.target_disease) + '_og_embed_epoch_' + str(epoch_id) + '.csv'
+                genEHR_filename = save_dir + str(args.target_disease) + '_gen_embed_epoch_' + str(epoch_id) + '.csv'
+                label_filename = save_dir + str(args.target_disease) + '_label_epoch_' + str(epoch_id) + '.csv'
+                pred_filename = save_dir + str(args.target_disease) + '_pred_epoch_' + str(epoch_id) + '.csv'
+
+                np.savetxt(alpha_filename, alpha1s, delimiter=',')
+                np.savetxt(ogEGR_filename, ogEGR, delimiter=',')
+                np.savetxt(genEHR_filename, genEHR, delimiter=',')
+                np.savetxt(label_filename, t_label, delimiter=',')
+                np.savetxt(pred_filename, t_pred, delimiter=',')
+            else:
+                train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa, tr_loss,_,_,_,_,_,_ = eval_metricTrainVal(train_dataloader,
+                                                                                                         model)
+                dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa, d_loss,_,_,_,_,_,_ = eval_metricTrainVal(dev_dataloader, model)
+                test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss,_,_,_,_,_,_ = eval_metricTrainVal(test_dataloader, model)
             scheduler.step(d_loss)
             print('-' * 71)
             print('| step {:5} | train_acc {:7.4f} | dev_acc {:7.4f} | test_acc {:7.4f} '.format(global_step,
@@ -408,19 +469,6 @@ def train(args):
             # with open(stats_path, 'a') as statout:
             #     statout.write('{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n'.format(train_acc,dev_acc,test_acc,tr_precision,d_precision,t_precision,tr_recall,d_recall,t_recall,tr_f1,d_f1,t_f1,tr_roc_auc,d_roc_auc,t_roc_auc,tr_pr_auc,d_pr_auc,t_pr_auc,tr_kappa,d_kappa,t_kappa,tr_loss,d_loss,t_loss))
 
-            if epoch_id % 5 == 0:
-
-                alpha_filename = save_dir + str(args.target_disease) + '_alpha1_epoch_' + str(epoch_id) + '.csv'
-                ogEGR_filename = save_dir + str(args.target_disease) + '_og_embed_epoch_' + str(epoch_id) + '.csv'
-                genEHR_filename = save_dir + str(args.target_disease) + '_gen_embed_epoch_' + str(epoch_id) + '.csv'
-                label_filename = save_dir + str(args.target_disease) + '_label_epoch_' + str(epoch_id) + '.csv'
-                pred_filename = save_dir + str(args.target_disease) + '_pred_epoch_' + str(epoch_id) + '.csv'
-
-                np.savetxt(alpha_filename, alpha1s, delimiter=',')
-                np.savetxt(ogEGR_filename, ogEGR, delimiter=',')
-                np.savetxt(genEHR_filename, genEHR, delimiter=',')
-                np.savetxt(label_filename, t_label, delimiter=',')
-                np.savetxt(pred_filename, t_pred, delimiter=',')
 
             if d_f1 >= best_dev_auc:
                 best_dev_auc = d_f1
@@ -461,9 +509,9 @@ if __name__ == '__main__':
     # lambdaS = [0.1,0.25,0.5,0.75,1.0]
 
     seeds = [1234]
-    dataset = ['Heart_failure', 'COPD', 'Kidney', 'Amnesia', 'mimic']
-    max_lens = [50,50,50,50,20]
-    max_nums = [20,20,20,20,20]
+    dataset = ['COPD', 'Kidney', 'Amnesia', 'mimic']
+    max_lens = [50,50,50,20]
+    max_nums = [20,20,20,20]
     model_name = ["medDiff"]
     save_dir = './saved_rebuttal/'
 
