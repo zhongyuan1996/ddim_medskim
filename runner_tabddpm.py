@@ -264,19 +264,23 @@ def train(args):
                 model.eval()
 
                 print('-' * 71)
-                print('Evaluating on training set...')
-                train_loss = eval_metrictabDDPM(train_loader, model)
-                print('Evaluating on testing set...')
-                test_loss = eval_metrictabDDPM(test_loader, model)
+                # print('Evaluating on training set...')
+                # train_loss = eval_metrictabDDPM(train_loader, model)
+                # print('Evaluating on testing set...')
+                # test_loss = eval_metrictabDDPM(test_loader, model)
                 print('Evaluating on validation set...')
                 dev_loss = eval_metrictabDDPM(val_loader, model)
                 print('-' * 71)
                 scheduler.step(dev_loss)
+                # print(
+                #     f'Epoch {epoch_id} | time: {(time.time() - epoch_start_time):5.2f}s | train loss {train_loss:5.4f} | test loss {test_loss:5.4f} | val loss {dev_loss:5.4f}'
+                # )
                 print(
-                    f'Epoch {epoch_id} | time: {(time.time() - epoch_start_time):5.2f}s | train loss {train_loss:5.4f} | test loss {test_loss:5.4f} | val loss {dev_loss:5.4f}'
+                    f'Epoch {epoch_id} | time: {(time.time() - epoch_start_time):5.2f}s | val loss {dev_loss:5.4f}'
                 )
                 if dev_loss < best_val_loss:
-                    best_train_loss, best_test_loss, best_val_loss = train_loss, test_loss, dev_loss
+                    # best_train_loss, best_test_loss, best_val_loss = train_loss, test_loss, dev_loss
+                    best_val_loss = dev_loss
                     best_dev_epoch = epoch_id
                     torch.save(model.state_dict(), str(args.save_dir) + tabDDPM_filename)
                     print('Saving model (epoch {})'.format(epoch_id + 1))
