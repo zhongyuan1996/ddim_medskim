@@ -145,7 +145,7 @@ def main(name, seed, data, max_len, max_num, save_dir):
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
     parser.add_argument('--seed', default=seed, type=int, help='seed')
-    parser.add_argument('-bs', '--batch_size', default=64, type=int)
+    parser.add_argument('-bs', '--batch_size', default=32, type=int)
     parser.add_argument('--model', default='medDiff')
     parser.add_argument('-me', '--max_epochs_before_stop', default=10, type=int)
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
@@ -211,7 +211,7 @@ def train(args):
     else:
 
         config_path = os.path.join(args.save_dir, 'config.json')
-        model_path = os.path.join(args.save_dir, 'models.pt')
+        model_path = os.path.join(args.save_dir, 'model_' + str(args.target_disease) +'.pt')
         log_path = os.path.join(args.save_dir, 'log.csv')
         log_loss_path = os.path.join(args.save_dir, 'log_loss.csv')
         stats_path = os.path.join(args.save_dir, 'stats.csv')
@@ -409,19 +409,19 @@ def train(args):
                     model)
                 dev_acc, d_precision, d_recall, d_f1, d_roc_auc, d_pr_auc, d_kappa, d_loss, _, _, _, _, _, _ = eval_metricTrainVal(
                     dev_dataloader, model)
-                test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss, ogEGR, genEHR, alpha1s, alpha2s, t_label, t_pred = eval_metric(
+                test_acc, t_precision, t_recall, t_f1, t_roc_auc, t_pr_auc, t_kappa, t_loss, ogEGR, genEHR, alpha1s, alpha2s, t_label, t_pred = eval_metricTrainVal(
                     test_dataloader, model)
-                alpha_filename = save_dir + str(args.target_disease) + '_alpha1_epoch_' + str(epoch_id) + '.csv'
-                ogEGR_filename = save_dir + str(args.target_disease) + '_og_embed_epoch_' + str(epoch_id) + '.csv'
-                genEHR_filename = save_dir + str(args.target_disease) + '_gen_embed_epoch_' + str(epoch_id) + '.csv'
-                label_filename = save_dir + str(args.target_disease) + '_label_epoch_' + str(epoch_id) + '.csv'
-                pred_filename = save_dir + str(args.target_disease) + '_pred_epoch_' + str(epoch_id) + '.csv'
-
-                np.savetxt(alpha_filename, alpha1s, delimiter=',')
-                np.savetxt(ogEGR_filename, ogEGR, delimiter=',')
-                np.savetxt(genEHR_filename, genEHR, delimiter=',')
-                np.savetxt(label_filename, t_label, delimiter=',')
-                np.savetxt(pred_filename, t_pred, delimiter=',')
+                # alpha_filename = save_dir + str(args.target_disease) + '_alpha1_epoch_' + str(epoch_id) + '.csv'
+                # ogEGR_filename = save_dir + str(args.target_disease) + '_og_embed_epoch_' + str(epoch_id) + '.csv'
+                # genEHR_filename = save_dir + str(args.target_disease) + '_gen_embed_epoch_' + str(epoch_id) + '.csv'
+                # label_filename = save_dir + str(args.target_disease) + '_label_epoch_' + str(epoch_id) + '.csv'
+                # pred_filename = save_dir + str(args.target_disease) + '_pred_epoch_' + str(epoch_id) + '.csv'
+                #
+                # np.savetxt(alpha_filename, alpha1s, delimiter=',')
+                # np.savetxt(ogEGR_filename, ogEGR, delimiter=',')
+                # np.savetxt(genEHR_filename, genEHR, delimiter=',')
+                # np.savetxt(label_filename, t_label, delimiter=',')
+                # np.savetxt(pred_filename, t_pred, delimiter=',')
             else:
                 train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa, tr_loss,_,_,_,_,_,_ = eval_metricTrainVal(train_dataloader,
                                                                                                          model)
@@ -477,7 +477,7 @@ def train(args):
                 best_epoch_pr = t_pr_auc
                 best_epoch_f1 = t_f1
                 best_epoch_kappa = t_kappa
-                # torch.save([model, args], model_path)
+                torch.save([model, args], model_path)
                 # with open(log_path, 'a') as fout:
                 #     fout.write('{},{},{},{}\n'.format(global_step, tr_pr_auc, d_pr_auc, t_pr_auc))
                 print(f'model saved to {model_path}')
