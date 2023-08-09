@@ -31,26 +31,25 @@ def padMatrix(input_data, max_num_pervisit, maxlen, pad_id):
 def padMatrix2(input_data, max_num_pervisit, maxlen, pad_id):
     pad_seq = [pad_id] * max_num_pervisit
     output = []
-    masks = []
+    lengths = []
     for seq in input_data:
         record_ids = []
-        mask = []
         for visit in seq:
-            visit_ids = visit[0: max_num_pervisit]
-            mask_v = [1] * len(visit_ids)
+            visit_ids = [visit] if visit != pad_id else []  # Changed this line
             for i in range(0, (max_num_pervisit - len(visit_ids))):
                 visit_ids.append(pad_id)
-                mask_v.append(0)
             record_ids.append(visit_ids)
-            mask.append(mask_v)
         record_ids = record_ids[-maxlen:]
-        mask = mask[-maxlen:]
+        lengths.append(len(record_ids))
         for j in range(0, (maxlen - len(record_ids))):
             record_ids.append(pad_seq)
-            mask.append([0] * max_num_pervisit)
         output.append(record_ids)
+    masks = []
+    for l in lengths:
+        mask = np.tril(np.ones((maxlen, maxlen)))
+        # mask[:l, :l] = np.tril(np.ones((l, l)))
         masks.append(mask)
-    return output, masks
+    return output, masks, lengths
 
 
 def padTime(time_step, maxlen, pad_id):
@@ -69,6 +68,23 @@ def codeMask(input_data, max_num_pervisit, maxlen):
         record_ids = []
         for visit in seq:
             visit_ids = visit[0: max_num_pervisit]
+            record_ids.append(visit_ids)
+        record_ids = record_ids[-maxlen:]
+        output.append(record_ids)
+
+    for bid, seq in enumerate(output):
+        for pid, subseq in enumerate(seq):
+            for tid, code in enumerate(subseq):
+                batch_mask[bid, pid, tid] = 0
+    return batch_mask
+
+def codeMask2(input_data, max_num_pervisit, maxlen):
+    batch_mask = np.zeros((len(input_data), maxlen, max_num_pervisit), dtype=np.float32) + 1
+    output = []
+    for seq in input_data:
+        record_ids = []
+        for visit in seq:
+            visit_ids = [visit]  # Changed this line
             record_ids.append(visit_ids)
         record_ids = record_ids[-maxlen:]
         output.append(record_ids)
@@ -101,6 +117,40 @@ class MyDataset(Dataset):
                torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device),\
                torch.tensor(self.labels[idx], dtype=torch.float).to(self.device),\
                   torch.tensor(self.code_mask[idx], dtype=torch.float).to(self.device)
+
+
+class MyDataset_mapping(Dataset):
+    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, ehr_pad_id,
+                 device):
+        ehr, labels, time_step = pickle.load(open(dir_ehr, 'rb'))
+
+        reshaped_ehr = []
+        reshaped_time_step = []
+        expanded_labels = []
+        for b, batch in enumerate(ehr):
+            for v, visit in enumerate(batch):
+                for c, code in enumerate(visit):
+                    reshaped_ehr.append([code])
+                    reshaped_time_step.append([time_step[b][v]])
+                    expanded_labels.append(labels[b])
+
+        self.labels = [[0, 1] if label == 1 else [1, 0] for label in expanded_labels]
+        self.ehr, _, _ = padMatrix2(reshaped_ehr, max_numcode_pervisit, max_len, ehr_pad_id)
+        self.time_step = padTime(reshaped_time_step, max_len, 100000)
+        self.code_mask = codeMask2(reshaped_ehr, max_numcode_pervisit, max_len)
+        self.device = device
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        return torch.tensor(self.ehr[idx], dtype=torch.long).to(self.device), \
+            torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device), \
+            torch.tensor(self.labels[idx], dtype=torch.float).to(self.device), \
+            torch.tensor(self.code_mask[idx], dtype=torch.float).to(self.device)
 
 class MyDataset3(Dataset):
     def __init__(self, dir_ehr, max_len, max_numcode_pervisit, max_numblk_pervisit, ehr_pad_id,
@@ -191,17 +241,81 @@ def collate_fn(batch):
     # return torch.stack(label, 0), torch.stack(ehr, 0), torch.stack(mask, 0), torch.stack(txt, 0), \
     #        torch.stack(mask_txt, 0), torch.stack(length, 0), torch.stack(time_step, 0), torch.stack(code_mask, 0)
 
+class w2vecDataset(Dataset):
+    def __init__(self, dir_ehr,device):
+        self.ehr, _, _ = pickle.load(open(dir_ehr, 'rb'))
+        self.device = device
+    def __len__(self):
+        return len(self.ehr)
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+        return torch.tensor(self.ehr[idx], dtype=torch.long).to(self.device)
+
+def collate_fn_w2vec(batch):
+    ehr = []
+    for data in batch:
+        ehr.append(data)
+    return torch.stack(ehr, 0)
+
 
 class ehrGANDataset(Dataset):
-    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, ehr_pad_id,
-                 device):
+    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, ehr_pad_id, w2v, device):
         ehr, labels, time_step = pickle.load(open(dir_ehr, 'rb'))
         self.labels = [[0,1] if label == 1 else [1,0] for label in labels]
 
+        # aggregate ehr and time_step into 90-day windows
+        ehr, time_step = self.segment_time_windows(ehr, time_step)
         self.ehr, _, _ = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
         self.time_step = padTime(time_step, max_len, 100000)
-        self.code_mask = codeMask(ehr, max_numcode_pervisit, max_len)
         self.device = device
+        self.w2v = w2v
+        self.pad_id = ehr_pad_id
+
+    def ehr_to_embedding(self, ehr):
+        embedding_sequence = []
+        mask = []
+        for visit in ehr:  # Loop over each visit in the EHR data
+            visit_embedding = []
+            visit_mask = []
+            for code in visit:  # Loop over each code in the visit
+                if code == self.pad_id:  # If the code is a padding token, return a zero vector.
+                    visit_embedding.append(np.zeros(self.w2v.vector_size))
+                    visit_mask.append(np.zeros(self.w2v.vector_size))  # Add a zero vector to the mask if it is a padding token.
+                elif code in self.w2v.wv:  # If the code is in the Word2Vec model, add its vector.
+                    visit_embedding.append(self.w2v.wv[code])
+                    visit_mask.append(np.ones(self.w2v.vector_size))  # Add a one vector to the mask if it is a real code.
+            embedding_sequence.append(visit_embedding)
+            mask.append(visit_mask)
+        return np.array(embedding_sequence), np.array(mask)
+
+    def segment_time_windows(self, ehr, time_step):
+        ehr_segmented, time_step_segmented = [], []
+        for patient_idx in range(len(ehr)):
+            patient_ehr = ehr[patient_idx]
+            patient_time_step = time_step[patient_idx]
+            patient_ehr_segmented, patient_time_step_segmented = [], []
+            aggregated_codes, end_time = [], patient_time_step[0]
+            for visit_idx in range(len(patient_ehr)):
+                visit = patient_ehr[visit_idx]
+                if end_time - patient_time_step[visit_idx] < 90:
+                    aggregated_codes.extend(visit)
+                else:
+                    # Aggregate and append codes of the current window
+                    patient_ehr_segmented.append(list(set(aggregated_codes)))
+                    patient_time_step_segmented.append(end_time)
+                    # Start a new window
+                    aggregated_codes = visit
+                    end_time = patient_time_step[visit_idx]
+            # Don't forget to append the last window
+            patient_ehr_segmented.append(list(set(aggregated_codes)))
+            patient_time_step_segmented.append(end_time)
+
+            # Append the segmented ehr and time_step of each patient
+            ehr_segmented.append(patient_ehr_segmented)
+            time_step_segmented.append(patient_time_step_segmented)
+
+        return ehr_segmented, time_step_segmented
 
     def __len__(self):
         return len(self.labels)
@@ -210,47 +324,11 @@ class ehrGANDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        ehr = torch.tensor(self.ehr[idx], dtype=torch.long).to(self.device)
+        temp_ehr, temp_code_mask = self.ehr_to_embedding(self.ehr[idx])
+
+        ehr = torch.tensor(temp_ehr, dtype=torch.float).to(self.device)
         time_step = torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device)
         label = torch.tensor(self.labels[idx], dtype=torch.float).to(self.device)
-        code_mask = torch.tensor(self.code_mask[idx], dtype=torch.float).to(self.device)
+        code_mask = torch.tensor(temp_code_mask, dtype=torch.float).to(self.device)
 
-        # segment time_step into disjoint 90-day windows
-        time_step_segmented, ehr_segmented, code_mask_segmented = self.segment_time_windows(time_step, ehr, code_mask)
-
-        return ehr_segmented, time_step_segmented, label, code_mask_segmented
-
-    def segment_time_windows(self, time_step, ehr, code_mask):
-        max_len = len(time_step)
-        time_step_segmented, ehr_segmented, code_mask_segmented = [], [], []
-
-        # init start and end of the window
-        start, end = 0, 0
-
-        while start < max_len:
-            # expand the window until it covers more than 90 days
-            while end < max_len and time_step[end] - time_step[start] <= 90:
-                end += 1
-
-            # add the window to segmented data
-            time_step_segmented.append(time_step[start:end])
-            ehr_segmented.append(ehr[start:end])
-            code_mask_segmented.append(code_mask[start:end])
-
-            # move the window
-            start = end
-
-        # pad each window to the maximum length among them
-        max_window_len = max(len(window) for window in time_step_segmented)
-        time_step_segmented = [self.pad_sequence(window, max_window_len) for window in time_step_segmented]
-        ehr_segmented = [self.pad_sequence(window, max_window_len) for window in ehr_segmented]
-        code_mask_segmented = [self.pad_sequence(window, max_window_len) for window in code_mask_segmented]
-
-        return torch.stack(time_step_segmented, 0), torch.stack(ehr_segmented, 0), torch.stack(code_mask_segmented, 0)
-
-    def pad_sequence(self, seq, max_len):
-        seq_len = len(seq)
-        padded = torch.zeros(max_len)
-        padded[:seq_len] = seq
-        return padded
-
+        return ehr, time_step, label, code_mask
