@@ -368,6 +368,26 @@ def train(args):
             GAN = medGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
             generator.to(device)
             model = RetainEx(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, args.num_heads, args.max_len, initial_d = initial_d, balanced = args.balanced)
+        elif args.model == 'LSTMehrGANwatt':
+            generator = Linear_generator(64, args.max_len)
+            GAN = ehrGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = LSTM(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d)
+        elif args.model == 'LSTMmedGANwatt':
+            generator = Linear_generator(64, args.max_len)
+            GAN = medGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = LSTM(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d)
+        elif args.model == 'LSTMactGANwatt':
+            generator = Linear_generator(64, args.max_len)
+            GAN = actGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = LSTM(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d)
+        elif args.model == 'LSTMGcGANwatt':
+            generator = FCN_generator(64, args.max_len)
+            GAN = GcGAN(pad_id, args.d_model, args.dropout, device, generator=generator)
+            generator.to(device)
+            model = LSTM(pad_id, args.d_model, args.h_model, args.dropout, args.dropout_emb, device, GAN, initial_d = initial_d)
 
         model.to(device)
 
@@ -547,11 +567,11 @@ if __name__ == '__main__':
 
     # model_name = ['LSTM_ehrGAN', 'LSTM_GcGAN', 'LSTM_actGAN', 'LSTM_medGAN', 'Dipole_ehrGAN', 'Dipole_GcGAN', 'Dipole_actGAN', 'Dipole_medGAN', 'SAND_ehrGAN', 'SAND_GcGAN', 'SAND_actGAN', 'SAND_medGAN', 'TLSTM_ehrGAN', 'TLSTM_GcGAN', 'TLSTM_actGAN', 'TLSTM_medGAN','hita_ehrGAN', 'hita_GcGAN', 'hita_actGAN', 'hita_medGAN' ,'retain_ehrGAN', 'retain_GcGAN', 'retain_actGAN', 'retain_medGAN','retainex_ehrGAN', 'retainex_GcGAN', 'retainex_actGAN', 'retainex_medGAN'
     #                ]
-    model_name = ['retainex_ehrGAN']
-    seeds = [4567]
-    dataset = ["mimic"]
-    max_lens = [50, 50, 50]
-    max_nums = [20, 20, 20]
+    model_name = ['LSTMehrGANwatt', 'LSTMGcGANwatt', 'LSTMactGANwatt', 'LSTMmedGANwatt']
+    seeds = [1,2,3,4,5]
+    dataset = ['Heart_failure', 'COPD', 'Kidney', 'Amnesia', 'mimic']
+    max_lens = [50, 50, 50,50,20]
+    max_nums = [20, 20, 20,20,20]
     for data, max_len, max_num in zip(dataset, max_lens, max_nums):
         for name in model_name:
             for seed in seeds:

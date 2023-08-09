@@ -403,7 +403,7 @@ def train(args):
                 global_step += 1
 
             model.eval()
-            if epoch_id & 5 == 0:
+            if epoch_id % 5 == 0:
                 train_acc, tr_precision, tr_recall, tr_f1, tr_roc_auc, tr_pr_auc, tr_kappa, tr_loss, _, _, _, _, _, _ = eval_metricTrainVal(
                     train_dataloader,
                     model)

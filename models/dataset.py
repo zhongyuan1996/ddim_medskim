@@ -31,26 +31,25 @@ def padMatrix(input_data, max_num_pervisit, maxlen, pad_id):
 def padMatrix2(input_data, max_num_pervisit, maxlen, pad_id):
     pad_seq = [pad_id] * max_num_pervisit
     output = []
-    masks = []
+    lengths = []
     for seq in input_data:
         record_ids = []
-        mask = []
         for visit in seq:
-            visit_ids = visit[0: max_num_pervisit]
-            mask_v = [1] * len(visit_ids)
+            visit_ids = [visit] if visit != pad_id else []  # Changed this line
             for i in range(0, (max_num_pervisit - len(visit_ids))):
                 visit_ids.append(pad_id)
-                mask_v.append(0)
             record_ids.append(visit_ids)
-            mask.append(mask_v)
         record_ids = record_ids[-maxlen:]
-        mask = mask[-maxlen:]
+        lengths.append(len(record_ids))
         for j in range(0, (maxlen - len(record_ids))):
             record_ids.append(pad_seq)
-            mask.append([0] * max_num_pervisit)
         output.append(record_ids)
+    masks = []
+    for l in lengths:
+        mask = np.tril(np.ones((maxlen, maxlen)))
+        # mask[:l, :l] = np.tril(np.ones((l, l)))
         masks.append(mask)
-    return output, masks
+    return output, masks, lengths
 
 
 def padTime(time_step, maxlen, pad_id):
@@ -69,6 +68,23 @@ def codeMask(input_data, max_num_pervisit, maxlen):
         record_ids = []
         for visit in seq:
             visit_ids = visit[0: max_num_pervisit]
+            record_ids.append(visit_ids)
+        record_ids = record_ids[-maxlen:]
+        output.append(record_ids)
+
+    for bid, seq in enumerate(output):
+        for pid, subseq in enumerate(seq):
+            for tid, code in enumerate(subseq):
+                batch_mask[bid, pid, tid] = 0
+    return batch_mask
+
+def codeMask2(input_data, max_num_pervisit, maxlen):
+    batch_mask = np.zeros((len(input_data), maxlen, max_num_pervisit), dtype=np.float32) + 1
+    output = []
+    for seq in input_data:
+        record_ids = []
+        for visit in seq:
+            visit_ids = [visit]  # Changed this line
             record_ids.append(visit_ids)
         record_ids = record_ids[-maxlen:]
         output.append(record_ids)
@@ -101,6 +117,40 @@ class MyDataset(Dataset):
                torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device),\
                torch.tensor(self.labels[idx], dtype=torch.float).to(self.device),\
                   torch.tensor(self.code_mask[idx], dtype=torch.float).to(self.device)
+
+
+class MyDataset_mapping(Dataset):
+    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, ehr_pad_id,
+                 device):
+        ehr, labels, time_step = pickle.load(open(dir_ehr, 'rb'))
+
+        reshaped_ehr = []
+        reshaped_time_step = []
+        expanded_labels = []
+        for b, batch in enumerate(ehr):
+            for v, visit in enumerate(batch):
+                for c, code in enumerate(visit):
+                    reshaped_ehr.append([code])
+                    reshaped_time_step.append([time_step[b][v]])
+                    expanded_labels.append(labels[b])
+
+        self.labels = [[0, 1] if label == 1 else [1, 0] for label in expanded_labels]
+        self.ehr, _, _ = padMatrix2(reshaped_ehr, max_numcode_pervisit, max_len, ehr_pad_id)
+        self.time_step = padTime(reshaped_time_step, max_len, 100000)
+        self.code_mask = codeMask2(reshaped_ehr, max_numcode_pervisit, max_len)
+        self.device = device
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        return torch.tensor(self.ehr[idx], dtype=torch.long).to(self.device), \
+            torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device), \
+            torch.tensor(self.labels[idx], dtype=torch.float).to(self.device), \
+            torch.tensor(self.code_mask[idx], dtype=torch.float).to(self.device)
 
 class MyDataset3(Dataset):
     def __init__(self, dir_ehr, max_len, max_numcode_pervisit, max_numblk_pervisit, ehr_pad_id,

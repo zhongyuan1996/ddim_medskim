@@ -853,6 +853,311 @@ class LSTM_ehrGAN(nn.Module):
         final_prediction_fake = fake_softmax[:, -1, :]
         return final_prediction_og, final_prediction_fake, Dec_V, Gen_V, seq_time_step, label
 
+class LSTMmedGANwatt(nn.Module):
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, initial_d = 0, num_layers=1, m=0,
+                 dense_model=64):
+        super().__init__()
+        self.device = device
+        self.dropout = nn.Dropout(dropout)
+        self.emb_dropout = nn.Dropout(dropout_emb)
+        self.lstm = nn.LSTM(d_model, h_model, num_layers, bidirectional=False, batch_first=True, dropout=dropout)
+        self.m = m
+        self.tanh = nn.Tanh()
+        self.time_layer = nn.Linear(1, 64)
+        self.time_updim = nn.Linear(64, d_model)
+        self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.relu = nn.ReLU()
+        self.GAN = GAN
+        self.relu = nn.ReLU()
+        self.classifyer = classifyer(d_model)
+        self.initial_d = initial_d
+        self.initial_embedding_2 = nn.Linear(self.initial_d, d_model)
+
+        self.w_hk = nn.Linear(h_model, d_model)
+        self.w1 = nn.Linear(2 * h_model, 64)
+        self.w2 = nn.Linear(64, 2)
+    def before(self, input_seqs, seq_time_step):
+        # time embedding
+        # seq_time_step = seq_time_step.unsqueeze(2) / 180
+        # time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
+        # time_encoding = self.time_updim(time_feature)
+        # visit_embedding e_t
+        if self.initial_d != 0:
+            visit_embedding = self.initial_embedding_2(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
+            # visit_embedding = visit_embedding + time_encoding
+        else:
+            visit_embedding = self.initial_embedding(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
+
+            # visit_embedding = visit_embedding.sum(-2) + time_encoding
+            visit_embedding = visit_embedding.sum(-2)
+        return visit_embedding
+
+    def forward(self, input_seqs, mask, length, seq_time_step, codemask, label):
+        batch_size, visit_size, seq_size = input_seqs.size()
+        v = self.before(input_seqs, seq_time_step)
+        h, _ = self.lstm(v)
+
+        bar_v = torch.zeros_like(v)
+
+        for i in range(visit_size):
+            if i == 0:
+                bar_v[:, 0:1, :] = v[:, 0:1, :]
+            else:
+                e_k = v[:, 0:1, :]
+                w_h_k_prev = self.w_hk(h[:, i - 1:i, :])
+                attn = self.softmax(self.w2(self.tanh(self.w1(torch.cat((e_k, w_h_k_prev), dim=-1)))))
+                alpha1 = attn[:, :, 0:1]
+                alpha2 = attn[:, :, 1:2]
+                bar_v[:, i:i + 1, :] = e_k * alpha1 + w_h_k_prev * alpha2
+
+        Dec_V, Gen_V, _, _ = self.GAN(bar_v, seq_time_step, label)
+
+        gen_h, _ = self.lstm(Gen_V)
+
+        og_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+        fake_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+
+        for i in range(visit_size):
+            og_softmax[:, i:i + 1, :] = self.classifyer(h[:, i:i + 1, :])
+            fake_softmax[:, i:i + 1, :] = self.classifyer(gen_h[:, i:i + 1, :])
+
+        final_prediction_og = og_softmax[:, -1, :]
+        final_prediction_fake = fake_softmax[:, -1, :]
+        return final_prediction_og, final_prediction_fake, Dec_V, Gen_V, seq_time_step, label
+
+
+
+
+class LSTMactGANwatt(nn.Module):
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, initial_d=0, num_layers=1, m=0,
+                 dense_model=64):
+        super().__init__()
+        self.device = device
+        self.dropout = nn.Dropout(dropout)
+        self.emb_dropout = nn.Dropout(dropout_emb)
+        self.lstm = nn.LSTM(d_model, h_model, num_layers, bidirectional=False, batch_first=True, dropout=dropout)
+        self.m = m
+        self.tanh = nn.Tanh()
+        self.time_layer = nn.Linear(1, 64)
+        self.time_updim = nn.Linear(64, d_model)
+        self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.relu = nn.ReLU()
+        self.GAN = GAN
+        self.label_encoder = nn.Linear(2, 256)
+        self.xandy_encoder = nn.Linear(256, 64)
+        self.decoder = nn.Linear(64, 256)
+        self.classifyer = classifyer(d_model)
+        self.initial_d = initial_d
+        self.initial_embedding_2 = nn.Linear(self.initial_d, d_model)
+
+        self.w_hk = nn.Linear(h_model,d_model)
+        self.w1 = nn.Linear(2*h_model, 64)
+        self.w2 = nn.Linear(64,2)
+
+    def before(self, input_seqs, seq_time_step):
+        # time embedding
+        seq_time_step = seq_time_step.unsqueeze(2) / 180
+        time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
+        time_encoding = self.time_updim(time_feature)
+        # visit_embedding e_t
+        if self.initial_d != 0:
+            visit_embedding = self.initial_embedding_2(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
+            visit_embedding = visit_embedding + time_encoding
+        else:
+            visit_embedding = self.initial_embedding(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
+
+            visit_embedding = visit_embedding.sum(-2) + time_encoding
+        return visit_embedding
+
+    def forward(self, input_seqs, mask, length, seq_time_step, codemask, label):
+        batch_size, visit_size, seq_size = input_seqs.size()
+        v = self.before(input_seqs, seq_time_step)
+        h, _ = self.lstm(v)
+
+        bar_v = torch.zeros_like(v)
+
+        for i in range(visit_size):
+            if i == 0:
+                bar_v[:, 0:1, :] = v[:, 0:1, :]
+            else:
+                e_k = v[:, 0:1, :]
+                w_h_k_prev = self.w_hk(h[:, i - 1:i, :])
+                attn = self.softmax(self.w2(self.tanh(self.w1(torch.cat((e_k, w_h_k_prev), dim=-1)))))
+                alpha1 = attn[:, :, 0:1]
+                alpha2 = attn[:, :, 1:2]
+                bar_v[:, i:i + 1, :] = e_k * alpha1 + w_h_k_prev * alpha2
+
+        Dec_V, Gen_V, _, _ = self.GAN(bar_v, seq_time_step, label)
+
+        gen_h, _ = self.lstm(Gen_V)
+
+        og_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+        fake_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+
+        for i in range(visit_size):
+            og_softmax[:, i:i + 1, :] = self.classifyer(h[:, i:i + 1, :])
+            fake_softmax[:, i:i + 1, :] = self.classifyer(gen_h[:, i:i + 1, :])
+
+        final_prediction_og = og_softmax[:, -1, :]
+        final_prediction_fake = fake_softmax[:, -1, :]
+        return final_prediction_og, final_prediction_fake, Dec_V, Gen_V, seq_time_step, label
+
+class LSTMGcGANwatt(nn.Module):
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, initial_d=0, num_layers=1, m=0,
+                 dense_model=64):
+        super().__init__()
+        self.device = device
+        self.dropout = nn.Dropout(dropout)
+        self.emb_dropout = nn.Dropout(dropout_emb)
+        self.lstm = nn.LSTM(d_model, h_model, num_layers, bidirectional=False, batch_first=True, dropout=dropout)
+        self.m = m
+        self.tanh = nn.Tanh()
+        self.time_layer = nn.Linear(1, 64)
+        self.time_updim = nn.Linear(64, d_model)
+        self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.relu = nn.ReLU()
+        self.GAN = GAN
+        self.classifyer = classifyer(d_model)
+        self.initial_d = initial_d
+        self.initial_embedding_2 = nn.Linear(self.initial_d, d_model)
+
+        self.w_hk = nn.Linear(h_model, d_model)
+        self.w1 = nn.Linear(2 * h_model, 64)
+        self.w2 = nn.Linear(64, 2)
+    def before(self, input_seqs, seq_time_step):
+        # time embedding
+        seq_time_step = seq_time_step.unsqueeze(2) / 180
+        time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
+        time_encoding = self.time_updim(time_feature)
+        # visit_embedding e_t
+        if self.initial_d != 0:
+            visit_embedding = self.initial_embedding_2(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
+            visit_embedding = visit_embedding + time_encoding
+        else:
+            visit_embedding = self.initial_embedding(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
+
+            visit_embedding = visit_embedding.sum(-2) + time_encoding
+        return visit_embedding
+
+    def forward(self, input_seqs, mask, length, seq_time_step, codemask, label):
+        batch_size, visit_size, seq_size = input_seqs.size()
+        v = self.before(input_seqs, seq_time_step)
+        h, _ = self.lstm(v)
+
+        bar_v = torch.zeros_like(v)
+
+        for i in range(visit_size):
+            if i == 0:
+                bar_v[:, 0:1, :] = v[:, 0:1, :]
+            else:
+                e_k = v[:, 0:1, :]
+                w_h_k_prev = self.w_hk(h[:, i - 1:i, :])
+                attn = self.softmax(self.w2(self.tanh(self.w1(torch.cat((e_k, w_h_k_prev), dim=-1)))))
+                alpha1 = attn[:, :, 0:1]
+                alpha2 = attn[:, :, 1:2]
+                bar_v[:, i:i + 1, :] = e_k * alpha1 + w_h_k_prev * alpha2
+
+        Dec_V, Gen_V, _, _ = self.GAN(bar_v, seq_time_step, label)
+
+        gen_h, _ = self.lstm(Gen_V)
+
+        og_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+        fake_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+
+        for i in range(visit_size):
+            og_softmax[:, i:i + 1, :] = self.classifyer(h[:, i:i + 1, :])
+            fake_softmax[:, i:i + 1, :] = self.classifyer(gen_h[:, i:i + 1, :])
+
+        final_prediction_og = og_softmax[:, -1, :]
+        final_prediction_fake = fake_softmax[:, -1, :]
+        return final_prediction_og, final_prediction_fake, Dec_V, Gen_V, seq_time_step, label
+
+class LSTMehrGANwatt(nn.Module):
+    def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, initial_d=0, num_layers=1, m=0,
+                 dense_model=64):
+        super().__init__()
+        self.device = device
+        self.dropout = nn.Dropout(dropout)
+        self.emb_dropout = nn.Dropout(dropout_emb)
+        self.lstm = nn.LSTM(d_model, h_model, num_layers, bidirectional=False, batch_first=True, dropout=dropout)
+        self.m = m
+        self.tanh = nn.Tanh()
+        self.time_layer = nn.Linear(1, 64)
+        self.time_updim = nn.Linear(64, d_model)
+        self.initial_embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.relu = nn.ReLU()
+        self.GAN = GAN
+        self.classifyer = classifyer(d_model)
+        self.initial_d = initial_d
+        self.initial_embedding_2 = nn.Linear(self.initial_d, d_model)
+
+        self.w_hk = nn.Linear(h_model, d_model)
+        self.w1 = nn.Linear(2 * h_model, 64)
+        self.w2 = nn.Linear(64, 2)
+    def before(self, input_seqs, seq_time_step):
+        # time embedding
+        seq_time_step = seq_time_step.unsqueeze(2) / 180
+        time_feature = 1 - self.tanh(torch.pow(self.time_layer(seq_time_step), 2))
+        time_encoding = self.time_updim(time_feature)
+        # visit_embedding e_t
+        if self.initial_d != 0:
+            visit_embedding = self.initial_embedding_2(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
+            visit_embedding = visit_embedding + time_encoding
+        else:
+            visit_embedding = self.initial_embedding(input_seqs)
+            visit_embedding = self.emb_dropout(visit_embedding)
+            visit_embedding = self.relu(visit_embedding)
+
+            visit_embedding = visit_embedding.sum(-2) + time_encoding
+        return visit_embedding
+
+    def forward(self, input_seqs, mask, length, seq_time_step, codemask, label):
+        batch_size, visit_size, seq_size = input_seqs.size()
+        v = self.before(input_seqs, seq_time_step)
+        h, _ = self.lstm(v)
+
+        bar_v = torch.zeros_like(v)
+
+        for i in range(visit_size):
+            if i == 0:
+                bar_v[:, 0:1, :] = v[:, 0:1, :]
+            else:
+                e_k = v[:, 0:1, :]
+                w_h_k_prev = self.w_hk(h[:, i - 1:i, :])
+                attn = self.softmax(self.w2(self.tanh(self.w1(torch.cat((e_k, w_h_k_prev), dim=-1)))))
+                alpha1 = attn[:, :, 0:1]
+                alpha2 = attn[:, :, 1:2]
+                bar_v[:, i:i + 1, :] = e_k * alpha1 + w_h_k_prev * alpha2
+
+        Dec_V, Gen_V, _, _ = self.GAN(bar_v, seq_time_step, label)
+
+        gen_h, _ = self.lstm(Gen_V)
+
+        og_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+        fake_softmax = torch.zeros(batch_size, visit_size, 2).to(self.device)
+
+        for i in range(visit_size):
+            og_softmax[:, i:i + 1, :] = self.classifyer(h[:, i:i + 1, :])
+            fake_softmax[:, i:i + 1, :] = self.classifyer(gen_h[:, i:i + 1, :])
+
+        final_prediction_og = og_softmax[:, -1, :]
+        final_prediction_fake = fake_softmax[:, -1, :]
+        return final_prediction_og, final_prediction_fake, Dec_V, Gen_V, seq_time_step, label
+
 class Dipole_base(nn.Module):
     def __init__(self, vocab_size, d_model, h_model, dropout, dropout_emb, device, GAN, initial_d=0, num_layers=1, m=0,
                  dense_model=64, balanced = False):
