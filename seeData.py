@@ -59,9 +59,17 @@ random.seed(1234)
 # pickle.dump((test_ehr, test_label, test_time_step), open('data/mimic/mimic_test.pickle', 'wb'))
 # pickle.dump((val_ehr, val_label, val_time_step), open('data/mimic/mimic_val.pickle', 'wb'))
 
-# ehr, label, time_step = pickle.load(open('data/mimic/mimic_train.pickle', 'rb'))
-# ehr_test, label_test, time_step_test = pickle.load(open('data/mimic/mimic_test.pickle', 'rb'))
-# ehr_val, label_val, time_step_val = pickle.load(open('data/mimic/mimic_val.pickle', 'rb'))
+# ehr, label, time_step = pickle.load(open('data/mimic/mimic_training_new.pickle', 'rb'))
+# ehr_test, label_test, time_step_test = pickle.load(open('data/mimic/mimic_testing_new.pickle', 'rb'))
+# ehr_val, label_val, time_step_val = pickle.load(open('data/mimic/mimic_validation_new.pickle', 'rb'))
+#
+# i=0
+# while i < 3:
+#     print(i)
+#     print(ehr[i])
+#     print(label[i])
+#     print(time_step[i])
+#     i += 1
 #
 # print(sum([1 for label in label if label == 1])+sum([1 for label in label_test if label == 1])+sum([1 for label in label_val if label == 1]))
 # print(sum([1 for label in label if label == 0])+sum([1 for label in label_test if label == 0])+sum([1 for label in label_val if label == 0]))
@@ -317,17 +325,17 @@ random.seed(1234)
 # # val_x, val_y, val_timeseq = val_x.tolist(), val_y.tolist(), val_timeseq.tolist()
 # # pickle.dump((val_x, val_y, val_timeseq), open('data/mortality/mortality_validation_new.pickle', 'wb'))
 
-a_ehr, a_label, a_timestep = pickle.load(open('data/kidney/kidney_training_new.pickle', 'rb'))
-b_ehr, b_label, b_timestep = pickle.load(open('data/kidney/kidney_testing_new.pickle', 'rb'))
-c_ehr, c_label, c_timestep = pickle.load(open('data/kidney/kidney_validation_new.pickle', 'rb'))
-
-#pring first five patients
-for i in range(5):
-    print('patient number '+str(i))
-    print('EHR')
-    print(a_ehr[i])
-    print('label')
-    print(a_label[i])
-    print('timestep')
-    print(a_timestep[i])
-    print('------------------')
+# a_ehr, a_label, a_timestep = pickle.load(open('data/kidney/kidney_training_new.pickle', 'rb'))
+# b_ehr, b_label, b_timestep = pickle.load(open('data/kidney/kidney_testing_new.pickle', 'rb'))
+# c_ehr, c_label, c_timestep = pickle.load(open('data/kidney/kidney_validation_new.pickle', 'rb'))
+#
+# #pring first five patients
+# for i in range(5):
+#     print('patient number '+str(i))
+#     print('EHR')
+#     print(a_ehr[i])
+#     print('label')
+#     print(a_label[i])
+#     print('timestep')
+#     print(a_timestep[i])
+#     print('------------------')

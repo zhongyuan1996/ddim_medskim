@@ -4,7 +4,7 @@ from utils.diffUtil import get_beta_schedule
 
 class tabDDPM(nn.Module):
 
-    def __init__(self, config, vocab_size, x_dim, h_dim, dropout, device):
+    def __init__(self, config, vocab_size, x_dim, h_dim, dropout, code_len, device):
         super(tabDDPM,self).__init__()
         self.x_dim = x_dim
         self.h_dim = h_dim
@@ -12,71 +12,105 @@ class tabDDPM(nn.Module):
         self.device = device
         self.config = config
         self.vocab_size = vocab_size
-        self.initial_embedding = nn.Embedding(self.vocab_size+1, x_dim, padding_idx=-1)
+        self.code_len = code_len
+        self.initial_embedding = nn.Embedding(self.vocab_size+1, self.vocab_size+1, padding_idx=-1)
+        self.y_embedding = nn.Embedding(2, self.vocab_size+1, padding_idx=-1)
         betas = get_beta_schedule(beta_schedule=self.config.diffusion.beta_schedule,
                                   beta_start=self.config.diffusion.beta_start,
                                   beta_end=self.config.diffusion.beta_end,
                                   num_diffusion_timesteps=self.config.diffusion.num_diffusion_timesteps)
         betas = self.betas = torch.from_numpy(betas).float().to(self.device)
         self.diffusion_num_timesteps = betas.shape[0]
+        self.softmax = nn.Softmax(dim=-1)
 
         self.mlpEncoder = nn.Sequential(
-            nn.Linear(self.x_dim, int(self.x_dim / 2)),
-            nn.BatchNorm1d(int(self.x_dim / 2)),
+            nn.Linear(self.vocab_size+1, int((self.vocab_size+1) / 4)),
+            nn.BatchNorm1d(int((self.vocab_size+1) / 4)),
             nn.LeakyReLU(),
             nn.Dropout(self.dropout),
-            nn.Linear(int(self.x_dim / 2), int(self.x_dim / 4)),
-            nn.BatchNorm1d(int(self.x_dim / 4)),
+            nn.Linear(int((self.vocab_size+1) / 4), int((self.vocab_size+1) / 8)),
+            nn.BatchNorm1d(int((self.vocab_size+1) / 8)),
             nn.LeakyReLU(),
             nn.Dropout(self.dropout),
-            nn.Linear(int(self.x_dim / 4), self.h_dim),
+            nn.Linear(int((self.vocab_size+1) / 8), self.h_dim),
             nn.LeakyReLU()
         )
 
         self.mlpDecoder = nn.Sequential(
-            nn.Linear(self.h_dim, int(self.x_dim / 4)),
-            nn.BatchNorm1d(int(self.x_dim / 4)),
+            nn.Linear(self.h_dim, int((self.vocab_size+1) / 8)),
+            nn.BatchNorm1d(int((self.vocab_size+1) / 8)),
             nn.LeakyReLU(),
-            nn.Linear(int(self.x_dim / 4), int(self.x_dim / 2)),
-            nn.BatchNorm1d(int(self.x_dim / 2)),
+            nn.Linear(int((self.vocab_size+1) / 8), int((self.vocab_size+1) / 4)),
+            nn.BatchNorm1d(int((self.vocab_size+1) / 4)),
             nn.LeakyReLU(),
-            nn.Linear(int(self.x_dim / 2), self.x_dim),
+            nn.Linear(int((self.vocab_size+1) / 4), self.vocab_size+1),
             nn.LeakyReLU()
         )
 
-        self.pos_embedding = nn.Embedding(1000+1, x_dim, padding_idx=-1)
+        self.pos_embedding = nn.Embedding(1000+1, self.vocab_size+1, padding_idx=-1)
 
-    def forward(self, x):
-        x = self.initial_embedding(x)
-        bs, seq_len, code_len, x_dim = x.shape
+    # def old_forward(self, x):
+    #     x = self.initial_embedding(x)
+    #     bs, seq_len, code_len, x_dim = x.shape
+    #
+    #     diffusion_time_t = torch.randint(0, 1000, (x.shape[0],), device=self.device)
+    #
+    #     time_embedding = self.pos_embedding(diffusion_time_t)
+    #     time_embedding = time_embedding.unsqueeze(1).unsqueeze(2)
+    #     time_embedding = time_embedding.expand(-1, x.shape[1], x.shape[2], -1)
+    #
+    #
+    #     alpha = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t).view(-1, 1, 1, 1)
+    #
+    #     normal_noise = torch.randn_like(x)
+    #
+    #     x_with_noise = x * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
+    #
+    #     x_diffinput = x_with_noise + time_embedding
+    #
+    #     x_diffinput = x_diffinput.view(-1, x_dim)
+    #
+    #     encoded = self.mlpEncoder(x_diffinput)
+    #     predicted_noise = self.mlpDecoder(encoded)
+    #
+    #     predicted_noise = predicted_noise.view(bs, seq_len, code_len, x_dim)
+    #     x_diffinput = x_diffinput.view(bs, seq_len, code_len, x_dim)
+    #
+    #     gen_x = x_diffinput - predicted_noise
+    #
+    #     return x, gen_x
 
-        diffusion_time_t = torch.randint(0, 1000, (x.shape[0],), device=self.device)
+    def forward(self, x, label):
+        x = self.initial_embedding(x).sum(dim=-2)
+        bs, seq_len, code_len = x.shape
 
+        # Diffusion time
+        diffusion_time_t = torch.randint(0, 1000, (bs,), device=self.device)
         time_embedding = self.pos_embedding(diffusion_time_t)
-        time_embedding = time_embedding.unsqueeze(1).unsqueeze(2)
-        time_embedding = time_embedding.expand(-1, x.shape[1], x.shape[2], -1)
+        time_embedding = time_embedding.unsqueeze(1).expand(-1, x.shape[1], -1)
+        alpha = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t).view(-1, 1, 1)
 
+        # Add categorical noise
+        uniform_noise = torch.ones_like(x) / self.vocab_size
+        x_with_noise = alpha * x + (1-alpha) * uniform_noise
+        y_embedding = self.y_embedding(label.to(torch.long)).sum(dim=-2).unsqueeze(1).expand(-1, x.shape[1], -1)
 
-        alpha = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t).view(-1, 1, 1, 1)
+        x_diffinput = x_with_noise + time_embedding + y_embedding
 
-        normal_noise = torch.randn_like(x)
+        # Flatten the tensor for MLP processing
+        x_diffinput = x_diffinput.view(-1, code_len)
 
-        x_with_noise = x * alpha.sqrt() + normal_noise * (1.0 - alpha).sqrt()
-
-        x_diffinput = x_with_noise + time_embedding
-
-        x_diffinput = x_diffinput.view(-1, x_dim)
-
+        # Encoder and Decoder passes
         encoded = self.mlpEncoder(x_diffinput)
         predicted_noise = self.mlpDecoder(encoded)
 
-        predicted_noise = predicted_noise.view(bs, seq_len, code_len, x_dim)
-        x_diffinput = x_diffinput.view(bs, seq_len, code_len, x_dim)
+        # Reshape to original dimensions
+        predicted_noise = predicted_noise.view(bs, seq_len, code_len)
+        x_diffinput = x_diffinput.view(bs, seq_len, code_len)
 
         gen_x = x_diffinput - predicted_noise
 
         return x, gen_x
-
 
 class LSTM_predictor(nn.Module):
 

@@ -36,8 +36,8 @@ def eval_metrictabDDPM(eval_set, model):
         ehr_true_list = []
         ehr_gen_list = []
         for i, data in enumerate(eval_set):
-            ehr, _, _, _ = data
-            real_ehr, gen_ehr = model(ehr)
+            ehr, _, label, _ = data
+            real_ehr, gen_ehr = model(ehr,label)
             real_ehr = real_ehr.data.cpu().numpy().flatten()
             gen_ehr = gen_ehr.data.cpu().numpy().flatten()
             ehr_true_list.append(real_ehr)
@@ -193,7 +193,7 @@ def train(args):
                 val_set, _, _ = pickle.load(f)
             all_set = train_set + test_set + val_set
             flattened_all_set = [visit for patient in all_set for visit in patient]
-            w2v = Word2Vec(flattened_all_set, vector_size=200, window=5, min_count=1, workers=4)
+            w2v = Word2Vec(flattened_all_set, vector_size=256, window=5, min_count=1, workers=4)
             w2v.save(str(args.save_dir) + word2vec_filename)
         else:
             print('word2vec model exists')
@@ -214,7 +214,7 @@ def train(args):
                 config = yaml.safe_load(f)
             config = dict2namespace(config)
 
-            model = tabDDPM(config, pad_id, 200, 100, args.dropout, device)
+            model = tabDDPM(config, pad_id, 256, 64, args.dropout, args.max_num_codes, device)
             model.to(device)
 
             no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
@@ -228,7 +228,8 @@ def train(args):
             scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=args.factor,
                                                        patience=args.patience, verbose=True)
 
-            MSE_loss = nn.MSELoss()
+            # MSE_loss = nn.MSELoss()
+            loss_fn = nn.BCEWithLogitsLoss()
 
             print('Start training...Parameters')
             for name, param in model.named_parameters():
@@ -249,10 +250,10 @@ def train(args):
                 model.train()
 
                 for i, data in enumerate(tqdm(train_loader, desc="Training", leave=False)):
-                    ehr, _, _, _ = data
-                    real_ehr, gen_ehr = model(ehr)
+                    ehr, _, label, _ = data
+                    real_ehr, gen_ehr = model(ehr, label)
 
-                    mse = MSE_loss(real_ehr, gen_ehr)
+                    mse = loss_fn(real_ehr, gen_ehr)
                     loss = mse
                     optimizer.zero_grad()
                     loss.backward()
@@ -302,7 +303,7 @@ def train(args):
                     config = yaml.safe_load(f)
                 config = dict2namespace(config)
 
-                tabDDPMModel = tabDDPM(config, pad_id, 200, 100, args.dropout, device)
+                tabDDPMModel = tabDDPM(config, pad_id, 256, 64, args.dropout, args.max_num_codes, device)
                 tabDDPMModel.load_state_dict(torch.load(str(args.save_dir) + tabDDPM_filename))
                 tabDDPMModel.to(device)
                 tabDDPMModel.eval()
@@ -313,18 +314,24 @@ def train(args):
                 synthetic_data = []
                 time_steps = []
                 labels = []
+                threshold = 0.5
 
                 for i, data in enumerate(tqdm(train_loader, desc="Generating synthetic data", leave=False)):
                     ehr, time_step, label, _ = data
-                    real_ehr, gen_ehr = tabDDPMModel(ehr)
-                    bs, seq_len, code_len, emb_dim = gen_ehr.shape
-                    gen_ehr = gen_ehr.contiguous().view(bs * seq_len * code_len, emb_dim).cpu().numpy()
+                    real_ehr, gen_ehr_logits = tabDDPMModel(ehr, label)
+                    gen_ehr_probs = torch.sigmoid(gen_ehr_logits)
+                    gen_ehr_multilabel = (gen_ehr_probs > threshold).float()
+                    bs, seq_len, vocabplus1 = gen_ehr_multilabel.shape
 
-                    results = index.knnQueryBatch(gen_ehr, k=1, num_threads=4)
-                    ids = [result[0] for result in results]
+                    # Convert to indices:
+                    active_code_indices = [torch.where(row == 1)[0].tolist() for row in
+                                           gen_ehr_multilabel.reshape(-1, vocabplus1)]
 
-                    gen_codes = [w2v.wv.index_to_key[i[0]] for i in ids]
-                    gen_codes = np.array(gen_codes).reshape(bs, seq_len, code_len)
+                    # Sample up to code_len if more codes are predicted than code_len:
+                    gen_codes_lists = [indices if len(indices) <= args.max_num_codes else random.sample(indices, args.max_num_codes) for
+                                       indices in active_code_indices]
+                    gen_codes = np.array(gen_codes_lists).reshape(bs, seq_len, -1)
+
                     time_step = time_step.cpu().numpy().tolist()
                     label = [l.argmax(0) for l in label]
 
