@@ -49,7 +49,7 @@ def eval_metrictabDDPM(eval_set, model, criterion, pad_id, device):
 
     with torch.no_grad():
         for i, data in enumerate(eval_set):
-            ehr, _, label, _ = data
+            ehr, _, label, _,_ = data
 
             # One-hot encoding ehr efficiently:
             one_hot_ehr = identity[ehr]
@@ -77,8 +77,8 @@ def eval_metric(eval_set, model):
         y_score = np.array([])
 
         for i, data in enumerate(eval_set):
-            ehr, _, labels, _ = data
-            logit = model(ehr)
+            ehr, _, labels, _, lengths = data
+            logit = model(ehr, lengths)
             scores = torch.softmax(logit, dim=-1)
             scores = scores.data.cpu().numpy()
             labels = labels.data.cpu().numpy()
@@ -271,7 +271,7 @@ def train(args):
                 identity[pad_id] = 0
 
                 for i, data in enumerate(tqdm(train_loader, desc="Training", leave=False)):
-                    ehr, _, label, _ = data
+                    ehr, _, label, _ ,_ = data
                     one_hot_ehr = identity[ehr]
                     target_ehr = one_hot_ehr.sum(dim=2)
                     _, gen_ehr = model(ehr, label)
@@ -346,7 +346,7 @@ def train(args):
                 labels = []
 
                 for i, data in enumerate(tqdm(train_loader, desc="Generating synthetic data", leave=False)):
-                    ehr, time_step, label, codemask = data
+                    ehr, time_step, label, codemask,_ = data
                     real_ehr, gen_ehr_logits = tabDDPMModel(ehr, label)
                     _, top_code_indices = gen_ehr_logits.topk(args.max_num_codes, dim=-1)
                     codemask_inv = 1 - codemask
@@ -403,7 +403,9 @@ def train(args):
         w2v = Word2Vec.load(str(args.save_dir) + word2vec_filename)
         device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
 
-        predictor = LSTM_predictor(pad_id, args.max_num_codes, 100, args.dropout)
+        # predictor = LSTM_predictor(pad_id, args.max_num_codes, 100, args.dropout)
+        predictor = LSTM_predictor(pad_id, 256, args.dropout, args.dropout, 1, None, None)
+
         predictor.to(device)
 
         train_dataset = MyDataset(str(args.save_dir) + combinedData_filename,
@@ -444,8 +446,8 @@ def train(args):
             predictor.train()
 
             for i, data in enumerate(tqdm(train_loader, desc="Training", leave=False)):
-                ehr, _, label, _ = data
-                prediction = predictor(ehr)
+                ehr, _, label, _, lengths = data
+                prediction = predictor(ehr,lengths)
                 loss = CE_loss(prediction, label)
                 loss.backward()
                 optimizer.step()

@@ -101,7 +101,7 @@ class MyDataset(Dataset):
         ehr, labels, time_step = pickle.load(open(dir_ehr, 'rb'))
         self.labels = [[0,1] if label == 1 else [1,0] for label in labels]
 
-        self.ehr, _, _ = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
+        self.ehr, _, self.lengths = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
         self.time_step = padTime(time_step, max_len, 100000)
         self.code_mask = codeMask(ehr, max_numcode_pervisit, max_len)
         self.device = device
@@ -116,7 +116,8 @@ class MyDataset(Dataset):
         return torch.tensor(self.ehr[idx], dtype=torch.long).to(self.device),\
                torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device),\
                torch.tensor(self.labels[idx], dtype=torch.float).to(self.device),\
-                  torch.tensor(self.code_mask[idx], dtype=torch.float).to(self.device)
+                  torch.tensor(self.code_mask[idx], dtype=torch.float).to(self.device),\
+                  torch.tensor(self.lengths[idx], dtype=torch.long).to(self.device)
 
 
 class MyDataset_mapping(Dataset):
@@ -220,15 +221,16 @@ class MyDataset_with_single_label(Dataset):
 
 
 def collate_fn(batch):
-    ehr, time_step, label, code_mask = [], [], [], []
+    ehr, time_step, label, code_mask, length = [], [], [], [], []
     # label, ehr, mask, txt, mask_txt, length, time_step, code_mask = [], [], [], [], [], [], [], []
     for data in batch:
         ehr.append(data[0])
         time_step.append(data[1])
         label.append(data[2])
         code_mask.append(data[3])
+        length.append(data[4])
 
-    return torch.stack(ehr, 0), torch.stack(time_step, 0), torch.stack(label, 0), torch.stack(code_mask, 0)
+    return torch.stack(ehr, 0), torch.stack(time_step, 0), torch.stack(label, 0), torch.stack(code_mask, 0), torch.stack(length, 0)
         #
         # label.append(data[0])
         # ehr.append(data[1])
