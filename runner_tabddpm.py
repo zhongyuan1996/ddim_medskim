@@ -17,6 +17,7 @@ from scipy.spatial.distance import cosine
 import yaml
 from tqdm import tqdm
 import nmslib
+import torch.nn as nn
 
 
 def dict2namespace(config):
@@ -29,25 +30,43 @@ def dict2namespace(config):
         setattr(namespace, key, new_value)
     return namespace
 
+def rearrange_codes(codes, pad_id, max_num_codes):
+    """Rearrange the codes to move meaningful ones to the front."""
+    codes = [code for code in codes if code != pad_id]  # Filter out pad indices
+    codes += [pad_id] * (max_num_codes - len(codes))  # Fill the rest with pad indices
+    return codes
 
-def eval_metrictabDDPM(eval_set, model):
+
+
+
+
+def eval_metrictabDDPM(eval_set, model, criterion, pad_id, device):
     model.eval()
+    running_loss = 0.0
+    total_samples = 0
+    identity = torch.eye(pad_id+1).to(device)
+    identity[pad_id] = 0
+
     with torch.no_grad():
-        ehr_true_list = []
-        ehr_gen_list = []
         for i, data in enumerate(eval_set):
             ehr, _, label, _ = data
-            real_ehr, gen_ehr = model(ehr,label)
-            real_ehr = real_ehr.data.cpu().numpy().flatten()
-            gen_ehr = gen_ehr.data.cpu().numpy().flatten()
-            ehr_true_list.append(real_ehr)
-            ehr_gen_list.append(gen_ehr)
 
-        ehr_true = np.concatenate(ehr_true_list)
-        ehr_gen = np.concatenate(ehr_gen_list)
-        mse = np.mean((ehr_true - ehr_gen) ** 2)
-        return mse
+            # One-hot encoding ehr efficiently:
+            one_hot_ehr = identity[ehr]
+            target_ehr = one_hot_ehr.sum(dim=2)
 
+            # Now, target_ehr has shape [bs, seqlen, vocabplus1]
+            _, gen_ehr_logits = model(ehr, label)
+
+            # Calculate loss
+            loss = criterion(gen_ehr_logits, target_ehr)
+
+            running_loss += loss.item() * ehr.size(0)  # multiply by batch size
+            total_samples += ehr.size(0)
+
+        average_loss = running_loss / total_samples
+
+    return average_loss
 
 
 def eval_metric(eval_set, model):
@@ -86,7 +105,7 @@ def main(name, seed, data, max_len, max_num, save_dir):
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
     parser.add_argument('--seed', default=seed, type=int, help='seed')
-    parser.add_argument('-bs', '--batch_size', default=64, type=int)
+    parser.add_argument('-bs', '--batch_size', default=16, type=int)
     parser.add_argument('--model', default='ehrGAN')
     parser.add_argument('-me', '--max_epochs_before_stop', default=10, type=int)
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
@@ -144,7 +163,7 @@ def train(args):
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
     files = os.listdir(args.save_dir)
-    csv_filename = 'ehrGAN_' + str(args.seed) + '_' + str(args.target_disease) + '_result.csv'
+    csv_filename = 'tabDDPM_' + str(args.seed) + '_' + str(args.target_disease) + '_result.csv'
     combinedData_filename = str(args.target_disease) + '_combinedData.pickle'
     if csv_filename in files:
         print('This experiment has been done!')
@@ -229,7 +248,7 @@ def train(args):
                                                        patience=args.patience, verbose=True)
 
             # MSE_loss = nn.MSELoss()
-            loss_fn = nn.BCEWithLogitsLoss()
+            loss_fn = nn.BCEWithLogitsLoss(reduction='mean')
 
             print('Start training...Parameters')
             for name, param in model.named_parameters():
@@ -248,13 +267,24 @@ def train(args):
             for epoch_id in tqdm(range(args.n_epochs), desc="Epochs"):
                 epoch_start_time = time.time()
                 model.train()
+                identity = torch.eye(pad_id+1).to(device)
+                identity[pad_id] = 0
 
                 for i, data in enumerate(tqdm(train_loader, desc="Training", leave=False)):
                     ehr, _, label, _ = data
-                    real_ehr, gen_ehr = model(ehr, label)
+                    one_hot_ehr = identity[ehr]
+                    target_ehr = one_hot_ehr.sum(dim=2)
+                    _, gen_ehr = model(ehr, label)
 
-                    mse = loss_fn(real_ehr, gen_ehr)
-                    loss = mse
+                    # # Debugging part
+                    # if i == 0:  # Just for the first batch
+                    #     print("Original ehr for first patient's first visit:", ehr[0][0])
+                    #
+                    #     # Finding non-zero indices in target_ehr
+                    #     non_zero_indices = (target_ehr[0][0] > 0).nonzero().squeeze().tolist()
+                    #     print("Non-zero indices in target_ehr for first patient's first visit:", non_zero_indices)
+
+                    loss =loss_fn(gen_ehr, target_ehr)
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.step()
@@ -270,7 +300,7 @@ def train(args):
                 # print('Evaluating on testing set...')
                 # test_loss = eval_metrictabDDPM(test_loader, model)
                 print('Evaluating on validation set...')
-                dev_loss = eval_metrictabDDPM(val_loader, model)
+                dev_loss = eval_metrictabDDPM(val_loader, model, loss_fn, pad_id, device)
                 print('-' * 71)
                 scheduler.step(dev_loss)
                 # print(
@@ -314,49 +344,59 @@ def train(args):
                 synthetic_data = []
                 time_steps = []
                 labels = []
-                threshold = 0.5
 
                 for i, data in enumerate(tqdm(train_loader, desc="Generating synthetic data", leave=False)):
-                    ehr, time_step, label, _ = data
+                    ehr, time_step, label, codemask = data
                     real_ehr, gen_ehr_logits = tabDDPMModel(ehr, label)
-                    gen_ehr_probs = torch.sigmoid(gen_ehr_logits)
-                    gen_ehr_multilabel = (gen_ehr_probs > threshold).float()
-                    bs, seq_len, vocabplus1 = gen_ehr_multilabel.shape
+                    _, top_code_indices = gen_ehr_logits.topk(args.max_num_codes, dim=-1)
+                    codemask_inv = 1 - codemask
+                    masked_top_code = top_code_indices.where(codemask_inv == 1, torch.tensor(-1).to(device))
+                    list_top_code = masked_top_code.cpu().numpy().tolist()
 
-                    # Convert to indices:
-                    active_code_indices = [torch.where(row == 1)[0].tolist() for row in
-                                           gen_ehr_multilabel.reshape(-1, vocabplus1)]
+                    cleaned_top_code = []
 
-                    # Sample up to code_len if more codes are predicted than code_len:
-                    gen_codes_lists = [indices if len(indices) <= args.max_num_codes else random.sample(indices, args.max_num_codes) for
-                                       indices in active_code_indices]
-                    gen_codes = np.array(gen_codes_lists).reshape(bs, seq_len, -1)
+                    for patient in list_top_code:
+                        cleaned_patient = []
+                        for visit in patient:
+                            cleaned_visit = [code for code in visit if code != -1]
+                            if cleaned_visit:
+                                cleaned_patient.append(cleaned_visit)
+                        if cleaned_patient:
+                            cleaned_top_code.append(cleaned_patient)
+                    # for i in range(len(data)):
+                    #     print(ehr[i])
+                    #     print(cleaned_top_code[i])
 
                     time_step = time_step.cpu().numpy().tolist()
+                    cleaned_time_step = [[entry for entry in sublist if entry != 100000] for sublist in time_step]
                     label = [l.argmax(0) for l in label]
 
-                    time_steps.extend(time_step)
-                    synthetic_data.extend(gen_codes)
+                    # assert len(cleaned_time_step) == len(cleaned_top_code), "Mismatch in the outer dimension"
+                    # for t, s in zip(cleaned_time_step, cleaned_top_code):
+                    #     assert len(t) == len(s), "Mismatch in the inner dimension for a specific batch" + str(i)
+
+                    time_steps.extend(cleaned_time_step)
+                    synthetic_data.extend(cleaned_top_code)
                     labels.extend(label)
 
-                gen_codes_unique = []
-                time_step_cleaned = []
-
-                for i in range(len(synthetic_data)):  # iterate over patients
-                    patient_visits = []
-                    cleaned_patient_time_step = []
-                    for j in range(len(synthetic_data[i])):  # iterate over visits for a given patient
-                        if time_steps[i][j] != 100000:  # Exclude the time step equals to 100000
-                            unique_codes = list(set(synthetic_data[i][j]))
-                            patient_visits.append(unique_codes)
-                            cleaned_patient_time_step.append(time_steps[i][j])
-
-                    gen_codes_unique.append(patient_visits)
-                    time_step_cleaned.append(cleaned_patient_time_step)
+                # gen_codes_unique = []
+                # time_step_cleaned = []
+                #
+                # for i in range(len(synthetic_data)):  # iterate over patients
+                #     patient_visits = []
+                #     cleaned_patient_time_step = []
+                #     for j in range(len(synthetic_data[i])):  # iterate over visits for a given patient
+                #         if time_steps[i][j] != 100000:  # Exclude the time step equals to 100000
+                #             unique_codes = list(set(synthetic_data[i][j]))
+                #             patient_visits.append(unique_codes)
+                #             cleaned_patient_time_step.append(time_steps[i][j])
+                #
+                #     gen_codes_unique.append(patient_visits)
+                #     time_step_cleaned.append(cleaned_patient_time_step)
 
                 og_data, og_label, og_time_step = pickle.load(open(data_path + '_training_new.pickle', 'rb'))
-                og_data.extend(gen_codes_unique)
-                og_time_step.extend(time_step_cleaned)
+                og_data.extend(synthetic_data)
+                og_time_step.extend(time_steps)
                 og_label.extend(labels)
                 pickle.dump((og_data, og_label, og_time_step), open(str(args.save_dir) + combinedData_filename, 'wb'))
 
@@ -448,6 +488,7 @@ def train(args):
             if dev_f1 > best_dev_f1:
                 best_dev_f1 = dev_f1
                 best_test_pr, best_test_f1, best_test_kappa = test_precision, test_f1, test_kappa
+                best_dev_epoch = epoch_id
                 torch.save(predictor.state_dict(), str(args.save_dir) + str(args.target_disease) + '_predictor.pt')
                 print('Saving model (epoch {})'.format(epoch_id + 1))
                 print('-' * 71)
@@ -455,7 +496,7 @@ def train(args):
                 print('Stop training at epoch {}. The highest f1 achieved is {}'.format(epoch_id, best_dev_f1))
                 break
 
-        results_file = open(str(args.save_dir) + '_' + csv_filename, 'w')
+        results_file = open(str(args.save_dir) + csv_filename, 'w')
         writer = csv.writer(results_file)
         writer.writerow([best_test_pr, best_test_f1, best_test_kappa])
 
