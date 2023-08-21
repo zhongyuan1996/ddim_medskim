@@ -509,8 +509,9 @@ class UNetModel(nn.Module):
 
             temp = hs.pop()
             if h.shape[2] != temp.shape[2]:
-
                 h = F.interpolate(h, size = [temp.shape[2],temp.shape[3]], mode='bilinear')
+                # modified for tabddpm/ddpm
+                # h = F.interpolate(h, size=[temp.shape[2]], mode='linear')
 
             cat_in = th.cat([h, temp], dim=1)
             h = module(cat_in, emb)
