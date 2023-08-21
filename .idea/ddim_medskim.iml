@@ -4,6 +4,10 @@
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/data" />
       <excludeFolder url="file://$MODULE_DIR$/saved_models" />
+      <excludeFolder url="file://$MODULE_DIR$/ehrGAN_dir" />
+      <excludeFolder url="file://$MODULE_DIR$/figure" />
+      <excludeFolder url="file://$MODULE_DIR$/saved_rebuttal" />
+      <excludeFolder url="file://$MODULE_DIR$/tabDDPM_dir" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.10 (deepl)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />

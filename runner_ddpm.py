@@ -72,8 +72,8 @@ def eval_metric(eval_set, model):
         y_score = np.array([])
 
         for i, data in enumerate(eval_set):
-            ehr, _, labels, _, _ = data
-            logit = model(ehr)
+            ehr, _, labels, _, length = data
+            logit = model(ehr, None, length, None, None)
             scores = torch.softmax(logit, dim=-1)
             scores = scores.data.cpu().numpy()
             labels = labels.data.cpu().numpy()
@@ -376,7 +376,7 @@ def train(args):
         w2v = Word2Vec.load(str(args.save_dir) + word2vec_filename)
         device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
 
-        predictor = LSTM_predictor(pad_id, args.max_num_codes, 100, args.dropout)
+        predictor = LSTM_predictor(pad_id, 256, args.dropout, args.dropout, 1, None, None)
         predictor.to(device)
 
         train_dataset = MyDataset(str(args.save_dir) + combinedData_filename,
@@ -417,8 +417,8 @@ def train(args):
             predictor.train()
 
             for i, data in enumerate(tqdm(train_loader, desc="Training", leave=False)):
-                ehr, _, label, _, _ = data
-                prediction = predictor(ehr)
+                ehr, _, label, _, length = data
+                prediction = predictor(ehr, None, length, None, None)
                 loss = CE_loss(prediction, label)
                 loss.backward()
                 optimizer.step()
@@ -458,7 +458,7 @@ def train(args):
                 f'| epoch {epoch_id:03d} | train loss {train_loss:.3f} | val loss {dev_loss:.3f} | test loss {test_loss:.3f} |')
             print('-' * 71)
 
-            if dev_f1 > best_dev_f1:
+            if dev_f1 >= best_dev_f1:
                 best_dev_f1 = dev_f1
                 best_test_pr, best_test_f1, best_test_kappa = test_precision, test_f1, test_kappa
                 best_dev_epoch = epoch_id
