@@ -89,7 +89,7 @@ def main(name, seed, data, max_len, max_num, save_dir):
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
     parser.add_argument('--seed', default=seed, type=int, help='seed')
-    parser.add_argument('-bs', '--batch_size', default=64, type=int)
+    parser.add_argument('-bs', '--batch_size', default=8, type=int)
     parser.add_argument('--model', default='ehrGAN')
     parser.add_argument('-me', '--max_epochs_before_stop', default=10, type=int)
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
@@ -329,7 +329,7 @@ def train(args):
 
                 train_dataset = ehrGANDataset(data_path + '_training_new.pickle',
                                               args.max_len, args.max_num_codes, pad_id, w2v, device)
-                train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
+                train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
 
                 synthetic_data = []
                 time_steps = []
@@ -451,6 +451,7 @@ def train(args):
 
             if dev_f1 > best_dev_f1:
                 best_dev_f1 = dev_f1
+                best_dev_epoch = epoch_id
                 best_test_pr, best_test_f1, best_test_kappa = test_precision, test_f1, test_kappa
                 torch.save(predictor.state_dict(), str(args.save_dir) + str(args.target_disease) + '_predictor.pt')
                 print('Saving model (epoch {})'.format(epoch_id + 1))
@@ -459,7 +460,7 @@ def train(args):
                 print('Stop training at epoch {}. The highest f1 achieved is {}'.format(epoch_id, best_dev_f1))
                 break
 
-        results_file = open(str(args.save_dir) + '_' + csv_filename, 'w')
+        results_file = open(str(args.save_dir) + csv_filename, 'w')
         writer = csv.writer(results_file)
         writer.writerow([best_test_pr, best_test_f1, best_test_kappa])
 
