@@ -334,3 +334,48 @@ class ehrGANDataset(Dataset):
         code_mask = torch.tensor(temp_code_mask, dtype=torch.float).to(self.device)
 
         return ehr, time_step, label, code_mask
+
+
+class ehrGANDatasetWOAggregate(Dataset):
+    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, ehr_pad_id, w2v, device):
+        ehr, labels, time_step = pickle.load(open(dir_ehr, 'rb'))
+        self.labels = [[0,1] if label == 1 else [1,0] for label in labels]
+        self.ehr, _, _ = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
+        self.time_step = padTime(time_step, max_len, 100000)
+        self.device = device
+        self.w2v = w2v
+        self.pad_id = ehr_pad_id
+
+    def ehr_to_embedding(self, ehr):
+        embedding_sequence = []
+        mask = []
+        for visit in ehr:  # Loop over each visit in the EHR data
+            visit_embedding = []
+            visit_mask = []
+            for code in visit:  # Loop over each code in the visit
+                if code == self.pad_id:  # If the code is a padding token, return a zero vector.
+                    visit_embedding.append(np.zeros(self.w2v.vector_size))
+                    visit_mask.append(np.zeros(self.w2v.vector_size))  # Add a zero vector to the mask if it is a padding token.
+                elif code in self.w2v.wv:  # If the code is in the Word2Vec model, add its vector.
+                    visit_embedding.append(self.w2v.wv[code])
+                    visit_mask.append(np.ones(self.w2v.vector_size))  # Add a one vector to the mask if it is a real code.
+            embedding_sequence.append(visit_embedding)
+            mask.append(visit_mask)
+        return np.array(embedding_sequence), np.array(mask)
+
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        temp_ehr, temp_code_mask = self.ehr_to_embedding(self.ehr[idx])
+
+        ehr = torch.tensor(temp_ehr, dtype=torch.float).to(self.device)
+        time_step = torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device)
+        label = torch.tensor(self.labels[idx], dtype=torch.float).to(self.device)
+        code_mask = torch.tensor(temp_code_mask, dtype=torch.float).to(self.device)
+
+        return ehr, time_step, label, code_mask
