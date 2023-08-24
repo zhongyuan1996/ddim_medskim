@@ -114,7 +114,7 @@ def main(name, seed, data, max_len, max_num, save_dir):
     parser.add_argument('--blk_emb_path', default='./data/processed/block_embedding.npy',
                         help='embedding path of blocks')
     parser.add_argument('--target_disease', default=data,
-                        choices=['Heart_failure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic', 'ARF', 'Shock',
+                        choices=['Heartfailure', 'COPD', 'Kidney', 'Dementia', 'Amnesia', 'mimic', 'ARF', 'Shock',
                                  'mortality'])
     parser.add_argument('--target_att_heads', default=4, type=int, help='target disease attention heads number')
     parser.add_argument('--mem_size', default=15, type=int, help='memory size')
@@ -160,11 +160,12 @@ def train(args):
     files = os.listdir(args.save_dir)
     csv_filename = 'DDPM_' + str(args.seed) + '_' + str(args.target_disease) + '_result.csv'
     combinedData_filename = str(args.target_disease) + '_combinedData.pickle'
+    genData_filename = str(args.target_disease) + '_genData.pickle'
     if csv_filename in files:
         print('This experiment has been done!')
     else:
         initial_d = 0
-        if args.target_disease == 'Heart_failure':
+        if args.target_disease == 'Heartfailure':
             code2id = pickle.load(open('data/hf/hf_code2idx_new.pickle', 'rb'))
             pad_id = len(code2id)
             data_path = './data/hf/hf'
@@ -322,9 +323,9 @@ def train(args):
                 DDPMModel.load_state_dict(torch.load(str(args.save_dir) + DDPM_filename))
                 DDPMModel.to(device)
                 DDPMModel.eval()
-                train_dataset = ehrGANDataset(data_path + '_training_new.pickle',
+                train_dataset = ehrGANDatasetWOAggregate(data_path + '_training_new.pickle',
                                           args.max_len, args.max_num_codes, pad_id, w2v, device)
-                train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
+                train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
 
                 synthetic_data = []
                 time_steps = []
@@ -354,6 +355,7 @@ def train(args):
 
                 gen_codes_unique = []
                 time_step_cleaned = []
+                og_data, og_label, og_time_step = pickle.load(open(data_path + '_training_new.pickle', 'rb'))
 
                 for i in range(len(synthetic_data)):  # iterate over patients
                     patient_visits = []
@@ -367,120 +369,140 @@ def train(args):
                     gen_codes_unique.append(patient_visits)
                     time_step_cleaned.append(cleaned_patient_time_step)
 
-                og_data, og_label, og_time_step = pickle.load(open(data_path + '_training_new.pickle', 'rb'))
+                for i in range(len(synthetic_data)):
+                    gen_length = len(synthetic_data[i])
+                    if gen_length < max_len:
+                        if len(og_data[i]) > gen_length:
+                            # Retain only the last 'gen_length' visits
+                            og_data[i] = og_data[i][-gen_length:]
+                            og_time_step[i] = og_time_step[i][-gen_length:]
+                    elif gen_length == max_len:
+                        if len(og_data[i]) > max_len:
+                            # Retain only the last 'max_len' visits
+                            og_data[i] = og_data[i][-max_len:]
+                            og_time_step[i] = og_time_step[i][-max_len:]
+
+                # Now, check for one patient that all the visit lengths are equal
+                for i in range(len(og_data)):
+                    if not (len(og_data[i]) == len(gen_codes_unique[i]) == len(og_time_step[i]) == len(
+                            time_step_cleaned[i])):
+                        print(f"Length mismatch at index {i}.")
+
                 og_data.extend(gen_codes_unique)
                 og_time_step.extend(time_step_cleaned)
                 og_label.extend(labels)
                 pickle.dump((og_data, og_label, og_time_step), open(str(args.save_dir) + combinedData_filename, 'wb'))
+                pickle.dump((gen_codes_unique, labels, time_step_cleaned),
+                            open(str(args.save_dir) + genData_filename, 'wb'))
 
-        w2v = Word2Vec.load(str(args.save_dir) + word2vec_filename)
-        device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
-
-        predictor = LSTM_predictor(pad_id, 256, args.dropout, args.dropout, 1, None, None)
-        predictor.to(device)
-
-        train_dataset = MyDataset(str(args.save_dir) + combinedData_filename,
-                                  args.max_len, args.max_num_codes, pad_id, device)
-        test_dataset = MyDataset(data_path + '_testing_new.pickle',
-                                 args.max_len, args.max_num_codes, pad_id, device)
-        val_dataset = MyDataset(data_path + '_validation_new.pickle',
-                                args.max_len, args.max_num_codes, pad_id, device)
-        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
-        test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
-        val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
-
-        optimizer = Adam(predictor.parameters(), lr=args.learning_rate)
-        scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=args.factor, patience=args.patience,
-                                                   verbose=True)
-
-        CE_loss = nn.CrossEntropyLoss(reduction='mean')
-
-        print('Start training...Parameters')
-
-        for name, param in predictor.named_parameters():
-            if param.requires_grad:
-                print('\t{:45}\ttrainable\t{}'.format(name, param.size()))
-            else:
-                print('\t{:45}\tfixed\t{}'.format(name, param.size()))
-        num_params = sum(p.numel() for p in predictor.parameters() if p.requires_grad)
-        print('\ttotal:', num_params)
-        print()
-        print('-' * 71)
-
-        global_step, best_dev_epoch = 0, 0
-        best_dev_f1 = 0.0
-        best_test_pr, best_test_f1, best_test_kappa = 0.0, 0.0, 0.0
-        total_loss = 0.0
-
-        for epoch_id in tqdm(range(args.n_epochs), desc="Epochs"):
-            epoch_start_time = time.time()
-            predictor.train()
-
-            for i, data in enumerate(tqdm(train_loader, desc="Training", leave=False)):
-                ehr, _, label, _, length = data
-                prediction = predictor(ehr, None, length, None, None)
-                loss = CE_loss(prediction, label)
-                loss.backward()
-                optimizer.step()
-
-            epoch_end_time = time.time()
-            print(f'Training time for epoch {epoch_id}: {(epoch_end_time - epoch_start_time):.2f} seconds.')
-
-            predictor.eval()
-
-            print('-' * 71)
-            print('evaluating train set...')
-            train_accuary, train_precision, train_recall, train_f1, train_roc_auc, train_pr_auc, train_kappa, train_loss = eval_metric(
-                train_loader, predictor)
-            print('evaluating val set...')
-            dev_accuary, dev_precision, dev_recall, dev_f1, dev_roc_auc, dev_pr_auc, dev_kappa, dev_loss = eval_metric(
-                val_loader, predictor)
-            print('evaluating test set...')
-            test_accuary, test_precision, test_recall, test_f1, test_roc_auc, test_pr_auc, test_kappa, test_loss = eval_metric(
-                test_loader, predictor)
-            print('-' * 71)
-            scheduler.step(dev_loss)
-
-            print(
-                f'| epoch {epoch_id:03d} | train accuary {train_accuary:.3f} | val accuary {dev_accuary:.3f} | test accuary {test_accuary:.3f} |')
-            print(
-                f'| epoch {epoch_id:03d} | train precision {train_precision:.3f} | val precision {dev_precision:.3f} | test precision {test_precision:.3f} |')
-            print(
-                f'| epoch {epoch_id:03d} | train recall {train_recall:.3f} | val recall {dev_recall:.3f} | test recall {test_recall:.3f} |')
-            print(f'| epoch {epoch_id:03d} | train f1 {train_f1:.3f} | val f1 {dev_f1:.3f} | test f1 {test_f1:.3f} |')
-            print(
-                f'| epoch {epoch_id:03d} | train roc_auc {train_roc_auc:.3f} | val roc_auc {dev_roc_auc:.3f} | test roc_auc {test_roc_auc:.3f} |')
-            print(
-                f'| epoch {epoch_id:03d} | train pr_auc {train_pr_auc:.3f} | val pr_auc {dev_pr_auc:.3f} | test pr_auc {test_pr_auc:.3f} |')
-            print(
-                f'| epoch {epoch_id:03d} | train kappa {train_kappa:.3f} | val kappa {dev_kappa:.3f} | test kappa {test_kappa:.3f} |')
-            print(
-                f'| epoch {epoch_id:03d} | train loss {train_loss:.3f} | val loss {dev_loss:.3f} | test loss {test_loss:.3f} |')
-            print('-' * 71)
-
-            if dev_f1 >= best_dev_f1:
-                best_dev_f1 = dev_f1
-                best_test_pr, best_test_f1, best_test_kappa = test_precision, test_f1, test_kappa
-                best_dev_epoch = epoch_id
-                torch.save(predictor.state_dict(), str(args.save_dir) + str(args.target_disease) + '_predictor.pt')
-                print('Saving model (epoch {})'.format(epoch_id + 1))
-                print('-' * 71)
-            if epoch_id - best_dev_epoch > args.max_epochs_before_stop:
-                print('Stop training at epoch {}. The highest f1 achieved is {}'.format(epoch_id, best_dev_f1))
-                break
-
-        results_file = open(str(args.save_dir) + csv_filename, 'w')
-        writer = csv.writer(results_file)
-        writer.writerow([best_test_pr, best_test_f1, best_test_kappa])
+        # w2v = Word2Vec.load(str(args.save_dir) + word2vec_filename)
+        # device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
+        #
+        # predictor = LSTM_predictor(pad_id, 256, args.dropout, args.dropout, 1, None, None)
+        # predictor.to(device)
+        #
+        # train_dataset = MyDataset(str(args.save_dir) + combinedData_filename,
+        #                           args.max_len, args.max_num_codes, pad_id, device)
+        # test_dataset = MyDataset(data_path + '_testing_new.pickle',
+        #                          args.max_len, args.max_num_codes, pad_id, device)
+        # val_dataset = MyDataset(data_path + '_validation_new.pickle',
+        #                         args.max_len, args.max_num_codes, pad_id, device)
+        # train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
+        # test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
+        # val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
+        #
+        # optimizer = Adam(predictor.parameters(), lr=args.learning_rate)
+        # scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=args.factor, patience=args.patience,
+        #                                            verbose=True)
+        #
+        # CE_loss = nn.CrossEntropyLoss(reduction='mean')
+        #
+        # print('Start training...Parameters')
+        #
+        # for name, param in predictor.named_parameters():
+        #     if param.requires_grad:
+        #         print('\t{:45}\ttrainable\t{}'.format(name, param.size()))
+        #     else:
+        #         print('\t{:45}\tfixed\t{}'.format(name, param.size()))
+        # num_params = sum(p.numel() for p in predictor.parameters() if p.requires_grad)
+        # print('\ttotal:', num_params)
+        # print()
+        # print('-' * 71)
+        #
+        # global_step, best_dev_epoch = 0, 0
+        # best_dev_f1 = 0.0
+        # best_test_pr, best_test_f1, best_test_kappa = 0.0, 0.0, 0.0
+        # total_loss = 0.0
+        #
+        # for epoch_id in tqdm(range(args.n_epochs), desc="Epochs"):
+        #     epoch_start_time = time.time()
+        #     predictor.train()
+        #
+        #     for i, data in enumerate(tqdm(train_loader, desc="Training", leave=False)):
+        #         ehr, _, label, _, length = data
+        #         prediction = predictor(ehr, None, length, None, None)
+        #         loss = CE_loss(prediction, label)
+        #         loss.backward()
+        #         optimizer.step()
+        #
+        #     epoch_end_time = time.time()
+        #     print(f'Training time for epoch {epoch_id}: {(epoch_end_time - epoch_start_time):.2f} seconds.')
+        #
+        #     predictor.eval()
+        #
+        #     print('-' * 71)
+        #     print('evaluating train set...')
+        #     train_accuary, train_precision, train_recall, train_f1, train_roc_auc, train_pr_auc, train_kappa, train_loss = eval_metric(
+        #         train_loader, predictor)
+        #     print('evaluating val set...')
+        #     dev_accuary, dev_precision, dev_recall, dev_f1, dev_roc_auc, dev_pr_auc, dev_kappa, dev_loss = eval_metric(
+        #         val_loader, predictor)
+        #     print('evaluating test set...')
+        #     test_accuary, test_precision, test_recall, test_f1, test_roc_auc, test_pr_auc, test_kappa, test_loss = eval_metric(
+        #         test_loader, predictor)
+        #     print('-' * 71)
+        #     scheduler.step(dev_loss)
+        #
+        #     print(
+        #         f'| epoch {epoch_id:03d} | train accuary {train_accuary:.3f} | val accuary {dev_accuary:.3f} | test accuary {test_accuary:.3f} |')
+        #     print(
+        #         f'| epoch {epoch_id:03d} | train precision {train_precision:.3f} | val precision {dev_precision:.3f} | test precision {test_precision:.3f} |')
+        #     print(
+        #         f'| epoch {epoch_id:03d} | train recall {train_recall:.3f} | val recall {dev_recall:.3f} | test recall {test_recall:.3f} |')
+        #     print(f'| epoch {epoch_id:03d} | train f1 {train_f1:.3f} | val f1 {dev_f1:.3f} | test f1 {test_f1:.3f} |')
+        #     print(
+        #         f'| epoch {epoch_id:03d} | train roc_auc {train_roc_auc:.3f} | val roc_auc {dev_roc_auc:.3f} | test roc_auc {test_roc_auc:.3f} |')
+        #     print(
+        #         f'| epoch {epoch_id:03d} | train pr_auc {train_pr_auc:.3f} | val pr_auc {dev_pr_auc:.3f} | test pr_auc {test_pr_auc:.3f} |')
+        #     print(
+        #         f'| epoch {epoch_id:03d} | train kappa {train_kappa:.3f} | val kappa {dev_kappa:.3f} | test kappa {test_kappa:.3f} |')
+        #     print(
+        #         f'| epoch {epoch_id:03d} | train loss {train_loss:.3f} | val loss {dev_loss:.3f} | test loss {test_loss:.3f} |')
+        #     print('-' * 71)
+        #
+        #     if dev_f1 >= best_dev_f1:
+        #         best_dev_f1 = dev_f1
+        #         best_test_pr, best_test_f1, best_test_kappa = test_precision, test_f1, test_kappa
+        #         best_dev_epoch = epoch_id
+        #         torch.save(predictor.state_dict(), str(args.save_dir) + str(args.target_disease) + '_predictor.pt')
+        #         print('Saving model (epoch {})'.format(epoch_id + 1))
+        #         print('-' * 71)
+        #     if epoch_id - best_dev_epoch > args.max_epochs_before_stop:
+        #         print('Stop training at epoch {}. The highest f1 achieved is {}'.format(epoch_id, best_dev_f1))
+        #         break
+        #
+        # results_file = open(str(args.save_dir) + csv_filename, 'w')
+        # writer = csv.writer(results_file)
+        # writer.writerow([best_test_pr, best_test_f1, best_test_kappa])
 
 
 if __name__ == '__main__':
 
     name = 'DDPM'
     seeds = [1,2,3,4,5]
-    datas = ['Heart_failure', 'COPD', 'Kidney', 'Amnesia', 'mimic']
-    max_lens = [9, 9, 9, 9, 10]
-    max_nums = [115, 102, 117, 199, 81]
+    datas = ['Heartfailure', 'COPD', 'Kidney', 'Amnesia', 'mimic']
+    max_lens = [50,50,50,50,15]
+    max_nums = [45,45,45,45,45]
     save_dir = './DDPM_dir/'
 
     for seed in seeds:
