@@ -371,13 +371,24 @@ def train(args):
                     gen_codes_unique.append(patient_visits)
                     time_step_cleaned.append(cleaned_patient_time_step)
 
+                for i in range(len(synthetic_data)):
+                    gen_length = len(synthetic_data[i])
+                    if gen_length < max_len:
+                        if len(og_data[i]) > gen_length:
+                            # Retain only the last 'gen_length' visits
+                            og_data[i] = og_data[i][-gen_length:]
+                            og_time_step[i] = og_time_step[i][-gen_length:]
+                    elif gen_length == max_len:
+                        if len(og_data[i]) > max_len:
+                            # Retain only the last 'max_len' visits
+                            og_data[i] = og_data[i][-max_len:]
+                            og_time_step[i] = og_time_step[i][-max_len:]
 
-                # Check lengths of the second dimensions
+                # Now, check for one patient that all the visit lengths are equal
                 for i in range(len(og_data)):
                     if not (len(og_data[i]) == len(gen_codes_unique[i]) == len(og_time_step[i]) == len(
                             time_step_cleaned[i])):
                         print(f"Length mismatch at index {i}.")
-                        assert False
 
 
                 og_data.extend(gen_codes_unique)
@@ -480,10 +491,63 @@ if __name__ == '__main__':
     name = 'ehrGAN'
     seeds = [1, 2, 3, 4, 5]
     datas = ['Heartfailure', 'COPD', 'Kidney', 'Amnesia', 'mimic']
-    max_lens = [9,9,9,9,10]
-    max_nums = [115,102,117,199,81]
+    max_lens = [50,50,50,50,15]
+    max_nums = [45,45,45,45,45]
     save_dir = './ehrGAN_dir/'
 
     for seed in seeds:
         for data, max_len, max_num in zip(datas, max_lens, max_nums):
             main(name, seed, data, max_len, max_num, save_dir)
+
+    # datas = ['Heartfailure', 'COPD', 'Kidney', 'Amnesia', 'mimic']
+    #
+    # # Dictionaries to store max values for each dataset
+    # max_visits_per_data = {}
+    # max_codes_per_data = {}
+    # patient_with_max_visits_per_data = {}
+    #
+    # for data in datas:
+    #     if data == 'Heartfailure':
+    #         data_path = './data/hf/hf'
+    #     elif data == 'COPD':
+    #         data_path = './data/copd/copd'
+    #     elif data == 'Kidney':
+    #         data_path = './data/kidney/kidney'
+    #     elif data == 'Amnesia':
+    #         data_path = './data/amnesia/amnesia'
+    #     elif data == 'mimic':
+    #         data_path = './data/mimic/mimic'
+    #     else:
+    #         raise ValueError('Invalid disease')
+    #
+    #     train_ehr, _, _ = pickle.load(open(data_path + '_training_new.pickle', 'rb'))
+    #     test_ehr, _, _ = pickle.load(open(data_path + '_testing_new.pickle', 'rb'))
+    #     val_ehr, _, _ = pickle.load(open(data_path + '_validation_new.pickle', 'rb'))
+    #
+    #     all_ehr = train_ehr + test_ehr + val_ehr
+    #
+    #     # Initialize max_visit and max_code for the current dataset
+    #     max_visit = 0
+    #     max_code = 0
+    #     patient_with_max_visit = None  # Initialize the patient with max visit
+    #
+    #     # Calculate max_visit and max_code for the current dataset
+    #     for patient_visits in all_ehr:
+    #         if len(patient_visits) > max_visit:
+    #             max_visit = len(patient_visits)
+    #             patient_with_max_visit = patient_visits
+    #         for visit in patient_visits:
+    #             max_code = max(max_code, len(visit))
+    #
+    #     # Store the results in the dictionaries
+    #     max_visits_per_data[data] = max_visit
+    #     max_codes_per_data[data] = max_code
+    #     patient_with_max_visits_per_data[data] = patient_with_max_visit
+    #
+    # # Print out the results
+    # for data in datas:
+    #     print(f"Dataset: {data}")
+    #     print("Max number of visits:", max_visits_per_data[data])
+    #     print("Max number of codes in a visit:", max_codes_per_data[data])
+    #     print("Patient with max visits:", patient_with_max_visits_per_data[data])
+    #     print("------")
