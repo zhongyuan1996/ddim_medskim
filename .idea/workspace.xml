@@ -6,7 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="ehrGAN updated">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/dataset.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/runner_ehrGAN.py" beforeDir="false" afterPath="$PROJECT_DIR$/runner_ehrGAN.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -293,7 +292,7 @@
       <workItem from="1692625638665" duration="7254000" />
       <workItem from="1692721234553" duration="6689000" />
       <workItem from="1692750183588" duration="4126000" />
-      <workItem from="1692802287759" duration="10249000" />
+      <workItem from="1692802287759" duration="13110000" />
     </task>
     <task id="LOCAL-00075" summary="GAN runner with bash and save csv">
       <created>1682623147663</created>
@@ -638,7 +637,7 @@
       <option name="project" value="LOCAL" />
       <updated>1684704709098</updated>
     </task>
-    <option name="localTasksCounter" value="132" />
+    <option name="localTasksCounter" value="133" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -810,8 +809,8 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/runner_ehrGAN.py</url>
-          <line>377</line>
-          <option name="timeStamp" value="198" />
+          <line>376</line>
+          <option name="timeStamp" value="201" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
@@ -861,7 +860,7 @@
     <SUITE FILE_PATH="coverage/ddim_medskim$softmax_LSTM_ddim.coverage" NAME="softmax_LSTM_ddim Coverage Results" MODIFIED="1674778103666" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
     <SUITE FILE_PATH="coverage/ddim_medskim$plotdiffhist.coverage" NAME="plotdiffhist Coverage Results" MODIFIED="1691888754170" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$USER_HOME$/OneDrive/PSU/diffRes" />
     <SUITE FILE_PATH="coverage/ddim_medskim$meanAndSd.coverage" NAME="meanAndSd Coverage Results" MODIFIED="1691892912960" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$USER_HOME$/OneDrive/PSU/diffRes/experiment/GAN+ATTN" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$runner_ehrGAN.coverage" NAME="runner_ehrGAN Coverage Results" MODIFIED="1692836366086" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$runner_ehrGAN.coverage" NAME="runner_ehrGAN Coverage Results" MODIFIED="1692839659295" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$new_model_runner.coverage" NAME="new_model_runner Coverage Results" MODIFIED="1680794613501" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$tabddpm.coverage" NAME="tabddpm Coverage Results" MODIFIED="1692289355428" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
     <SUITE FILE_PATH="coverage/ddim_medskim$diffusion.coverage" NAME="diffusion Coverage Results" MODIFIED="1667527004134" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
