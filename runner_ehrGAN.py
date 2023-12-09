@@ -12,13 +12,15 @@ from models.dataset import *
 from utils.utils import check_path, export_config, bool_flag
 from models.ehrGAN import *
 from gensim.models import Word2Vec
+import warnings
 from scipy.spatial.distance import cosine
+from models.evaluators import Evaluator
 import yaml
 from tqdm import tqdm
 import nmslib
 
 
-def eval_metricGAN(model, discriminator, dataloader, criterion, device):
+def eval_metricGAN(model, discriminator, dataloader, criterion, args, device):
     """
     Calculate the generator and discriminator losses for a given dataset.
     """
@@ -29,10 +31,15 @@ def eval_metricGAN(model, discriminator, dataloader, criterion, device):
 
     with torch.no_grad():
         for i, data in enumerate(dataloader):
-            ehr, time_step, labels, mask = data
+            if args.target_disease in ['pancreas', 'mimic']:
+                ehr_emb, _, mask, _ = data
+                gen_ehr, real_ehr = model(ehr_emb, mask)
+            else:
+                ehr_emb, _, _, mask, _ = data
+                gen_ehr, real_ehr = model(ehr_emb, mask)
 
             # Pass the data through the model
-            gen_ehr, real_ehr = model(ehr, mask)
+            gen_ehr, real_ehr = model(ehr_emb, mask)
 
             # Compute the generator loss
             fake_score = discriminator(gen_ehr)
@@ -54,43 +61,12 @@ def eval_metricGAN(model, discriminator, dataloader, criterion, device):
 
 
 
-def eval_metric(eval_set, model):
-    model.eval()
-    with torch.no_grad():
-        y_true = np.array([])
-        y_pred = np.array([])
-        y_score = np.array([])
-
-        for i, data in enumerate(eval_set):
-            ehr, _, labels, _ = data
-            logit = model(ehr)
-            scores = torch.softmax(logit, dim=-1)
-            scores = scores.data.cpu().numpy()
-            labels = labels.data.cpu().numpy()
-            labels = labels.argmax(1)
-            score = scores[:, 1]
-            pred = scores.argmax(1)
-            y_true = np.concatenate((y_true, labels))
-            y_pred = np.concatenate((y_pred, pred))
-            y_score = np.concatenate((y_score, score))
-
-        accuary = accuracy_score(y_true, y_pred)
-        precision = precision_score(y_true, y_pred)
-        recall = recall_score(y_true, y_pred)
-        f1 = f1_score(y_true, y_pred)
-        roc_auc = roc_auc_score(y_true, y_score)
-        lr_precision, lr_recall, _ = precision_recall_curve(y_true, y_score)
-        pr_auc = auc(lr_recall, lr_precision)
-        kappa = cohen_kappa_score(y_true, y_pred)
-        loss = log_loss(y_true, y_pred)
-    return accuary, precision, recall, f1, roc_auc, pr_auc, kappa, loss
-
 def main(name, seed, data, max_len, max_num, save_dir):
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
     parser.add_argument('--seed', default=seed, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=8, type=int)
-    parser.add_argument('--model', default='ehrGAN')
+    parser.add_argument('--model', default=name)
     parser.add_argument('-me', '--max_epochs_before_stop', default=10, type=int)
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
@@ -144,7 +120,7 @@ def train(args):
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
     files = os.listdir(args.save_dir)
-    csv_filename = 'ehrGAN_' + str(args.seed) + '_' + str(args.target_disease) + '_result.csv'
+    csv_filename = str(args.model) + '_' + str(args.target_disease) + '_' + str(args.seed) + '_' + '.csv'
     combinedData_filename = str(args.target_disease) + '_combinedData.pickle'
     genData_filename = str(args.target_disease) + '_genData.pickle'
     if csv_filename in files:
@@ -176,24 +152,44 @@ def train(args):
             pad_id = len(code2id)
             data_path = './data/amnesia/amnesia'
             # emb_path = './data/processed/amnesia.npy'
+        elif args.target_disease == 'pancreas':
+            code2id = pd.read_csv('./data/pancreas/code_to_int_mapping.csv', header=None)
+            demo_len = 15
+            pad_id = len(code2id)
+            data_path = './data/pancreas/'
         elif args.target_disease == 'mimic':
-            pad_id = 4894
-            data_path = './data/mimic/mimic'
+            code2id = pd.read_csv('./data/mimic/code_to_int_mapping.csv', header=None)
+            demo_len = 70
+            pad_id = len(code2id)
+            data_path = './data/mimic/'
         else:
             raise ValueError('Invalid disease')
         #check if word2vec model exists
         word2vec_filename = str(args.target_disease) + '_word2vec.pt'
-        ehrGAN_filename = str(args.target_disease) + '_ehrGAN.pt'
+        ehrGAN_filename = str(args.target_disease) + '_' + str(args.seed) + '_ehrGAN.pt'
 
         if not os.path.exists(str(save_dir)+word2vec_filename):
-            with open(data_path + '_training_new.pickle', 'rb') as f:
-                train_set, _, _ = pickle.load(f)
-            with open(data_path + '_testing_new.pickle', 'rb') as f:
-                test_set, _, _ = pickle.load(f)
-            with open(data_path + '_validation_new.pickle', 'rb') as f:
-                val_set, _, _ = pickle.load(f)
-            all_set = train_set + test_set + val_set
-            flattened_all_set = [visit for patient in all_set for visit in patient]
+            if args.target_disease in ['pancreas', 'mimic']:
+                with open(data_path + 'train_' + str(args.target_disease) + '.csv') as f:
+                    train_set = pd.read_csv(f, index_col=False)
+                    train_ehr = train_set['code_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+                with open(data_path + 'test_' + str(args.target_disease) + '.csv') as f:
+                    test_set = pd.read_csv(f, index_col=False)
+                    test_ehr = test_set['code_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+                with open(data_path + 'val_' + str(args.target_disease) + '.csv') as f:
+                    val_set = pd.read_csv(f, index_col=False)
+                    val_ehr = val_set['code_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+                all_set = train_ehr + test_ehr + val_ehr
+                flattened_all_set = [visit for patient in all_set for visit in patient]
+            else:
+                with open(data_path + '_training_new.pickle', 'rb') as f:
+                    train_set, _, _ = pickle.load(f)
+                with open(data_path + '_testing_new.pickle', 'rb') as f:
+                    test_set, _, _ = pickle.load(f)
+                with open(data_path + '_validation_new.pickle', 'rb') as f:
+                    val_set, _, _ = pickle.load(f)
+                all_set = train_set + test_set + val_set
+                flattened_all_set = [visit for patient in all_set for visit in patient]
             w2v = Word2Vec(flattened_all_set, vector_size=200, window=5, min_count=1, workers=4)
             w2v.save(str(args.save_dir) + word2vec_filename)
         else:
@@ -202,15 +198,29 @@ def train(args):
         if not os.path.exists(str(save_dir)+ehrGAN_filename):
             w2v = Word2Vec.load(str(args.save_dir) + word2vec_filename)
             device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
-            train_dataset = ehrGANDataset(data_path + '_training_new.pickle',
-                                      args.max_len, args.max_num_codes, pad_id, w2v, device)
-            test_dataset = ehrGANDataset(data_path + '_testing_new.pickle',
-                                        args.max_len, args.max_num_codes, pad_id, w2v, device)
-            val_dataset = ehrGANDataset(data_path + '_validation_new.pickle',
-                                        args.max_len, args.max_num_codes, pad_id, w2v, device)
-            train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
-            test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
-            val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
+            if args.target_disease in ['pancreas', 'mimic']:
+                flag = True
+                train_dataset = ehrGANDataset(data_path + 'train_' + str(args.target_disease) + '.csv',
+                                                    args.max_len, args.max_num_codes, pad_id, w2v, flag, device)
+                val_dataset = ehrGANDataset(data_path + 'val_' + str(args.target_disease) + '.csv',
+                                                  args.max_len, args.max_num_codes, pad_id, w2v, flag, device)
+                test_dataset = ehrGANDataset(data_path + 'test_' + str(args.target_disease) + '.csv',
+                                                   args.max_len, args.max_num_codes, pad_id, w2v, flag, device)
+                train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
+                test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
+                val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
+
+            else:
+
+                train_dataset = ehrGANDataset(data_path + '_training_new.pickle',
+                                          args.max_len, args.max_num_codes, pad_id, w2v, False, device)
+                test_dataset = ehrGANDataset(data_path + '_testing_new.pickle',
+                                            args.max_len, args.max_num_codes, pad_id, w2v, False, device)
+                val_dataset = ehrGANDataset(data_path + '_validation_new.pickle',
+                                            args.max_len, args.max_num_codes, pad_id, w2v, False, device)
+                train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
+                test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
+                val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
 
             model = ehrGAN(x_dim=200, h_dim=100, dropout=args.dropout, device=device)
             discriminator = CNNDiscriminator(200, args.dropout)
@@ -254,8 +264,13 @@ def train(args):
                 model.train()
 
                 for i, data in enumerate(tqdm(train_loader, desc="Training", leave=False)):
-                    ehr, _, _, mask = data
-                    gen_ehr, real_ehr = model(ehr, mask)
+
+                    if args.target_disease in ['pancreas', 'mimic']:
+                        ehr_emb, _, mask, _ = data
+                        gen_ehr, real_ehr = model(ehr_emb, mask)
+                    else:
+                        ehr_emb, _, _, mask, _ = data
+                        gen_ehr, real_ehr = model(ehr_emb, mask)
 
                     # train discriminator
                     real_label = torch.ones(args.batch_size, 1).to(device)
@@ -290,11 +305,11 @@ def train(args):
 
                 print('-' * 71)
                 print('evaluating train set...')
-                train_loss = eval_metricGAN(model, discriminator, train_loader, BCE_loss, device)
+                train_loss = eval_metricGAN(model, discriminator, train_loader, BCE_loss, args, device)
                 print('evaluating val set...')
-                dev_loss = eval_metricGAN(model, discriminator, val_loader, BCE_loss, device)
+                dev_loss = eval_metricGAN(model, discriminator, val_loader, BCE_loss, args, device)
                 print('evaluating test set...')
-                test_loss = eval_metricGAN(model, discriminator, test_loader, BCE_loss, device)
+                test_loss = eval_metricGAN(model, discriminator, test_loader, BCE_loss, args, device)
                 print('-' * 71)
                 scheduler.step(dev_loss)
                 dis_scheduler.step(dev_loss)
@@ -328,20 +343,31 @@ def train(args):
                 ehrganModel.to(device)
                 ehrganModel.eval()
 
-                train_dataset = ehrGANDatasetWOAggregate(data_path + '_training_new.pickle',
-                                              args.max_len, args.max_num_codes, pad_id, w2v, device)
-                train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
+                if args.target_disease in ['pancreas', 'mimic']:
+                    train_dataset = ehrGANDataset(data_path + 'train_' + str(args.target_disease) + '.csv',
+                                                  args.max_len, args.max_num_codes, pad_id, w2v, True, device)
+                    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
+                else:
+                    train_dataset = ehrGANDatasetWOAggregate(data_path + '_training_new.pickle',
+                                                  args.max_len, args.max_num_codes, pad_id, w2v, device)
+                    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
 
                 synthetic_data = []
+                real_data = []
                 time_steps = []
                 labels = []
                 for i, data in enumerate(tqdm(train_loader, desc="Generating synthetic data", leave=False)):
-                    ehr, time_step, label, mask = data
-                    gen_ehr, real_ehr = ehrganModel(ehr, mask)
+                    if args.target_disease in ['pancreas', 'mimic']:
+                        ehr_emb, time_step, mask, code_ehr = data
+                        gen_ehr, real_ehr = ehrganModel(ehr_emb, mask)
+                        label = None
+                    else:
+                        ehr_emb, time_step, label, mask, _ = data
+                        gen_ehr, real_ehr = ehrganModel(ehr_emb, mask)
                     bs, seq_len, code_len, emb_dim = gen_ehr.size()
                     gen_ehr = gen_ehr.contiguous().view(bs*seq_len*code_len, emb_dim).cpu().numpy()
 
-                    results = index.knnQueryBatch(gen_ehr,k=1)  # for each embedding, find the 1 nearest neighbor in the word vector matrix
+                    results = index.knnQueryBatch(gen_ehr, k=1)  # for each embedding, find the 1 nearest neighbor in the word vector matrix
                     ids = [result[0] for result in results]
                     distances = [result[1] for result in results]  # for each embedding, find the 1 nearest neighbor in the word vector matrix
 
@@ -350,52 +376,105 @@ def train(args):
                     gen_codes = np.array(gen_codes).reshape(bs, seq_len, code_len)
                     time_step = time_step.cpu().numpy().tolist()
 
-                    label = [l.argmax(0) for l in label]
+                    if label:
+                        label = [l.argmax(0) for l in label]
+                        labels.extend(label)
                     time_steps.extend(time_step)
                     synthetic_data.extend(gen_codes)
-                    labels.extend(label)
+                    real_data.extend(code_ehr.cpu().numpy().tolist())
 
-                gen_codes_unique = []
-                time_step_cleaned = []
-                og_data, og_label, og_time_step = pickle.load(open(data_path + '_training_new.pickle', 'rb'))
+                if args.target_disease in ['pancreas', 'mimic']:
+                    gen_codes_unique = []
+                    time_step_cleaned = []
+                    for i in range(len(synthetic_data)):  # iterate over patients
+                        patient_visits = []
+                        cleaned_patient_time_step = []
+                        for j in range(len(synthetic_data[i])):  # iterate over visits for a given patient
+                            if time_steps[i][j] != 100000:  # Exclude the time step equals to 100000
+                                unique_codes = list(set(synthetic_data[i][j]))
+                                patient_visits.append(unique_codes)
+                                cleaned_patient_time_step.append(time_steps[i][j])
 
-                for i in range(len(synthetic_data)):  # iterate over patients
-                    patient_visits = []
-                    cleaned_patient_time_step = []
-                    for j in range(len(synthetic_data[i])):  # iterate over visits for a given patient
-                        if time_steps[i][j] != 100000:  # Exclude the time step equals to 100000
-                            unique_codes = list(set(synthetic_data[i][j]))
-                            patient_visits.append(unique_codes)
-                            cleaned_patient_time_step.append(time_steps[i][j])
+                        gen_codes_unique.append(patient_visits)
+                        time_step_cleaned.append(cleaned_patient_time_step)
 
-                    gen_codes_unique.append(patient_visits)
-                    time_step_cleaned.append(cleaned_patient_time_step)
+                    #convert real data to multihot with vocab_size and ignore pad_id:
+                    multihot_ehr_label = torch.zeros((len(real_data), args.max_len, pad_id), dtype=torch.float32) + 1e-7
+                    for batch_idx in range(len(real_data)):
+                        for seq_idx in range(len(real_data[batch_idx])):
+                            for label in real_data[batch_idx][seq_idx]:
+                                if label != pad_id:
+                                    multihot_ehr_label[batch_idx, seq_idx, label] = 1.0
+                    multihot_ehr_output = torch.zeros((len(gen_codes_unique), args.max_len, pad_id), dtype=torch.float32)
+                    for batch_idx in range(len(gen_codes_unique)):
+                        for seq_idx in range(len(gen_codes_unique[batch_idx])):
+                            for label in gen_codes_unique[batch_idx][seq_idx]:
+                                if label != pad_id:
+                                    multihot_ehr_output[batch_idx, seq_idx, label] = 1.0
 
-                for i in range(len(synthetic_data)):
-                    gen_length = len(synthetic_data[i])
-                    if gen_length < max_len:
-                        if len(og_data[i]) > gen_length:
-                            # Retain only the last 'gen_length' visits
-                            og_data[i] = og_data[i][-gen_length:]
-                            og_time_step[i] = og_time_step[i][-gen_length:]
-                    elif gen_length == max_len:
-                        if len(og_data[i]) > max_len:
-                            # Retain only the last 'max_len' visits
-                            og_data[i] = og_data[i][-max_len:]
-                            og_time_step[i] = og_time_step[i][-max_len:]
+                    # Now calculate lpl per vsist:
+                lpl_list = []
+                for i in range(len(multihot_ehr_output)):
+                    for j in range(len(multihot_ehr_output[i])):
+                        # Extract logits and targets for the current visit of the current batch item
+                        logits_visit = multihot_ehr_output[i, j, :]
+                        target_visit = multihot_ehr_label[i, j, :]
+                        prob = logits_visit.softmax(dim=-1)[target_visit == 1]
+                        nll = -torch.log(prob + 1e-10)
+                        ppl = nll.exp()
+                        if torch.isnan(ppl).any():
+                            warnings.warn('NaN perplexity detected during lpl calculation')
+                        lpl_list.append(ppl)
+                median_ppl = torch.median(torch.cat(lpl_list))
+                print(f'Median perplexity: {median_ppl.item()}')
+                #write the perplexity to csv:
+                with open(str(args.save_dir) + csv_filename, 'a') as f:
+                    writer = csv.writer(f)
+                    writer.writerow([args.seed, median_ppl.item()])
 
-                # Now, check for one patient that all the visit lengths are equal
-                for i in range(len(og_data)):
-                    if not (len(og_data[i]) == len(gen_codes_unique[i]) == len(og_time_step[i]) == len(
-                            time_step_cleaned[i])):
-                        print(f"Length mismatch at index {i}.")
 
-
-                og_data.extend(gen_codes_unique)
-                og_time_step.extend(time_step_cleaned)
-                og_label.extend(labels)
-                pickle.dump((og_data, og_label, og_time_step), open(str(args.save_dir) + combinedData_filename, 'wb'))
-                pickle.dump((gen_codes_unique, labels, time_step_cleaned), open(str(args.save_dir) + genData_filename, 'wb'))
+                # else:
+                #     gen_codes_unique = []
+                #     time_step_cleaned = []
+                #     og_data, og_label, og_time_step = pickle.load(open(data_path + '_training_new.pickle', 'rb'))
+                #
+                #     for i in range(len(synthetic_data)):  # iterate over patients
+                #         patient_visits = []
+                #         cleaned_patient_time_step = []
+                #         for j in range(len(synthetic_data[i])):  # iterate over visits for a given patient
+                #             if time_steps[i][j] != 100000:  # Exclude the time step equals to 100000
+                #                 unique_codes = list(set(synthetic_data[i][j]))
+                #                 patient_visits.append(unique_codes)
+                #                 cleaned_patient_time_step.append(time_steps[i][j])
+                #
+                #         gen_codes_unique.append(patient_visits)
+                #         time_step_cleaned.append(cleaned_patient_time_step)
+                #
+                #     for i in range(len(synthetic_data)):
+                #         gen_length = len(synthetic_data[i])
+                #         if gen_length < max_len:
+                #             if len(og_data[i]) > gen_length:
+                #                 # Retain only the last 'gen_length' visits
+                #                 og_data[i] = og_data[i][-gen_length:]
+                #                 og_time_step[i] = og_time_step[i][-gen_length:]
+                #         elif gen_length == max_len:
+                #             if len(og_data[i]) > max_len:
+                #                 # Retain only the last 'max_len' visits
+                #                 og_data[i] = og_data[i][-max_len:]
+                #                 og_time_step[i] = og_time_step[i][-max_len:]
+                #
+                #     # Now, check for one patient that all the visit lengths are equal
+                #     for i in range(len(og_data)):
+                #         if not (len(og_data[i]) == len(gen_codes_unique[i]) == len(og_time_step[i]) == len(
+                #                 time_step_cleaned[i])):
+                #             print(f"Length mismatch at index {i}.")
+                #
+                #
+                #     og_data.extend(gen_codes_unique)
+                #     og_time_step.extend(time_step_cleaned)
+                #     og_label.extend(labels)
+                #     pickle.dump((og_data, og_label, og_time_step), open(str(args.save_dir) + combinedData_filename, 'wb'))
+                #     pickle.dump((gen_codes_unique, labels, time_step_cleaned), open(str(args.save_dir) + genData_filename, 'wb'))
 
 
         # w2v = Word2Vec.load(str(args.save_dir) + word2vec_filename)
@@ -490,9 +569,12 @@ if __name__ == '__main__':
 
     name = 'ehrGAN'
     seeds = [1, 2, 3, 4, 5]
-    datas = ['Heartfailure', 'COPD', 'Kidney', 'Amnesia', 'mimic']
-    max_lens = [50,50,50,50,15]
-    max_nums = [45,45,45,45,45]
+    # datas = ['Heartfailure', 'COPD', 'Kidney', 'Amnesia', 'mimic']
+    # max_lens = [50,50,50,50,15]
+    # max_nums = [45,45,45,45,45]
+    datas = ['mimic']
+    max_lens = [20]
+    max_nums = [20]
     save_dir = './ehrGAN_dir/'
 
     for seed in seeds:

@@ -14,7 +14,7 @@ class tabDDPM(nn.Module):
         self.config = config
         self.vocab_size = vocab_size
         self.code_len = code_len
-        self.initial_embedding = nn.Embedding(self.vocab_size+1, self.vocab_size+1, padding_idx=-1)
+        self.initial_embedding = nn.Embedding(self.vocab_size+1, self.vocab_size, padding_idx=-1)
         self.y_embedding = nn.Embedding(2, self.vocab_size+1, padding_idx=-1)
         betas = get_beta_schedule(beta_schedule=self.config.diffusion.beta_schedule,
                                   beta_start=self.config.diffusion.beta_start,
@@ -25,32 +25,32 @@ class tabDDPM(nn.Module):
         self.softmax = nn.Softmax(dim=-1)
 
         self.mlpEncoder = nn.Sequential(
-            nn.Linear(self.vocab_size+1, int((self.vocab_size+1) / 4)),
-            nn.BatchNorm1d(int((self.vocab_size+1) / 4)),
+            nn.Linear(self.vocab_size, int((self.vocab_size) / 4)),
+            nn.BatchNorm1d(int((self.vocab_size) / 4)),
             nn.LeakyReLU(),
             nn.Dropout(self.dropout),
-            nn.Linear(int((self.vocab_size+1) / 4), int((self.vocab_size+1) / 8)),
-            nn.BatchNorm1d(int((self.vocab_size+1) / 8)),
+            nn.Linear(int((self.vocab_size) / 4), int((self.vocab_size) / 8)),
+            nn.BatchNorm1d(int((self.vocab_size) / 8)),
             nn.LeakyReLU(),
             nn.Dropout(self.dropout),
-            nn.Linear(int((self.vocab_size+1) / 8), self.h_dim),
+            nn.Linear(int((self.vocab_size) / 8), self.h_dim),
             nn.LeakyReLU()
         )
 
         self.mlpDecoder = nn.Sequential(
-            nn.Linear(self.h_dim, int((self.vocab_size+1) / 8)),
-            nn.BatchNorm1d(int((self.vocab_size+1) / 8)),
+            nn.Linear(self.h_dim, int((self.vocab_size) / 8)),
+            nn.BatchNorm1d(int((self.vocab_size) / 8)),
             nn.LeakyReLU(),
-            nn.Linear(int((self.vocab_size+1) / 8), int((self.vocab_size+1) / 4)),
-            nn.BatchNorm1d(int((self.vocab_size+1) / 4)),
+            nn.Linear(int((self.vocab_size) / 8), int((self.vocab_size) / 4)),
+            nn.BatchNorm1d(int((self.vocab_size) / 4)),
             nn.LeakyReLU(),
-            nn.Linear(int((self.vocab_size+1) / 4), self.vocab_size+1),
+            nn.Linear(int((self.vocab_size) / 4), self.vocab_size),
             nn.LeakyReLU()
         )
 
-        self.pos_embedding = nn.Embedding(1000+1, self.vocab_size+1, padding_idx=-1)
+        self.pos_embedding = nn.Embedding(1000+1, self.vocab_size, padding_idx=-1)
 
-    def forward(self, x, label):
+    def forward(self, x, label = None):
         x = self.initial_embedding(x).sum(dim=-2)
         bs, seq_len, code_len = x.shape
 
@@ -63,10 +63,11 @@ class tabDDPM(nn.Module):
         # Add categorical noise
         uniform_noise = torch.ones_like(x) / self.vocab_size
         x_with_noise = alpha * x + (1-alpha) * uniform_noise
-        y_embedding = self.y_embedding(label.to(torch.long)).sum(dim=-2).unsqueeze(1).expand(-1, x.shape[1], -1)
-
-        x_diffinput = x_with_noise + time_embedding + y_embedding
-
+        if label:
+            y_embedding = self.y_embedding(label.to(torch.long)).sum(dim=-2).unsqueeze(1).expand(-1, x.shape[1], -1)
+            x_diffinput = x_with_noise + time_embedding + y_embedding
+        else:
+            x_diffinput = x_with_noise + time_embedding
         # Flatten the tensor for MLP processing
         x_diffinput = x_diffinput.view(-1, code_len)
 

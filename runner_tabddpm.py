@@ -18,6 +18,7 @@ import yaml
 from tqdm import tqdm
 import nmslib
 import torch.nn as nn
+import warnings
 
 
 def dict2namespace(config):
@@ -40,26 +41,40 @@ def rearrange_codes(codes, pad_id, max_num_codes):
 
 
 
-def eval_metrictabDDPM(eval_set, model, criterion, pad_id, device):
+def eval_metrictabDDPM(eval_set, model, criterion, pad_id, args, device):
     model.eval()
     running_loss = 0.0
     total_samples = 0
-    identity = torch.eye(pad_id+1).to(device)
-    identity[pad_id] = 0
 
     with torch.no_grad():
-        for i, data in enumerate(eval_set):
-            ehr, _, label, _ = data
 
-            # One-hot encoding ehr efficiently:
-            one_hot_ehr = identity[ehr]
-            target_ehr = one_hot_ehr.sum(dim=2)
+        for i, data in enumerate(tqdm(eval_set, desc="Evaluating", leave=False)):
 
-            # Now, target_ehr has shape [bs, seqlen, vocabplus1]
-            _, gen_ehr_logits = model(ehr, label)
+            if args.target_disease in ['pancreas', 'mimic']:
+                ehr, time_step = data
+
+                multihot_ehr_label = torch.zeros((ehr.size(0), args.max_len, pad_id), dtype=torch.float32) + 1e-7
+                multihot_ehr_label = multihot_ehr_label.to(device)
+                for batch_idx in range(ehr.size(0)):
+                    for seq_idx in range(args.max_len):
+                        for label in range(pad_id):
+                            if label != pad_id:
+                                multihot_ehr_label[batch_idx, seq_idx, label] = 1.0
+                _, gen_ehr = model(ehr, None)
+            else:
+                ehr, label, time_step = data
+
+                multihot_ehr_label = torch.zeros((ehr.size(0), args.max_len, pad_id), dtype=torch.float32) + 1e-7
+                multihot_ehr_label = multihot_ehr_label.to(device)
+                for batch_idx in range(ehr.size(0)):
+                    for seq_idx in range(args.max_len):
+                        for label in range(pad_id):
+                            if label != pad_id:
+                                multihot_ehr_label[batch_idx, seq_idx, label] = 1.0
+                _, gen_ehr = model(ehr, label)
 
             # Calculate loss
-            loss = criterion(gen_ehr_logits, target_ehr)
+            loss = criterion(gen_ehr, multihot_ehr_label)
 
             running_loss += loss.item() * ehr.size(0)  # multiply by batch size
             total_samples += ehr.size(0)
@@ -106,7 +121,7 @@ def main(name, seed, data, max_len, max_num, save_dir):
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
     parser.add_argument('--seed', default=seed, type=int, help='seed')
     parser.add_argument('-bs', '--batch_size', default=16, type=int)
-    parser.add_argument('--model', default='ehrGAN')
+    parser.add_argument('--model', default=name)
     parser.add_argument('-me', '--max_epochs_before_stop', default=10, type=int)
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
@@ -163,7 +178,7 @@ def train(args):
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
     files = os.listdir(args.save_dir)
-    csv_filename = 'tabDDPM_' + str(args.seed) + '_' + str(args.target_disease) + '_result.csv'
+    csv_filename = str(args.model) + '_' + str(args.target_disease) + '_' + str(args.seed) + '_' + '.csv'
     combinedData_filename = str(args.target_disease) + '_combinedData.pickle'
     if csv_filename in files:
         print('This experiment has been done!')
@@ -194,24 +209,44 @@ def train(args):
             pad_id = len(code2id)
             data_path = './data/amnesia/amnesia'
             # emb_path = './data/processed/amnesia.npy'
+        elif args.target_disease == 'pancreas':
+            code2id = pd.read_csv('./data/pancreas/code_to_int_mapping.csv', header=None)
+            demo_len = 15
+            pad_id = len(code2id)
+            data_path = './data/pancreas/'
         elif args.target_disease == 'mimic':
-            pad_id = 4894
-            data_path = './data/mimic/mimic'
+            code2id = pd.read_csv('./data/mimic/code_to_int_mapping.csv', header=None)
+            demo_len = 70
+            pad_id = len(code2id)
+            data_path = './data/mimic/'
         else:
             raise ValueError('Invalid disease')
 
         word2vec_filename = str(args.target_disease) + '_word2vec.pt'
-        tabDDPM_filename = str(args.target_disease) + '_tabDDPM.pt'
+        tabDDPM_filename = str(args.target_disease) + '_' + str(args.seed) + '_tabDDPM.pt'
 
         if not os.path.exists(str(save_dir)+word2vec_filename):
-            with open(data_path + '_training_new.pickle', 'rb') as f:
-                train_set, _, _ = pickle.load(f)
-            with open(data_path + '_testing_new.pickle', 'rb') as f:
-                test_set, _, _ = pickle.load(f)
-            with open(data_path + '_validation_new.pickle', 'rb') as f:
-                val_set, _, _ = pickle.load(f)
-            all_set = train_set + test_set + val_set
-            flattened_all_set = [visit for patient in all_set for visit in patient]
+            if args.target_disease in ['pancreas', 'mimic']:
+                with open(data_path + 'train_' + str(args.target_disease) + '.csv') as f:
+                    train_set = pd.read_csv(f, index_col=False)
+                    train_ehr = train_set['code_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+                with open(data_path + 'test_' + str(args.target_disease) + '.csv') as f:
+                    test_set = pd.read_csv(f, index_col=False)
+                    test_ehr = test_set['code_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+                with open(data_path + 'val_' + str(args.target_disease) + '.csv') as f:
+                    val_set = pd.read_csv(f, index_col=False)
+                    val_ehr = val_set['code_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+                all_set = train_ehr + test_ehr + val_ehr
+                flattened_all_set = [visit for patient in all_set for visit in patient]
+            else:
+                with open(data_path + '_training_new.pickle', 'rb') as f:
+                    train_set, _, _ = pickle.load(f)
+                with open(data_path + '_testing_new.pickle', 'rb') as f:
+                    test_set, _, _ = pickle.load(f)
+                with open(data_path + '_validation_new.pickle', 'rb') as f:
+                    val_set, _, _ = pickle.load(f)
+                all_set = train_set + test_set + val_set
+                flattened_all_set = [visit for patient in all_set for visit in patient]
             w2v = Word2Vec(flattened_all_set, vector_size=256, window=5, min_count=1, workers=4)
             w2v.save(str(args.save_dir) + word2vec_filename)
         else:
@@ -219,22 +254,42 @@ def train(args):
 
         if not os.path.exists(str(args.save_dir) + tabDDPM_filename):
             device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
-            train_dataset = MyDataset(data_path + '_training_new.pickle',
-                                      args.max_len, args.max_num_codes, pad_id, device)
-            test_dataset = MyDataset(data_path + '_testing_new.pickle',
-                                     args.max_len, args.max_num_codes, pad_id, device)
-            val_dataset = MyDataset(data_path + '_validation_new.pickle',
-                                    args.max_len, args.max_num_codes, pad_id, device)
-            train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
-            test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
-            val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
+            w2v = Word2Vec.load(str(args.save_dir) + word2vec_filename)
+            all_word_vectors_matrix = w2v.wv.vectors
+
+            index = nmslib.init(method='hnsw', space='cosinesimil')
+            index.addDataPointBatch(all_word_vectors_matrix)
+            index.createIndex({'post': 2}, print_progress=True)
+
+            if args.target_disease in ['pancreas', 'mimic']:
+                train_dataset = MyDataset4(data_path + 'train_' + str(args.target_disease) + '.csv',
+                                              args.max_len, args.max_num_codes, pad_id, None, True, device)
+                val_dataset = MyDataset4(data_path + 'val_' + str(args.target_disease) + '.csv',
+                                            args.max_len, args.max_num_codes, pad_id, None, True, device)
+                test_dataset = MyDataset4(data_path + 'test_' + str(args.target_disease) + '.csv',
+                                             args.max_len, args.max_num_codes, pad_id, None, True, device)
+                train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
+                test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
+                val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
+
+            else:
+
+                train_dataset = MyDataset(data_path + '_training_new.pickle',
+                                          args.max_len, args.max_num_codes, pad_id, device)
+                test_dataset = MyDataset(data_path + '_testing_new.pickle',
+                                         args.max_len, args.max_num_codes, pad_id, device)
+                val_dataset = MyDataset(data_path + '_validation_new.pickle',
+                                        args.max_len, args.max_num_codes, pad_id, device)
+                train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
+                test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
+                val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
 
             with open(os.path.join("configs/", args.config), "r") as f:
                 config = yaml.safe_load(f)
             config = dict2namespace(config)
 
-            # model = tabDDPM(config, pad_id, 256, 64, args.dropout, args.max_num_codes, device)
-            model = DDPM(config, pad_id, None, None, args.dropout, args.max_len,args.max_num_codes, device)
+            model = tabDDPM(config, pad_id, 256, 64, args.dropout, args.max_num_codes, device)
+            # model = DDPM(config, pad_id, None, None, args.dropout, args.max_len,args.max_num_codes, device)
 
             model.to(device)
 
@@ -266,27 +321,38 @@ def train(args):
             global_step, best_dev_epoch = 0, 0
             best_train_loss, best_test_loss, best_val_loss = 1e9, 1e9, 1e9
 
+            time_steps = []
+
             for epoch_id in tqdm(range(args.n_epochs), desc="Epochs"):
                 epoch_start_time = time.time()
                 model.train()
-                identity = torch.eye(pad_id+1).to(device)
-                identity[pad_id] = 0
 
                 for i, data in enumerate(tqdm(train_loader, desc="Training", leave=False)):
-                    ehr, _, label, _, _ = data
-                    one_hot_ehr = identity[ehr]
-                    target_ehr = one_hot_ehr.sum(dim=2)
-                    _, gen_ehr = model(ehr, label)
 
-                    # # Debugging part
-                    # if i == 0:  # Just for the first batch
-                    #     print("Original ehr for first patient's first visit:", ehr[0][0])
-                    #
-                    #     # Finding non-zero indices in target_ehr
-                    #     non_zero_indices = (target_ehr[0][0] > 0).nonzero().squeeze().tolist()
-                    #     print("Non-zero indices in target_ehr for first patient's first visit:", non_zero_indices)
+                    if args.target_disease in ['pancreas', 'mimic']:
+                        ehr, time_step = data
 
-                    loss =loss_fn(gen_ehr, target_ehr)
+                        multihot_ehr_label = torch.zeros((ehr.size(0), args.max_len, pad_id), dtype=torch.float32) + 1e-7
+                        multihot_ehr_label = multihot_ehr_label.to(device)
+                        for batch_idx in range(ehr.size(0)):
+                            for seq_idx in range(args.max_len):
+                                for label in range(pad_id):
+                                    if label != pad_id:
+                                        multihot_ehr_label[batch_idx, seq_idx, label] = 1.0
+                        _, gen_ehr = model(ehr, None)
+                    else:
+                        ehr, label, time_step = data
+
+                        multihot_ehr_label = torch.zeros((ehr.size(0), args.max_len, pad_id), dtype=torch.float32) + 1e-7
+                        multihot_ehr_label = multihot_ehr_label.to(device)
+                        for batch_idx in range(ehr.size(0)):
+                            for seq_idx in range(args.max_len):
+                                for label in range(pad_id):
+                                    if label != pad_id:
+                                        multihot_ehr_label[batch_idx, seq_idx, label] = 1.0
+                        _, gen_ehr = model(ehr, label)
+
+                    loss =loss_fn(gen_ehr, multihot_ehr_label)
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.step()
@@ -302,7 +368,7 @@ def train(args):
                 # print('Evaluating on testing set...')
                 # test_loss = eval_metrictabDDPM(test_loader, model)
                 print('Evaluating on validation set...')
-                dev_loss = eval_metrictabDDPM(val_loader, model, loss_fn, pad_id, device)
+                dev_loss = eval_metrictabDDPM(val_loader, model, loss_fn, pad_id, args, device)
                 print('-' * 71)
                 scheduler.step(dev_loss)
                 # print(
@@ -322,6 +388,7 @@ def train(args):
                     print('Stop training at epoch {}. The lowest loss achieved is {}'.format(epoch_id, best_val_loss))
                     break
         if not os.path.exists(str(args.save_dir) + combinedData_filename):
+            print('Generating synthetic data...')
             with torch.no_grad():
                 w2v = Word2Vec.load(str(args.save_dir) + word2vec_filename)
                 all_word_vectors_matrix = w2v.wv.vectors
@@ -335,181 +402,248 @@ def train(args):
                     config = yaml.safe_load(f)
                 config = dict2namespace(config)
 
-                tabDDPMModel = tabDDPM(config, pad_id, 256, 64, args.dropout, args.max_num_codes, device)
-                tabDDPMModel.load_state_dict(torch.load(str(args.save_dir) + tabDDPM_filename))
-                tabDDPMModel.to(device)
-                tabDDPMModel.eval()
-                train_dataset = MyDataset(data_path + '_training_new.pickle',
+                model = tabDDPM(config, pad_id, 256, 64, args.dropout, args.max_num_codes, device)
+                model.load_state_dict(torch.load(str(args.save_dir) + tabDDPM_filename))
+                model.to(device)
+                model.eval()
+
+                if args.target_disease in ['pancreas', 'mimic']:
+                    train_dataset = MyDataset4(data_path + 'toy_' + str(args.target_disease) + '.csv',
+                                               args.max_len, args.max_num_codes, pad_id, None, True, device)
+                    train_loader = DataLoader(train_dataset, batch_size=args.batch_size*4, shuffle=True, drop_last=True)
+                else:
+                    train_dataset = MyDataset(data_path + '_training_new.pickle',
                                           args.max_len, args.max_num_codes, pad_id, device)
-                train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
+                    train_loader = DataLoader(train_dataset, batch_size=args.batch_size*4, shuffle=True, drop_last=True)
 
                 synthetic_data = []
+                real_data = []
                 time_steps = []
                 labels = []
 
+                lpl_list = []
+
                 for i, data in enumerate(tqdm(train_loader, desc="Generating synthetic data", leave=False)):
-                    ehr, time_step, label, codemask, _ = data
-                    real_ehr, gen_ehr_logits = tabDDPMModel(ehr, label)
-                    _, top_code_indices = gen_ehr_logits.topk(args.max_num_codes, dim=-1)
-                    codemask_inv = 1 - codemask
-                    masked_top_code = top_code_indices.where(codemask_inv == 1, torch.tensor(-1).to(device))
-                    list_top_code = masked_top_code.cpu().numpy().tolist()
+                    if args.target_disease in ['pancreas', 'mimic']:
+                        ehr, time_step = data
+                    else:
+                        ehr, label, time_step = data
 
-                    cleaned_top_code = []
+                    multihot_ehr_label = torch.zeros((ehr.size(0), args.max_len, pad_id), dtype=torch.float32) + 1e-7
+                    multihot_ehr_label = multihot_ehr_label.to(device)
+                    for batch_idx in range(ehr.size(0)):
+                        for seq_idx in range(args.max_len):
+                            for label in range(pad_id):
+                                if label != pad_id:
+                                    multihot_ehr_label[batch_idx, seq_idx, label] = 1.0
 
-                    for patient in list_top_code:
-                        cleaned_patient = []
-                        for visit in patient:
-                            cleaned_visit = [code for code in visit if code != -1]
-                            if cleaned_visit:
-                                cleaned_patient.append(cleaned_visit)
-                        if cleaned_patient:
-                            cleaned_top_code.append(cleaned_patient)
-                    # for i in range(len(data)):
-                    #     print(ehr[i])
-                    #     print(cleaned_top_code[i])
+                    if args.target_disease in ['pancreas', 'mimic']:
+                        _, gen_ehr = model(ehr, None)
+                    else:
+                        _, gen_ehr = model(ehr, label)
 
                     time_step = time_step.cpu().numpy().tolist()
-                    cleaned_time_step = [[entry for entry in sublist if entry != 100000] for sublist in time_step]
-                    label = [l.argmax(0) for l in label]
 
-                    # assert len(cleaned_time_step) == len(cleaned_top_code), "Mismatch in the outer dimension"
-                    # for t, s in zip(cleaned_time_step, cleaned_top_code):
-                    #     assert len(t) == len(s), "Mismatch in the inner dimension for a specific batch" + str(i)
+                    # Calculate lpl per visit within this loop
+                    for j in range(len(gen_ehr)):
+                        logits_visit = gen_ehr[j, :, :]
+                        target_visit = multihot_ehr_label[j, :, :]
+                        prob = logits_visit.softmax(dim=-1)[target_visit == 1]
+                        nll = -torch.log(prob + 1e-10)
+                        ppl = nll.exp()
+                        if torch.isnan(ppl).any():
+                            warnings.warn('NaN perplexity detected during lpl calculation')
+                        lpl_list.append(ppl)
 
-                    time_steps.extend(cleaned_time_step)
-                    synthetic_data.extend(cleaned_top_code)
-                    labels.extend(label)
+                    # # Stack or extend the data as per your original logic
+                    # synthetic_data.stack(gen_ehr) if args.target_disease in ['pancreas',
+                    #                                                          'mimic'] else synthetic_data.extend(
+                    #     gen_ehr)
+                    # real_data.stack(multihot_ehr_label) if args.target_disease in ['pancreas',
+                    #                                                                'mimic'] else real_data.extend(
+                    #     multihot_ehr_label)
+                    # time_steps.stack(time_step) if args.target_disease in ['pancreas', 'mimic'] else time_steps.extend(
+                    #     time_step)
 
-                # gen_codes_unique = []
-                # time_step_cleaned = []
+                # Calculate median perplexity outside the loop
+                median_ppl = torch.median(torch.cat(lpl_list))
+                print(f'Median perplexity: {median_ppl.item()}')
+
+                with open(str(args.save_dir) + csv_filename, 'a') as f:
+                    writer = csv.writer(f)
+                    writer.writerow([args.seed, median_ppl.item()])
+
+                # for i, data in enumerate(tqdm(train_loader, desc="Generating synthetic data", leave=False)):
                 #
-                # for i in range(len(synthetic_data)):  # iterate over patients
-                #     patient_visits = []
-                #     cleaned_patient_time_step = []
-                #     for j in range(len(synthetic_data[i])):  # iterate over visits for a given patient
-                #         if time_steps[i][j] != 100000:  # Exclude the time step equals to 100000
-                #             unique_codes = list(set(synthetic_data[i][j]))
-                #             patient_visits.append(unique_codes)
-                #             cleaned_patient_time_step.append(time_steps[i][j])
+                #     if args.target_disease in ['pancreas', 'mimic']:
+                #         ehr, time_step = data
                 #
-                #     gen_codes_unique.append(patient_visits)
-                #     time_step_cleaned.append(cleaned_patient_time_step)
+                #         multihot_ehr_label = torch.zeros((ehr.size(0), args.max_len, pad_id), dtype=torch.float32) + 1e-7
+                #         multihot_ehr_label = multihot_ehr_label.to(device)
+                #         for batch_idx in range(ehr.size(0)):
+                #             for seq_idx in range(args.max_len):
+                #                 for label in range(pad_id):
+                #                     if label != pad_id:
+                #                         multihot_ehr_label[batch_idx, seq_idx, label] = 1.0
+                #
+                #
+                #         _, gen_ehr = model(ehr, None)
+                #         time_step = time_step.cpu().numpy().tolist()
+                #         synthetic_data.stack(gen_ehr)
+                #         real_data.stack(multihot_ehr_label)
+                #         time_steps.stack(time_step)
+                #     else:
+                #         ehr, label, time_step = data
+                #
+                #         multihot_ehr_label = torch.zeros((ehr.size(0), args.max_len, pad_id), dtype=torch.float32) + 1e-7
+                #         multihot_ehr_label = multihot_ehr_label.to(device)
+                #         for batch_idx in range(ehr.size(0)):
+                #             for seq_idx in range(args.max_len):
+                #                 for label in range(pad_id):
+                #                     if label != pad_id:
+                #                         multihot_ehr_label[batch_idx, seq_idx, label] = 1.0
+                #
+                #         _, gen_ehr = model(ehr, label)
+                #         time_step = time_step.cpu().numpy().tolist()
+                #         synthetic_data.extend(gen_ehr)
+                #         real_data.extend(multihot_ehr_label)
+                #         time_steps.extend(time_step)
+                #
+                #     # Now calculate lpl per visit:
+                # lpl_list = []
+                # for i in range(len(synthetic_data)):
+                #     for j in range(len(synthetic_data[i])):
+                #         # Extract logits and targets for the current visit of the current batch item
+                #         logits_visit = synthetic_data[i, j, :]
+                #         target_visit = multihot_ehr_label[i, j, :]
+                #         prob = logits_visit.softmax(dim=-1)[target_visit == 1]
+                #         nll = -torch.log(prob + 1e-10)
+                #         ppl = nll.exp()
+                #         if torch.isnan(ppl).any():
+                #             warnings.warn('NaN perplexity detected during lpl calculation')
+                #         lpl_list.append(ppl)
+                # median_ppl = torch.median(torch.cat(lpl_list))
+                # print(f'Median perplexity: {median_ppl.item()}')
+                #
+                # with open(str(args.save_dir) + csv_filename, 'a') as f:
+                #     writer = csv.writer(f)
+                #     writer.writerow([args.seed, median_ppl.item()])
 
-                og_data, og_label, og_time_step = pickle.load(open(data_path + '_training_new.pickle', 'rb'))
-                og_data.extend(synthetic_data)
-                og_time_step.extend(time_steps)
-                og_label.extend(labels)
-                pickle.dump((og_data, og_label, og_time_step), open(str(args.save_dir) + combinedData_filename, 'wb'))
 
-        w2v = Word2Vec.load(str(args.save_dir) + word2vec_filename)
-        device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
-
-        predictor = LSTM_predictor(pad_id, args.max_num_codes, 100, args.dropout)
-        predictor.to(device)
-
-        train_dataset = MyDataset(str(args.save_dir) + combinedData_filename,
-                                  args.max_len, args.max_num_codes, pad_id, device)
-        test_dataset = MyDataset(data_path + '_testing_new.pickle',
-                                 args.max_len, args.max_num_codes, pad_id, device)
-        val_dataset = MyDataset(data_path + '_validation_new.pickle',
-                                args.max_len, args.max_num_codes, pad_id, device)
-        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
-        test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
-        val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
-
-        optimizer = Adam(predictor.parameters(), lr=args.learning_rate)
-        scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=args.factor, patience=args.patience,
-                                                   verbose=True)
-
-        CE_loss = nn.CrossEntropyLoss(reduction='mean')
-
-        print('Start training...Parameters')
-
-        for name, param in predictor.named_parameters():
-            if param.requires_grad:
-                print('\t{:45}\ttrainable\t{}'.format(name, param.size()))
-            else:
-                print('\t{:45}\tfixed\t{}'.format(name, param.size()))
-        num_params = sum(p.numel() for p in predictor.parameters() if p.requires_grad)
-        print('\ttotal:', num_params)
-        print()
-        print('-' * 71)
-
-        global_step, best_dev_epoch = 0, 0
-        best_dev_f1 = 0.0
-        best_test_pr, best_test_f1, best_test_kappa = 0.0, 0.0, 0.0
-        total_loss = 0.0
-
-        for epoch_id in tqdm(range(args.n_epochs), desc="Epochs"):
-            epoch_start_time = time.time()
-            predictor.train()
-
-            for i, data in enumerate(tqdm(train_loader, desc="Training", leave=False)):
-                ehr, _, label, _ = data
-                prediction = predictor(ehr)
-                loss = CE_loss(prediction, label)
-                loss.backward()
-                optimizer.step()
-
-            epoch_end_time = time.time()
-            print(f'Training time for epoch {epoch_id}: {(epoch_end_time - epoch_start_time):.2f} seconds.')
-
-            predictor.eval()
-
-            print('-' * 71)
-            print('evaluating train set...')
-            train_accuary, train_precision, train_recall, train_f1, train_roc_auc, train_pr_auc, train_kappa, train_loss = eval_metric(
-                train_loader, predictor)
-            print('evaluating val set...')
-            dev_accuary, dev_precision, dev_recall, dev_f1, dev_roc_auc, dev_pr_auc, dev_kappa, dev_loss = eval_metric(
-                val_loader, predictor)
-            print('evaluating test set...')
-            test_accuary, test_precision, test_recall, test_f1, test_roc_auc, test_pr_auc, test_kappa, test_loss = eval_metric(
-                test_loader, predictor)
-            print('-' * 71)
-            scheduler.step(dev_loss)
-
-            print(
-                f'| epoch {epoch_id:03d} | train accuary {train_accuary:.3f} | val accuary {dev_accuary:.3f} | test accuary {test_accuary:.3f} |')
-            print(
-                f'| epoch {epoch_id:03d} | train precision {train_precision:.3f} | val precision {dev_precision:.3f} | test precision {test_precision:.3f} |')
-            print(
-                f'| epoch {epoch_id:03d} | train recall {train_recall:.3f} | val recall {dev_recall:.3f} | test recall {test_recall:.3f} |')
-            print(f'| epoch {epoch_id:03d} | train f1 {train_f1:.3f} | val f1 {dev_f1:.3f} | test f1 {test_f1:.3f} |')
-            print(
-                f'| epoch {epoch_id:03d} | train roc_auc {train_roc_auc:.3f} | val roc_auc {dev_roc_auc:.3f} | test roc_auc {test_roc_auc:.3f} |')
-            print(
-                f'| epoch {epoch_id:03d} | train pr_auc {train_pr_auc:.3f} | val pr_auc {dev_pr_auc:.3f} | test pr_auc {test_pr_auc:.3f} |')
-            print(
-                f'| epoch {epoch_id:03d} | train kappa {train_kappa:.3f} | val kappa {dev_kappa:.3f} | test kappa {test_kappa:.3f} |')
-            print(
-                f'| epoch {epoch_id:03d} | train loss {train_loss:.3f} | val loss {dev_loss:.3f} | test loss {test_loss:.3f} |')
-            print('-' * 71)
-
-            if dev_f1 > best_dev_f1:
-                best_dev_f1 = dev_f1
-                best_test_pr, best_test_f1, best_test_kappa = test_precision, test_f1, test_kappa
-                best_dev_epoch = epoch_id
-                torch.save(predictor.state_dict(), str(args.save_dir) + str(args.target_disease) + '_predictor.pt')
-                print('Saving model (epoch {})'.format(epoch_id + 1))
-                print('-' * 71)
-            if epoch_id - best_dev_epoch > args.max_epochs_before_stop:
-                print('Stop training at epoch {}. The highest f1 achieved is {}'.format(epoch_id, best_dev_f1))
-                break
-
-        results_file = open(str(args.save_dir) + csv_filename, 'w')
-        writer = csv.writer(results_file)
-        writer.writerow([best_test_pr, best_test_f1, best_test_kappa])
+        #         og_data, og_label, og_time_step = pickle.load(open(data_path + '_training_new.pickle', 'rb'))
+        #         og_data.extend(synthetic_data)
+        #         og_time_step.extend(time_steps)
+        #         og_label.extend(labels)
+        #         pickle.dump((og_data, og_label, og_time_step), open(str(args.save_dir) + combinedData_filename, 'wb'))
+        #
+        # w2v = Word2Vec.load(str(args.save_dir) + word2vec_filename)
+        # device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
+        #
+        # predictor = LSTM_predictor(pad_id, args.max_num_codes, 100, args.dropout)
+        # predictor.to(device)
+        #
+        # train_dataset = MyDataset(str(args.save_dir) + combinedData_filename,
+        #                           args.max_len, args.max_num_codes, pad_id, device)
+        # test_dataset = MyDataset(data_path + '_testing_new.pickle',
+        #                          args.max_len, args.max_num_codes, pad_id, device)
+        # val_dataset = MyDataset(data_path + '_validation_new.pickle',
+        #                         args.max_len, args.max_num_codes, pad_id, device)
+        # train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
+        # test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
+        # val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
+        #
+        # optimizer = Adam(predictor.parameters(), lr=args.learning_rate)
+        # scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=args.factor, patience=args.patience,
+        #                                            verbose=True)
+        #
+        # CE_loss = nn.CrossEntropyLoss(reduction='mean')
+        #
+        # print('Start training...Parameters')
+        #
+        # for name, param in predictor.named_parameters():
+        #     if param.requires_grad:
+        #         print('\t{:45}\ttrainable\t{}'.format(name, param.size()))
+        #     else:
+        #         print('\t{:45}\tfixed\t{}'.format(name, param.size()))
+        # num_params = sum(p.numel() for p in predictor.parameters() if p.requires_grad)
+        # print('\ttotal:', num_params)
+        # print()
+        # print('-' * 71)
+        #
+        # global_step, best_dev_epoch = 0, 0
+        # best_dev_f1 = 0.0
+        # best_test_pr, best_test_f1, best_test_kappa = 0.0, 0.0, 0.0
+        # total_loss = 0.0
+        #
+        # for epoch_id in tqdm(range(args.n_epochs), desc="Epochs"):
+        #     epoch_start_time = time.time()
+        #     predictor.train()
+        #
+        #     for i, data in enumerate(tqdm(train_loader, desc="Training", leave=False)):
+        #         ehr, _, label, _ = data
+        #         prediction = predictor(ehr)
+        #         loss = CE_loss(prediction, label)
+        #         loss.backward()
+        #         optimizer.step()
+        #
+        #     epoch_end_time = time.time()
+        #     print(f'Training time for epoch {epoch_id}: {(epoch_end_time - epoch_start_time):.2f} seconds.')
+        #
+        #     predictor.eval()
+        #
+        #     print('-' * 71)
+        #     print('evaluating train set...')
+        #     train_accuary, train_precision, train_recall, train_f1, train_roc_auc, train_pr_auc, train_kappa, train_loss = eval_metric(
+        #         train_loader, predictor)
+        #     print('evaluating val set...')
+        #     dev_accuary, dev_precision, dev_recall, dev_f1, dev_roc_auc, dev_pr_auc, dev_kappa, dev_loss = eval_metric(
+        #         val_loader, predictor)
+        #     print('evaluating test set...')
+        #     test_accuary, test_precision, test_recall, test_f1, test_roc_auc, test_pr_auc, test_kappa, test_loss = eval_metric(
+        #         test_loader, predictor)
+        #     print('-' * 71)
+        #     scheduler.step(dev_loss)
+        #
+        #     print(
+        #         f'| epoch {epoch_id:03d} | train accuary {train_accuary:.3f} | val accuary {dev_accuary:.3f} | test accuary {test_accuary:.3f} |')
+        #     print(
+        #         f'| epoch {epoch_id:03d} | train precision {train_precision:.3f} | val precision {dev_precision:.3f} | test precision {test_precision:.3f} |')
+        #     print(
+        #         f'| epoch {epoch_id:03d} | train recall {train_recall:.3f} | val recall {dev_recall:.3f} | test recall {test_recall:.3f} |')
+        #     print(f'| epoch {epoch_id:03d} | train f1 {train_f1:.3f} | val f1 {dev_f1:.3f} | test f1 {test_f1:.3f} |')
+        #     print(
+        #         f'| epoch {epoch_id:03d} | train roc_auc {train_roc_auc:.3f} | val roc_auc {dev_roc_auc:.3f} | test roc_auc {test_roc_auc:.3f} |')
+        #     print(
+        #         f'| epoch {epoch_id:03d} | train pr_auc {train_pr_auc:.3f} | val pr_auc {dev_pr_auc:.3f} | test pr_auc {test_pr_auc:.3f} |')
+        #     print(
+        #         f'| epoch {epoch_id:03d} | train kappa {train_kappa:.3f} | val kappa {dev_kappa:.3f} | test kappa {test_kappa:.3f} |')
+        #     print(
+        #         f'| epoch {epoch_id:03d} | train loss {train_loss:.3f} | val loss {dev_loss:.3f} | test loss {test_loss:.3f} |')
+        #     print('-' * 71)
+        #
+        #     if dev_f1 > best_dev_f1:
+        #         best_dev_f1 = dev_f1
+        #         best_test_pr, best_test_f1, best_test_kappa = test_precision, test_f1, test_kappa
+        #         best_dev_epoch = epoch_id
+        #         torch.save(predictor.state_dict(), str(args.save_dir) + str(args.target_disease) + '_predictor.pt')
+        #         print('Saving model (epoch {})'.format(epoch_id + 1))
+        #         print('-' * 71)
+        #     if epoch_id - best_dev_epoch > args.max_epochs_before_stop:
+        #         print('Stop training at epoch {}. The highest f1 achieved is {}'.format(epoch_id, best_dev_f1))
+        #         break
+        #
+        # results_file = open(str(args.save_dir) + csv_filename, 'w')
+        # writer = csv.writer(results_file)
+        # writer.writerow([best_test_pr, best_test_f1, best_test_kappa])
 
 
 if __name__ == '__main__':
 
     name = 'tabDDPM'
-    seeds = [1,2,3,4,5]
-    datas = ['Heart_failure', 'COPD', 'Kidney', 'Amnesia', 'mimic']
-    max_lens = [9, 9, 9, 9, 10]
-    max_nums = [115, 102, 117, 199, 81]
+    seeds = [1]
+    datas = ['mimic']
+    max_lens = [20]
+    max_nums = [20]
     save_dir = './tabDDPM_dir/'
 
     for seed in seeds:

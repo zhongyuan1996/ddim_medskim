@@ -2,6 +2,8 @@ import pickle
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
+import ast
+import pandas as pd
 
 
 def padMatrix(input_data, max_num_pervisit, maxlen, pad_id):
@@ -78,13 +80,13 @@ def codeMask(input_data, max_num_pervisit, maxlen):
                 batch_mask[bid, pid, tid] = 0
     return batch_mask
 
-def codeMask2(input_data, max_num_pervisit, maxlen):
-    batch_mask = np.zeros((len(input_data), maxlen, max_num_pervisit), dtype=np.float32) + 1
+def codeMask_inverse(input_data, max_num_pervisit, maxlen):
+    batch_mask = np.zeros((len(input_data), maxlen, max_num_pervisit), dtype=np.float32)
     output = []
     for seq in input_data:
         record_ids = []
         for visit in seq:
-            visit_ids = [visit]  # Changed this line
+            visit_ids = visit[0: max_num_pervisit]
             record_ids.append(visit_ids)
         record_ids = record_ids[-maxlen:]
         output.append(record_ids)
@@ -92,7 +94,7 @@ def codeMask2(input_data, max_num_pervisit, maxlen):
     for bid, seq in enumerate(output):
         for pid, subseq in enumerate(seq):
             for tid, code in enumerate(subseq):
-                batch_mask[bid, pid, tid] = 0
+                batch_mask[bid, pid, tid] = 1
     return batch_mask
 
 class MyDataset(Dataset):
@@ -153,14 +155,14 @@ class MyDataset_mapping(Dataset):
             torch.tensor(self.labels[idx], dtype=torch.float).to(self.device), \
             torch.tensor(self.code_mask[idx], dtype=torch.float).to(self.device)
 
-class MyDataset3(Dataset):
+class MyDataset2(Dataset):
     def __init__(self, dir_ehr, max_len, max_numcode_pervisit, max_numblk_pervisit, ehr_pad_id,
                  device):
-        data = np.load(dir_ehr, allow_pickle=True)
-        self.ehr, labels, self.time_step = data['x'], data['y'], data['timeseq']
-        self.labels = [[0,1] if label == 1 else [1,0] for label in labels]
-        # self.ehr, _, _ = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
-        # self.time_step = padTime3(time_step, max_len, 100000)
+        ehr, self.labels, time_step = pickle.load(open(dir_ehr, 'rb'))
+        self.ehr, self.mask_ehr, self.lengths = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
+        # time_step = time_step_to_deltatime(time_step)
+        self.time_step = padTime(time_step, max_len, 10000)
+        self.code_mask = codeMask(ehr, max_numcode_pervisit, max_len)
         self.device = device
 
     def __len__(self):
@@ -171,15 +173,21 @@ class MyDataset3(Dataset):
             idx = idx.tolist()
 
         _ = None
-        return torch.tensor(self.ehr[idx], dtype=torch.float32).to(self.device),\
-               torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device),\
-               torch.tensor(self.labels[idx], dtype=torch.float).to(self.device)
-class MyDataset_with_single_label(Dataset):
+        return torch.tensor(self.labels[idx], dtype=torch.long).to(self.device), torch.LongTensor(self.ehr[idx]).to(
+            self.device), \
+               torch.LongTensor(self.mask_ehr[idx]).to(self.device), _, \
+               _, torch.tensor(self.lengths[idx], dtype=torch.long).to(self.device), \
+               torch.Tensor(self.time_step[idx]).to(self.device), torch.FloatTensor(self.code_mask[idx]).to(self.device)
+
+class MyDataset3(Dataset):
     def __init__(self, dir_ehr, max_len, max_numcode_pervisit, ehr_pad_id,
                  device):
-        ehr, self.labels, time_step = pickle.load(open(dir_ehr, 'rb'))
-        self.ehr, _, _ = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
+        ehr, labels, time_step = pickle.load(open(dir_ehr, 'rb'))
+        self.labels = [[0,1] if label == 1 else [1,0] for label in labels]
+
+        self.ehr, _, self.lengths = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
         self.time_step = padTime(time_step, max_len, 100000)
+        self.code_mask = codeMask(ehr, max_numcode_pervisit, max_len)
         self.device = device
 
     def __len__(self):
@@ -191,7 +199,86 @@ class MyDataset_with_single_label(Dataset):
 
         return torch.tensor(self.ehr[idx], dtype=torch.long).to(self.device),\
                torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device),\
+               torch.tensor(self.labels[idx], dtype=torch.float).to(self.device),\
+                  torch.tensor(self.code_mask[idx], dtype=torch.float).to(self.device),\
+                  torch.tensor(self.lengths[idx], dtype=torch.long).to(self.device)
+class MyDataset4(Dataset):
+    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, ehr_pad_id, w2v, flag, device):
+        self.labels = None
+        if flag == True:
+            data = pd.read_csv(dir_ehr)
+            ehr = data['code_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+            time_step = data['time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
+        else:
+
+            ehr, labels, time_step = pickle.load(open(dir_ehr, 'rb'))
+            self.labels = [[0,1] if label == 1 else [1,0] for label in labels]
+
+        self.ehr, _, _ = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
+        self.time_step = padTime(time_step, max_len, 100000)
+        self.device = device
+
+    def __len__(self):
+        return len(self.ehr)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+
+        if self.labels:
+
+            return torch.tensor(self.ehr[idx], dtype=torch.long).to(self.device),\
+               torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device),\
                torch.tensor(self.labels[idx], dtype=torch.long).to(self.device)
+        else:
+            return torch.tensor(self.ehr[idx], dtype=torch.long).to(self.device),\
+                torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device)
+
+
+class MyDataset_timegap(Dataset):
+    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, ehr_pad_id, device):
+        ehr, labels, visit_timegaps, time_step, code_timegaps = pickle.load(open(dir_ehr, 'rb'))
+        self.labels = [[0, 1] if label == 1 else [1, 0] for label in labels]
+
+        self.ehr, _, self.lengths = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
+
+        self.time_step = padTime(time_step, max_len, 10000)
+        self.visit_timegap = padTime(visit_timegaps, max_len, 10000)
+
+        self.code_timegaps, _, _ = padMatrix(code_timegaps, max_numcode_pervisit, max_len, 100000)
+
+        self.code_mask = codeMask(ehr, max_numcode_pervisit, max_len)
+
+        self.device = device
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        return torch.tensor(self.ehr[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.code_timegaps[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.labels[idx], dtype=torch.float).to(self.device),\
+            torch.tensor(self.code_mask[idx], dtype=torch.float).to(self.device),\
+            torch.tensor(self.lengths[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.visit_timegap[idx], dtype=torch.long).to(self.device)
+
+def collate_fn_timegap(batch):
+    ehr, time_step, code_timegaps, label, code_mask, length, visit_timegap = [], [], [], [], [], [], []
+    for data in batch:
+        ehr.append(data[0])
+        time_step.append(data[1])
+        code_timegaps.append(data[2])
+        label.append(data[3])
+        code_mask.append(data[4])
+        length.append(data[5])
+        visit_timegap.append(data[6])
+
+    return torch.stack(ehr, 0), torch.stack(time_step, 0), torch.stack(code_timegaps, 0), torch.stack(label, 0), torch.stack(code_mask, 0), torch.stack(length, 0), torch.stack(visit_timegap, 0)
 
 # class _MyDataset(Dataset):
 #     def __init__(self, dir_ehr, dir_txt, max_len, max_numcode_pervisit, max_numblk_pervisit, ehr_pad_id, txt_pad_id,
@@ -262,9 +349,16 @@ def collate_fn_w2vec(batch):
 
 
 class ehrGANDataset(Dataset):
-    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, ehr_pad_id, w2v, device):
-        ehr, labels, time_step = pickle.load(open(dir_ehr, 'rb'))
-        self.labels = [[0,1] if label == 1 else [1,0] for label in labels]
+    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, ehr_pad_id, w2v, flag, device):
+        self.labels = None
+        if flag == True:
+            data = pd.read_csv(dir_ehr)
+            ehr = data['code_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+            time_step = data['time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
+        else:
+
+            ehr, labels, time_step = pickle.load(open(dir_ehr, 'rb'))
+            self.labels = [[0,1] if label == 1 else [1,0] for label in labels]
 
         # aggregate ehr and time_step into 90-day windows
         ehr, time_step = self.segment_time_windows(ehr, time_step)
@@ -320,7 +414,7 @@ class ehrGANDataset(Dataset):
         return ehr_segmented, time_step_segmented
 
     def __len__(self):
-        return len(self.labels)
+        return len(self.ehr)
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
@@ -328,12 +422,15 @@ class ehrGANDataset(Dataset):
 
         temp_ehr, temp_code_mask = self.ehr_to_embedding(self.ehr[idx])
 
-        ehr = torch.tensor(temp_ehr, dtype=torch.float).to(self.device)
+        ehr_embedding = torch.tensor(temp_ehr, dtype=torch.float).to(self.device)
+        aggregated_code_ehr = torch.tensor(self.ehr[idx], dtype=torch.long).to(self.device)
         time_step = torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device)
-        label = torch.tensor(self.labels[idx], dtype=torch.float).to(self.device)
         code_mask = torch.tensor(temp_code_mask, dtype=torch.float).to(self.device)
-
-        return ehr, time_step, label, code_mask
+        if self.labels:
+            label = torch.tensor(self.labels[idx], dtype=torch.float).to(self.device)
+            return ehr_embedding, time_step, label, code_mask, aggregated_code_ehr
+        else:
+            return ehr_embedding, time_step, code_mask, aggregated_code_ehr
 
 
 class ehrGANDatasetWOAggregate(Dataset):
@@ -379,3 +476,54 @@ class ehrGANDatasetWOAggregate(Dataset):
         code_mask = torch.tensor(temp_code_mask, dtype=torch.float).to(self.device)
 
         return ehr, time_step, label, code_mask
+
+
+class pancreas_Gendataset(Dataset):
+    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, ehr_pad_id, device):
+
+        data = pd.read_csv(dir_ehr)
+        # self.multihot_ehr = data['code_multihot'].apply(lambda x: ast.literal_eval(x)).tolist()
+        self.demo = data['Demographic'].apply(lambda x: ast.literal_eval(x)).tolist()
+        ehr = data['code_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+        time_steps = data['time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
+        visit_consecutive_timegaps = data['consecutive_time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
+        code_timegaps = data['code_time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
+
+        self.ehr, _, self.lengths = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
+
+        self.time_step = padTime(time_steps, max_len, 10000)
+        self.visit_timegap = padTime(visit_consecutive_timegaps, max_len, 10000)
+
+        self.code_timegaps, _, _ = padMatrix(code_timegaps, max_numcode_pervisit, max_len, 100000)
+
+        self.code_mask = codeMask_inverse(ehr, max_numcode_pervisit, max_len)
+
+        self.device = device
+
+    def __len__(self):
+        return len(self.ehr)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        return torch.tensor(self.ehr[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.code_timegaps[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.code_mask[idx], dtype=torch.float).to(self.device),\
+            torch.tensor(self.lengths[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.visit_timegap[idx], dtype=torch.float).to(self.device),\
+            torch.tensor(self.demo[idx], dtype=torch.float).to(self.device)
+
+def gen_collate_fn(batch):
+    ehr, time_step, code_timegaps, code_mask, length, visit_timegap, demo= [], [], [], [], [], [], []
+    for data in batch:
+        ehr.append(data[0])
+        time_step.append(data[1])
+        code_timegaps.append(data[2])
+        code_mask.append(data[3])
+        length.append(data[4])
+        visit_timegap.append(data[5])
+        demo.append(data[6])
+
+    return torch.stack(ehr, 0), torch.stack(time_step, 0), torch.stack(code_timegaps, 0), torch.stack(code_mask, 0), torch.stack(length, 0), torch.stack(visit_timegap, 0), torch.stack(demo, 0)
