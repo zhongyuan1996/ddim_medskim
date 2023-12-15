@@ -80,7 +80,7 @@ def codeMask(input_data, max_num_pervisit, maxlen):
                 batch_mask[bid, pid, tid] = 0
     return batch_mask
 
-def codeMask_inverse(input_data, max_num_pervisit, maxlen):
+def codeMask_inverse(input_data, max_num_pervisit, maxlen, nan_pad_id):
     batch_mask = np.zeros((len(input_data), maxlen, max_num_pervisit), dtype=np.float32)
     output = []
     for seq in input_data:
@@ -94,7 +94,8 @@ def codeMask_inverse(input_data, max_num_pervisit, maxlen):
     for bid, seq in enumerate(output):
         for pid, subseq in enumerate(seq):
             for tid, code in enumerate(subseq):
-                batch_mask[bid, pid, tid] = 1
+                if code != nan_pad_id:
+                    batch_mask[bid, pid, tid] = 1
     return batch_mask
 
 class MyDataset(Dataset):
@@ -479,51 +480,144 @@ class ehrGANDatasetWOAggregate(Dataset):
 
 
 class pancreas_Gendataset(Dataset):
-    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, ehr_pad_id, device):
+    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, pad_id_list, nan_id_list, device):
 
         data = pd.read_csv(dir_ehr)
         # self.multihot_ehr = data['code_multihot'].apply(lambda x: ast.literal_eval(x)).tolist()
         self.demo = data['Demographic'].apply(lambda x: ast.literal_eval(x)).tolist()
-        ehr = data['code_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+        diag = data['DIAGNOSES_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+        drug = data['DRG_CODE_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+        lab = data['LAB_ITEM_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+        proc = data['PROC_ITEM_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+
+        # ehr = data['code_int'].apply(lambda x: ast.literal_eval(x)).tolist()
         time_steps = data['time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
         visit_consecutive_timegaps = data['consecutive_time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
-        code_timegaps = data['code_time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
+        # code_timegaps = data['code_time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
+        diag_timegaps = data['code_time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
+        drug_timegaps = data['drug_time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
+        lab_timegaps = data['lab_time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
+        proc_timegaps = data['proc_time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
 
-        self.ehr, _, self.lengths = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
+        self.diag, _, self.diag_lens = padMatrix(diag, max_numcode_pervisit, max_len, pad_id_list[0])
+        self.drug, _, self.drug_lens = padMatrix(drug, max_numcode_pervisit, max_len, pad_id_list[1])
+        self.lab, _, self.lab_lens = padMatrix(lab, max_numcode_pervisit, max_len, pad_id_list[2])
+        self.proc, _, self.proc_lens = padMatrix(proc, max_numcode_pervisit, max_len, pad_id_list[3])
 
-        self.time_step = padTime(time_steps, max_len, 10000)
-        self.visit_timegap = padTime(visit_consecutive_timegaps, max_len, 10000)
+        self.time_step = padTime(time_steps, max_len, 100000)
+        self.visit_timegap = padTime(visit_consecutive_timegaps, max_len, 100000)
 
-        self.code_timegaps, _, _ = padMatrix(code_timegaps, max_numcode_pervisit, max_len, 100000)
+        # self.ehr, _, self.lengths = padMatrix(ehr, max_numcode_pervisit, max_len, ehr_pad_id)
+        # self.time_step = padTime(time_steps, max_len, 10000)
+        # self.visit_timegap = padTime(visit_consecutive_timegaps, max_len, 10000)
 
-        self.code_mask = codeMask_inverse(ehr, max_numcode_pervisit, max_len)
+        # self.code_timegaps, _, _ = padMatrix(code_timegaps, max_numcode_pervisit, max_len, 100000)
+
+        self.diag_timegaps, _, _ = padMatrix(diag_timegaps, max_numcode_pervisit, max_len, 100000)
+        self.drug_timegaps, _, _ = padMatrix(drug_timegaps, max_numcode_pervisit, max_len, 100000)
+        self.lab_timegaps, _, _ = padMatrix(lab_timegaps, max_numcode_pervisit, max_len, 100000)
+        self.proc_timegaps, _, _ = padMatrix(proc_timegaps, max_numcode_pervisit, max_len, 100000)
+
+        # self.code_mask = codeMask_inverse(ehr, max_numcode_pervisit, max_len)
+        self.diag_mask = codeMask_inverse(diag, max_numcode_pervisit, max_len, nan_id_list[0])
+        self.drug_mask = codeMask_inverse(drug, max_numcode_pervisit, max_len, nan_id_list[1])
+        self.lab_mask = codeMask_inverse(lab, max_numcode_pervisit, max_len, nan_id_list[2])
+        self.proc_mask = codeMask_inverse(proc, max_numcode_pervisit, max_len, nan_id_list[3])
 
         self.device = device
 
     def __len__(self):
-        return len(self.ehr)
+        return len(self.diag)
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        return torch.tensor(self.ehr[idx], dtype=torch.long).to(self.device),\
-            torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device),\
-            torch.tensor(self.code_timegaps[idx], dtype=torch.long).to(self.device),\
-            torch.tensor(self.code_mask[idx], dtype=torch.float).to(self.device),\
-            torch.tensor(self.lengths[idx], dtype=torch.long).to(self.device),\
-            torch.tensor(self.visit_timegap[idx], dtype=torch.float).to(self.device),\
+        assert self.diag_lens[idx] == self.drug_lens[idx] == self.lab_lens[idx] == self.proc_lens[idx]
+
+        return torch.tensor(self.diag[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.drug[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.lab[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.proc[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device), \
+            torch.tensor(self.visit_timegap[idx], dtype=torch.float).to(self.device), \
+            torch.tensor(self.diag_timegaps[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.drug_timegaps[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.lab_timegaps[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.proc_timegaps[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.diag_mask[idx], dtype=torch.float).to(self.device),\
+            torch.tensor(self.drug_mask[idx], dtype=torch.float).to(self.device),\
+            torch.tensor(self.lab_mask[idx], dtype=torch.float).to(self.device),\
+            torch.tensor(self.proc_mask[idx], dtype=torch.float).to(self.device),\
+            torch.tensor(self.diag_lens[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.drug_lens[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.lab_lens[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.proc_lens[idx], dtype=torch.long).to(self.device),\
             torch.tensor(self.demo[idx], dtype=torch.float).to(self.device)
 
-def gen_collate_fn(batch):
-    ehr, time_step, code_timegaps, code_mask, length, visit_timegap, demo= [], [], [], [], [], [], []
-    for data in batch:
-        ehr.append(data[0])
-        time_step.append(data[1])
-        code_timegaps.append(data[2])
-        code_mask.append(data[3])
-        length.append(data[4])
-        visit_timegap.append(data[5])
-        demo.append(data[6])
 
-    return torch.stack(ehr, 0), torch.stack(time_step, 0), torch.stack(code_timegaps, 0), torch.stack(code_mask, 0), torch.stack(length, 0), torch.stack(visit_timegap, 0), torch.stack(demo, 0)
+
+        # return torch.tensor(self.ehr[idx], dtype=torch.long).to(self.device),\
+        #     torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device),\
+        #     torch.tensor(self.code_timegaps[idx], dtype=torch.long).to(self.device),\
+        #     torch.tensor(self.code_mask[idx], dtype=torch.float).to(self.device),\
+        #     torch.tensor(self.lengths[idx], dtype=torch.long).to(self.device),\
+        #     torch.tensor(self.visit_timegap[idx], dtype=torch.float).to(self.device),\
+        #     torch.tensor(self.demo[idx], dtype=torch.float).to(self.device)
+
+def gen_collate_fn(batch):
+    diag, drug, lab, proc, time_step, visit_timegap, diag_timegaps, drug_timegaps, lab_timegaps, proc_timegaps, diag_mask, drug_mask, lab_mask, proc_mask, diag_lens, drug_lens, lab_lens, proc_lens, demo = \
+        [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []
+    for data in batch:
+        diag.append(data[0])
+        drug.append(data[1])
+        lab.append(data[2])
+        proc.append(data[3])
+        time_step.append(data[4])
+        visit_timegap.append(data[5])
+        diag_timegaps.append(data[6])
+        drug_timegaps.append(data[7])
+        lab_timegaps.append(data[8])
+        proc_timegaps.append(data[9])
+        diag_mask.append(data[10])
+        drug_mask.append(data[11])
+        lab_mask.append(data[12])
+        proc_mask.append(data[13])
+        diag_lens.append(data[14])
+        drug_lens.append(data[15])
+        lab_lens.append(data[16])
+        proc_lens.append(data[17])
+        demo.append(data[18])
+
+    return torch.stack(diag,0), \
+        torch.stack(drug,0), \
+        torch.stack(lab,0), \
+        torch.stack(proc,0), \
+        torch.stack(time_step,0), \
+        torch.stack(visit_timegap,0), \
+        torch.stack(diag_timegaps,0), \
+        torch.stack(drug_timegaps,0), \
+        torch.stack(lab_timegaps,0), \
+        torch.stack(proc_timegaps,0), \
+        torch.stack(diag_mask,0), \
+        torch.stack(drug_mask,0), \
+        torch.stack(lab_mask,0), \
+        torch.stack(proc_mask,0), \
+        torch.stack(diag_lens,0), \
+        torch.stack(drug_lens,0), \
+        torch.stack(lab_lens,0), \
+        torch.stack(proc_lens,0),\
+        torch.stack(demo,0)
+
+
+    # ehr, time_step, code_timegaps, code_mask, length, visit_timegap, demo= [], [], [], [], [], [], []
+    # for data in batch:
+    #     ehr.append(data[0])
+    #     time_step.append(data[1])
+    #     code_timegaps.append(data[2])
+    #     code_mask.append(data[3])
+    #     length.append(data[4])
+    #     visit_timegap.append(data[5])
+    #     demo.append(data[6])
+    #
+    # return torch.stack(ehr, 0), torch.stack(time_step, 0), torch.stack(code_timegaps, 0), torch.stack(code_mask, 0), torch.stack(length, 0), torch.stack(visit_timegap, 0), torch.stack(demo, 0)

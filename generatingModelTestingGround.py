@@ -71,11 +71,11 @@ class FocalLoss(nn.Module):
 #     mean_loss = total_loss / total_samples
 #     return mean_loss
 
-def main(seed, name, data, max_len, max_num, sav_dir, mode, focal_alpha, focal_gamma):
+def main(seed, name, data, max_len, max_num, sav_dir, mode, focal_alpha, focal_gamma, short_ICD):
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
     parser.add_argument('--seed', default=seed, type=int, help='seed')
-    parser.add_argument('-bs', '--batch_size', default=8, type=int)
+    parser.add_argument('-bs', '--batch_size', default=32, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
@@ -96,8 +96,8 @@ def main(seed, name, data, max_len, max_num, sav_dir, mode, focal_alpha, focal_g
     parser.add_argument('--target_rate', default=0.3, type=float)
     parser.add_argument('--max_grad_norm', default=1.0, type=float, help='max grad norm (0 to disable)')
     parser.add_argument('--warmup_steps', default=200, type=int)
-    parser.add_argument('--n_epochs', default=30, type=int)
-    parser.add_argument('--log_interval', default=20, type=int)
+    parser.add_argument('--n_epochs', default=5, type=int)
+    parser.add_argument('--log_interval', default=100, type=int)
     parser.add_argument('--mode', default=mode)
     parser.add_argument('--model', default=name)
     parser.add_argument('--save_dir', default=sav_dir)
@@ -106,6 +106,7 @@ def main(seed, name, data, max_len, max_num, sav_dir, mode, focal_alpha, focal_g
     parser.add_argument('--lambda_ce', default=10, type=float)
     parser.add_argument('--focal_alpha', default=focal_alpha, type=float)
     parser.add_argument('--focal_gamma', default=focal_gamma, type=float)
+    parser.add_argument('--short_ICD', default=short_ICD, type=bool_flag, nargs='?', const=True, help='use short ICD codes')
     args = parser.parse_args()
     if args.mode == 'train':
         train(args)
@@ -116,11 +117,11 @@ def main(seed, name, data, max_len, max_num, sav_dir, mode, focal_alpha, focal_g
 
 def train(args):
     print(args)
-    # random.seed(args.seed)
-    # np.random.seed(args.seed)
-    # torch.manual_seed(args.seed)
-    # if torch.cuda.is_available() and args.cuda:
-    #     torch.cuda.manual_seed(args.seed)
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    if torch.cuda.is_available() and args.cuda:
+        torch.cuda.manual_seed(args.seed)
 
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
@@ -142,10 +143,37 @@ def train(args):
             demo_len = 15
             pad_id = len(code2id)
             data_path = './data/pancreas/'
-        elif args.target_disease == 'mimic':
-            code2id = pd.read_csv('./data/mimic/code_to_int_mapping.csv', header=None)
-            demo_len = 70
-            pad_id = len(code2id)
+        elif args.target_disease == 'mimic' and args.short_ICD:
+            diag2id = pd.read_csv('./data/mimic/diagnosis_to_int_mapping_3dig.csv', header=None)
+            drug2id = pd.read_csv('./data/mimic/drug_to_int_mapping_3dig.csv', header=None)
+            lab2id = pd.read_csv('./data/mimic/lab_to_int_mapping_3dig.csv', header=None)
+            proc2id = pd.read_csv('./data/mimic/proc_to_int_mapping_3dig.csv', header=None)
+            demo_len = 76
+            diag_pad_id = len(diag2id)
+            drug_pad_id = len(drug2id)
+            lab_pad_id = len(lab2id)
+            proc_pad_id = len(proc2id)
+            drug_nan_id = 146
+            lab_nan_id = 206
+            proc_nan_id = 24
+            pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
+            nan_id_list = [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id]
+            data_path = './data/mimic/'
+        elif args.target_disease == 'mimic' and not args.short_ICD:
+            diag2id = pd.read_csv('./data/mimic/diagnosis_to_int_mapping_5dig.csv', header=None)
+            drug2id = pd.read_csv('./data/mimic/drug_to_int_mapping_5dig.csv', header=None)
+            lab2id = pd.read_csv('./data/mimic/lab_to_int_mapping_5dig.csv', header=None)
+            proc2id = pd.read_csv('./data/mimic/proc_to_int_mapping_5dig.csv', header=None)
+            demo_len = 76
+            diag_pad_id = len(diag2id)
+            drug_pad_id = len(drug2id)
+            lab_pad_id = len(lab2id)
+            proc_pad_id = len(proc2id)
+            drug_nan_id = 146
+            lab_nan_id = 206
+            proc_nan_id = 24
+            pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
+            nan_id_list = [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id]
             data_path = './data/mimic/'
         else:
             raise ValueError('Invalid disease')
@@ -153,17 +181,33 @@ def train(args):
 
         if args.model in ('MedDiffGa'):
 
-            train_dataset = pancreas_Gendataset(data_path + 'train_' + str(args.target_disease) + '.csv',
-                                      args.max_len, args.max_num_codes, pad_id, device)
-            dev_dataset = pancreas_Gendataset(data_path + 'val_' + str(args.target_disease) + '.csv',
-                                    args.max_len,args.max_num_codes, pad_id, device)
-            test_dataset = pancreas_Gendataset(data_path + 'test_' + str(args.target_disease) + '.csv',  args.max_len,
-                                     args.max_num_codes, pad_id, device)
+            if args.short_ICD:
+
+                train_dataset = pancreas_Gendataset(data_path + 'train_3dig' + str(args.target_disease) + '.csv',
+                                          args.max_len, args.max_num_codes, pad_id_list, nan_id_list, device)
+                dev_dataset = pancreas_Gendataset(data_path + 'val_3dig' + str(args.target_disease) + '.csv',
+                                        args.max_len,args.max_num_codes, pad_id_list, nan_id_list, device)
+                test_dataset = pancreas_Gendataset(data_path + 'test_3dig' + str(args.target_disease) + '.csv',  args.max_len,
+                                         args.max_num_codes, pad_id_list, nan_id_list, device)
+
+                # train_dataset = pancreas_Gendataset(data_path + 'toy_3dig' + str(args.target_disease) + '.csv',
+                #                           args.max_len, args.max_num_codes, pad_id_list, nan_id_list, device)
+                # dev_dataset = pancreas_Gendataset(data_path + 'toy_3dig' + str(args.target_disease) + '.csv',
+                #                         args.max_len,args.max_num_codes, pad_id_list, nan_id_list, device)
+                # test_dataset = pancreas_Gendataset(data_path + 'toy_3dig' + str(args.target_disease) + '.csv',  args.max_len,
+                #                          args.max_num_codes, pad_id_list, nan_id_list, device)
+            else:
+                train_dataset = pancreas_Gendataset(data_path + 'train_5dig' + str(args.target_disease) + '.csv',
+                                          args.max_len, args.max_num_codes, pad_id_list, nan_id_list, device)
+                dev_dataset = pancreas_Gendataset(data_path + 'val_5dig' + str(args.target_disease) + '.csv',
+                                        args.max_len,args.max_num_codes, pad_id_list, nan_id_list, device)
+                test_dataset = pancreas_Gendataset(data_path + 'test_5dig' + str(args.target_disease) + '.csv',  args.max_len,
+                                         args.max_num_codes, pad_id_list, nan_id_list, device)
             train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=True, collate_fn=gen_collate_fn)
             dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=gen_collate_fn)
             test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=gen_collate_fn)
-            if args.model == 'MedDiffGa':
-                model = MedDiffGa(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, demo_len, device)
+        if args.model == 'MedDiffGa':
+                model = MedDiffGa(pad_id_list, args.d_model, args.dropout, args.dropout_emb, args.num_layers, demo_len, device)
         else:
                 raise ValueError('Invalid model')
         model.to(device)
@@ -191,7 +235,9 @@ def train(args):
         print('-' * 71)
         global_step, best_dev_epoch, total_loss = 0, 0, 0.0
         CE_loss, Time_loss, Diff_loss = 0.0, 0.0, 0.0
-        best_val_lpl, best_test_lpl, best_train_lpl = 1e10, 1e10, 1e10
+        best_diag_lpl, best_drug_lpl, best_lab_lpl, best_proc_lpl = 1e10, 1e10, 1e10, 1e10
+        best_diag_mpl, best_drug_mpl, best_lab_mpl, best_proc_mpl = 1e10, 1e10, 1e10, 1e10
+        best_choosing_statistic = 1e10
         eva = Evaluator(model, device)
         focal = FocalLoss(alpha=args.focal_alpha, gamma=args.focal_gamma, reduction='mean')
         model.train()
@@ -207,23 +253,58 @@ def train(args):
                 #     ehr, time_step, code_timegaps, labels, code_mask, lengths, visit_timegaps = data
                 #     outputs = model(ehr, None, lengths, time_step, code_mask, code_timegaps, visit_timegaps)
                 if args.model in ('MedDiffGa'):
-                    ehr, time_step, code_timegaps, code_mask, lengths, visit_timegaps, demo = data
-                    logits, Delta_ts, added_z, learned_z = model(ehr, None, lengths, time_step, code_mask, code_timegaps, visit_timegaps, demo)
+                    # ehr, time_step, code_timegaps, code_mask, lengths, visit_timegaps, demo = data
+                    # logits, Delta_ts, added_z, learned_z = model(ehr, None, lengths, time_step, code_mask, code_timegaps, visit_timegaps, demo)
+                    diag_seq, drug_seq, lab_seq, proc_seq, time_step, visit_timegaps, diag_timegaps, drug_timegaps, lab_timegaps, proc_timegaps,\
+                        diag_mask, drug_mask, lab_mask, proc_mask, diag_length, drug_length, lab_length, proc_length, demo = data
+                    diag_logits, drug_logits, lab_logits, proc_logits, Delta_ts, added_z, learned_z = model(diag_seq, drug_seq, lab_seq, proc_seq, time_step, visit_timegaps, diag_timegaps, drug_timegaps, lab_timegaps, proc_timegaps,\
+                        diag_mask, drug_mask, lab_mask, proc_mask, diag_length, drug_length, lab_length, proc_length, demo)
                 else:
                     raise ValueError('Invalid model')
-                multihot_ehr = torch.zeros_like(logits, dtype=torch.float32)
+                multihot_diag = torch.zeros_like(diag_logits, dtype=torch.float32)
+                multihot_drug = torch.zeros_like(drug_logits, dtype=torch.float32)
+                multihot_lab = torch.zeros_like(lab_logits, dtype=torch.float32)
+                multihot_proc = torch.zeros_like(proc_logits, dtype=torch.float32)
 
-                for batch_idx in range(ehr.size(0)):
-                    for seq_idx in range(ehr.size(1)):
-                        for label in ehr[batch_idx, seq_idx]:
-                            if label != pad_id:
-                                multihot_ehr[batch_idx, seq_idx, label] = 1.0
-                length_mask = torch.zeros(ehr.size(0), args.max_len, dtype=torch.float32).to(device)
-                #mask timestep based on length
-                for i in range(ehr.size(0)):
-                    length_mask[i, :lengths[i]] = 1.0
+                # valid_diag_mask = diag_seq != diag_pad_id
+                # valid_drug_mask = (drug_seq != drug_pad_id) & (drug_seq != drug_nan_id)
+                # valid_lab_mask = (lab_seq != lab_pad_id) & (lab_seq != lab_nan_id)
+                # valid_proc_mask = (proc_seq != proc_pad_id) & (proc_seq != proc_nan_id)
 
-                a = focal(logits, multihot_ehr) * args.lambda_ce
+                valid_diag_mask = diag_mask
+                valid_drug_mask = drug_mask
+                valid_lab_mask = lab_mask
+                valid_proc_mask = proc_mask
+
+                valid_diag_batch_indices, valid_diag_seq_indices, valid_diag_code_indices = torch.where(valid_diag_mask)
+                valid_drug_batch_indices, valid_drug_seq_indices, valid_drug_code_indices = torch.where(valid_drug_mask)
+                valid_lab_batch_indices, valid_lab_seq_indices, valid_lab_code_indices = torch.where(valid_lab_mask)
+                valid_proc_batch_indices, valid_proc_seq_indices, valid_proc_code_indices = torch.where(valid_proc_mask)
+
+                multihot_diag[valid_diag_batch_indices, valid_diag_seq_indices, valid_diag_code_indices] = 1.0
+                multihot_drug[valid_drug_batch_indices, valid_drug_seq_indices, valid_drug_code_indices] = 1.0
+                multihot_lab[valid_lab_batch_indices, valid_lab_seq_indices, valid_lab_code_indices] = 1.0
+                multihot_proc[valid_proc_batch_indices, valid_proc_seq_indices, valid_proc_code_indices] = 1.0
+
+                sequence_range = torch.arange(args.max_len, device=diag_seq.device).expand(diag_seq.size(0), args.max_len)
+                expanded_lengths = diag_length.unsqueeze(-1).expand_as(sequence_range)
+                length_mask = (sequence_range < expanded_lengths).float()
+
+                # for batch_idx in range(diag_seq.size(0)):
+                #     for seq_idx in range(diag_seq.size(1)):
+                #         for label in diag_seq[batch_idx, seq_idx]:
+                #             if label != pad_id:
+                #                 multihot_diag[batch_idx, seq_idx, label] = 1.0
+
+
+
+                # length_mask = torch.zeros(ehr.size(0), args.max_len, dtype=torch.float32).to(device)
+                # #mask timestep based on length
+                # for i in range(ehr.size(0)):
+                #     length_mask[i, :lengths[i]] = 1.0
+
+                # a = focal(logits, multihot_ehr) * args.lambda_ce
+                a = (focal(diag_logits, multihot_diag) + focal(drug_logits, multihot_drug) + focal(lab_logits, multihot_lab) + focal(proc_logits, multihot_proc)) * args.lambda_ce
                 b = torch.log(MSE(Delta_ts * length_mask, visit_timegaps * length_mask) + 1e-10) * args.lambda_timegap
                 c = MSE(added_z, learned_z) * args.lambda_diff
                 loss = a + b + c
@@ -250,24 +331,48 @@ def train(args):
                     total_loss, CE_loss, Time_loss, Diff_loss = 0.0, 0.0, 0.0, 0.0
                     start_time = time.time()
                 global_step += 1
-
+            drug_nan_id = 146
+            lab_nan_id = 206
+            proc_nan_id = 24
             model.eval()
             if args.model in ('MedDiffGa'):
-                train_lpl = eva.eval(train_dataloader, pad_id, ['lpl'])['lpl']
-                val_lpl = eva.eval(dev_dataloader, pad_id, ['lpl'])['lpl']
-                test_lpl = eva.eval(test_dataloader, pad_id, ['lpl'])['lpl']
+                train_res = eva.eval(train_dataloader, [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id], [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id], ['diag', 'drug', 'lab', 'proc'], ['lpl', 'mpl'])
+                val_res = eva.eval(dev_dataloader, [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id], [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id], ['diag', 'drug', 'lab', 'proc'], ['lpl', 'mpl'])
+                test_res = eva.eval(test_dataloader, [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id], [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id], ['diag', 'drug', 'lab', 'proc'], ['lpl', 'mpl'])
+                train_diag_lpl, tran_drug_lpl, train_lab_lpl, train_proc_lpl = train_res['lpl_diag'], train_res['lpl_drug'], train_res['lpl_lab'], train_res['lpl_proc']
+                val_diag_lpl, val_drug_lpl, val_lab_lpl, val_proc_lpl = val_res['lpl_diag'], val_res['lpl_drug'], val_res['lpl_lab'], val_res['lpl_proc']
+                test_diag_lpl, test_drug_lpl, test_lab_lpl, test_proc_lpl = test_res['lpl_diag'], test_res['lpl_drug'], test_res['lpl_lab'], test_res['lpl_proc']
+
+                train_diag_mpl, tran_drug_mpl, train_lab_mpl, train_proc_mpl = train_res['mpl_diag'], train_res['mpl_drug'], train_res['mpl_lab'], train_res['mpl_proc']
+                val_diag_mpl, val_drug_mpl, val_lab_mpl, val_proc_mpl = val_res['mpl_diag'], val_res['mpl_drug'], val_res['mpl_lab'], val_res['mpl_proc']
+                test_diag_mpl, test_drug_mpl, test_lab_mpl, test_proc_mpl = test_res['mpl_diag'], test_res['mpl_drug'], test_res['mpl_lab'], test_res['mpl_proc']
+
+                choosing_statistic = np.median([val_diag_lpl, val_drug_lpl, val_lab_lpl, val_proc_lpl, val_diag_mpl, val_drug_mpl, val_lab_mpl, val_proc_mpl])
+
             else:
                 raise ValueError('Invalid model')
             print('-' * 71)
-            print('| end of epoch {:5} | time: {:5.2f}s | train lpl {:7.4f} | dev lpl {:7.4f} | test lpl {:7.4f} |'.format(
-                epoch_id, (time.time() - start_time), train_lpl, val_lpl, test_lpl))
+            # print('train lpl {:7.4f} | dev lpl {:7.4f} | test lpl {:7.4f}'.format(train_lpl, val_lpl, test_lpl))
+            print('Epoch: {:5}'.format(epoch_id))
+            print('Diagnosis:')
+            print('train lpl {:7.4f} | dev lpl {:7.4f} | test lpl {:7.4f}'.format(train_diag_lpl, val_diag_lpl, test_diag_lpl))
+            print('train mpl {:7.4f} | dev mpl {:7.4f} | test mpl {:7.4f}'.format(train_diag_mpl, val_diag_mpl, test_diag_mpl))
+            print('Drug:')
+            print('train lpl {:7.4f} | dev lpl {:7.4f} | test lpl {:7.4f}'.format(tran_drug_lpl, val_drug_lpl, test_drug_lpl))
+            print('train mpl {:7.4f} | dev mpl {:7.4f} | test mpl {:7.4f}'.format(tran_drug_mpl, val_drug_mpl, test_drug_mpl))
+            print('Lab:')
+            print('train lpl {:7.4f} | dev lpl {:7.4f} | test lpl {:7.4f}'.format(train_lab_lpl, val_lab_lpl, test_lab_lpl))
+            print('train mpl {:7.4f} | dev mpl {:7.4f} | test mpl {:7.4f}'.format(train_lab_mpl, val_lab_mpl, test_lab_mpl))
+            print('Procedure:')
+            print('train lpl {:7.4f} | dev lpl {:7.4f} | test lpl {:7.4f}'.format(train_proc_lpl, val_proc_lpl, test_proc_lpl))
+            print('train mpl {:7.4f} | dev mpl {:7.4f} | test mpl {:7.4f}'.format(train_proc_mpl, val_proc_mpl, test_proc_mpl))
             print('-' * 71)
 
-            if val_lpl <= best_val_lpl:
-                best_train_lpl = train_lpl
-                best_val_lpl = val_lpl
-                best_test_lpl = test_lpl
+            if choosing_statistic <= best_choosing_statistic:
+                best_diag_lpl, best_drug_lpl, best_lab_lpl, best_proc_lpl = test_diag_lpl, test_drug_lpl, test_lab_lpl, test_proc_lpl
+                best_diag_mpl, best_drug_mpl, best_lab_mpl, best_proc_mpl = test_diag_mpl, test_drug_mpl, test_lab_mpl, test_proc_mpl
                 best_dev_epoch = epoch_id
+                best_choosing_statistic = choosing_statistic
                 torch.save([model, args], model_path)
                 # torch.save([model, args], model_path)
                 # with open(log_path, 'a') as fout:
@@ -277,12 +382,13 @@ def train(args):
                 break
 
         print()
-        print('training ends in {} epochs'.format(epoch_id))
-        print('final train lpl {:7.4f} | dev lpl {:7.4f} | test lpl {:7.4f}'.format(best_train_lpl, best_val_lpl, best_test_lpl))
-        #write to csv
+        print('training ends at {} epoch'.format(epoch_id))
+        print('Final statistics:')
+        print('lpl: diag {:7.4f} | drug {:7.4f} | lab {:7.4f} | proc {:7.4f}'.format(best_diag_lpl, best_drug_lpl, best_lab_lpl, best_proc_lpl))
+        print('mpl: diag {:7.4f} | drug {:7.4f} | lab {:7.4f} | proc {:7.4f}'.format(best_diag_mpl, best_drug_mpl, best_lab_mpl, best_proc_mpl))
         with open(args.save_dir + csv_filename, 'w') as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow([best_train_lpl, best_val_lpl, best_test_lpl])
+            writer.writerow([best_diag_lpl, best_drug_lpl, best_lab_lpl, best_proc_lpl, best_diag_mpl, best_drug_mpl, best_lab_mpl, best_proc_mpl])
         print()
 
 def gen(args):
@@ -318,7 +424,7 @@ def gen(args):
         train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=True, collate_fn=gen_collate_fn)
         dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=gen_collate_fn)
         test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=gen_collate_fn)
-        if args.model == 'MedDiffGa':
+    if args.model == 'MedDiffGa':
             model = MedDiffGa(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, demo_len, device)
     else:
             raise ValueError('Invalid model')
@@ -362,9 +468,10 @@ def gen(args):
 if __name__ == '__main__':
 
     modes = ['train']
-    seeds = [1]
-    focal_alphas = [0.25, 0.5, 0.75]
-    focal_gammas = [1.0, 2.0, 5.0]
+    short_ICD = True
+    seeds = [10, 11, 12]
+    focal_alphas = [0.5]
+    focal_gammas = [1.0]
     # seeds = [11]
     # names = ['toy','LSTM','Hitatime', 'Hita']
     save_path = './saved_'
@@ -379,7 +486,7 @@ if __name__ == '__main__':
                 for focal_gamma in focal_gammas:
                     for name, save_dir in zip(names, save_dirs):
                         for data, max_len, max_num in zip(datas, max_lens, max_nums):
-                            main(seed, name, data, max_len, max_num, save_dir, mode, focal_alpha, focal_gamma)
+                            main(seed, name, data, max_len, max_num, save_dir, mode, focal_alpha, focal_gamma, short_ICD)
 
     # csv_path = './saved_models/'
     #

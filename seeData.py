@@ -5,9 +5,50 @@ import pandas as pd
 from models.dataset import padMatrix,padTime
 from sklearn.model_selection import train_test_split
 import random
+import ast
 # import matplotlib.pyplot as plt
 
 random.seed(1234)
+
+train = pd.read_csv('data/mimic/1.4/train_3digmimic.csv')
+test = pd.read_csv('data/mimic/1.4/test_3digmimic.csv')
+val = pd.read_csv('data/mimic/1.4/val_3digmimic.csv')
+
+#join three dataset together
+data = pd.concat([train, test, val])
+diag = data['DIAGNOSES_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+drug = data['DRG_CODE_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+lab = data['LAB_ITEM_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+proc = data['PROC_ITEM_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+
+#itrate though each patient and each visit to get the average and maximum diagnosis, drug, lab, proc length
+diag_length = []
+drug_length = []
+lab_length = []
+proc_length = []
+for patient in diag:
+    for visit in patient:
+        diag_length.append(len(visit))
+for patient in drug:
+    for visit in patient:
+        drug_length.append(len(visit))
+for patient in lab:
+    for visit in patient:
+        lab_length.append(len(visit))
+for patient in proc:
+    for visit in patient:
+        proc_length.append(len(visit))
+
+print("average diagnosis length: " + str(sum(diag_length)/len(diag_length)))
+print("average drug length: " + str(sum(drug_length)/len(drug_length)))
+print("average lab length: " + str(sum(lab_length)/len(lab_length)))
+print("average proc length: " + str(sum(proc_length)/len(proc_length)))
+
+print("max diagnosis length: " + str(max(diag_length)))
+print("max drug length: " + str(max(drug_length)))
+print("max lab length: " + str(max(lab_length)))
+print("max proc length: " + str(max(proc_length)))
+
 
 # ehrs = pickle.load(open('data/mimic/1.4/test.seqs', 'rb'))
 # labels = pickle.load(open('data/mimic/1.4/test.morts', 'rb'))
