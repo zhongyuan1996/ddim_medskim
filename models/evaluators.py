@@ -81,19 +81,16 @@ class Evaluator:
                 if self.model.name == 'MedDiffGa':
                     diag_logits, drug_logits, lab_logits, proc_logits, Delta_ts, added_z, learned_z = self.model(diag_seq, drug_seq, lab_seq, proc_seq,time_step,visit_timegaps,diag_timegaps,drug_timegaps,lab_timegaps,proc_timegaps,
                     diag_mask,drug_mask,lab_mask,proc_mask,diag_length,drug_length,lab_length,proc_length,demo)
-                # elif self.model.model == 'ehrGAN':
-                #     ehr_emb, _, _, mask, code_ehr = data
-                #     gen_ehr, real_ehr = self.model(ehr_emb, mask)
+                elif self.model.name == 'GAN':
+                    _, _, _, _, diag_logits, drug_logits, lab_logits, proc_logits, _, _, _, _ = self.model(
+                        diag_seq, drug_seq, lab_seq, proc_seq)
+                else:
+                    print('Invalid model name')
 
                 multihot_diag = torch.zeros_like(diag_logits, dtype=torch.float32)
                 multihot_drug = torch.zeros_like(drug_logits, dtype=torch.float32)
                 multihot_lab = torch.zeros_like(lab_logits, dtype=torch.float32)
                 multihot_proc = torch.zeros_like(proc_logits, dtype=torch.float32)
-
-                # valid_diag_mask = (diag_seq != pad_id_list[0]) & (diag_seq != nan_id_list[0])
-                # valid_drug_mask = (drug_seq != pad_id_list[1]) & (drug_seq != nan_id_list[1])
-                # valid_lab_mask = (lab_seq != pad_id_list[2]) & (lab_seq != nan_id_list[2])
-                # valid_proc_mask = (proc_seq != pad_id_list[3]) & (proc_seq != nan_id_list[3])
 
                 valid_diag_mask = diag_mask
                 valid_drug_mask = drug_mask

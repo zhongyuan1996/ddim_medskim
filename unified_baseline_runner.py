@@ -80,7 +80,7 @@ def train(args):
         print("conducted_experiments")
     else:
         config_path = os.path.join(args.save_dir, 'config.json')
-        model_path = os.path.join(args.save_dir, str(args.model) + '_' + str(args.target_disease) + '_' + str(args.seed) + '_' + str(args.focal_alpha) + '_' + str(args.focal_gamma) + '.pt')
+        model_path = os.path.join(args.save_dir, str(args.model) + '_' + str(args.target_disease) + '_' + str(args.seed) + '.pt')
         log_path = os.path.join(args.save_dir, 'log.csv')
         # export_config(args, config_path)
         check_path(model_path)
@@ -188,10 +188,9 @@ def train(args):
             print()
             print('-' * 71)
             global_step, best_dev_epoch, total_loss = 0, 0, 0.0
-            CE_loss, Time_loss, Diff_loss = 0.0, 0.0, 0.0
-            best_diag_lpl, best_drug_lpl, best_lab_lpl, best_proc_lpl = 1e10, 1e10, 1e10, 1e10
-            best_diag_mpl, best_drug_mpl, best_lab_mpl, best_proc_mpl = 1e10, 1e10, 1e10, 1e10
-            best_choosing_statistic = 1e10
+            generation_module_loss, prediction_module_loss = 0.0, 0.0
+            choosing_statistic = 1e10
+
 
             for epoch_id in range(args.n_epochs):
                 print('epoch: {:5} '.format(epoch_id))
@@ -214,15 +213,150 @@ def train(args):
                         fake_labels = torch.zeros(v_gen.size(0), 1).to(device)
 
                         loss_real = CE(real_discrimination, real_labels)
-                        loss_fake = CE(gen_discrimination, fake_labels)
+                        loss_fake = CE(gen_discrimination.detach(), fake_labels)
 
                         d_loss = (loss_real + loss_fake)/2
                         d_loss.backward()
                         optim_discriminator.step()
-
                         g_loss = CE(gen_discrimination, real_labels)
-
                         optim_generator.zero_grad()
 
                         g_loss.backward()
                         optim_generator.step()
+
+                        multihot_diag = torch.zeros_like(real_diag_logits, dtype=torch.float32)
+                        multihot_drug = torch.zeros_like(real_drug_logits, dtype=torch.float32)
+                        multihot_lab = torch.zeros_like(real_lab_logits, dtype=torch.float32)
+                        multihot_proc = torch.zeros_like(real_proc_logits, dtype=torch.float32)
+
+                        valid_diag_batch_indices, valid_diag_seq_indices, valid_diag_code_indices = torch.where(
+                            diag_mask)
+                        valid_drug_batch_indices, valid_drug_seq_indices, valid_drug_code_indices = torch.where(
+                            drug_mask)
+                        valid_lab_batch_indices, valid_lab_seq_indices, valid_lab_code_indices = torch.where(
+                            lab_mask)
+                        valid_proc_batch_indices, valid_proc_seq_indices, valid_proc_code_indices = torch.where(
+                            proc_mask)
+                        multihot_diag[valid_diag_batch_indices, valid_diag_seq_indices, valid_diag_code_indices] = 1.0
+                        multihot_drug[valid_drug_batch_indices, valid_drug_seq_indices, valid_drug_code_indices] = 1.0
+                        multihot_lab[valid_lab_batch_indices, valid_lab_seq_indices, valid_lab_code_indices] = 1.0
+                        multihot_proc[valid_proc_batch_indices, valid_proc_seq_indices, valid_proc_code_indices] = 1.0
+
+                        loss = (CE(real_diag_logits, multihot_diag) + CE(real_drug_logits, multihot_drug) + CE(real_lab_logits, multihot_lab) + CE(real_proc_logits, multihot_proc))/4 + (CE(gen_diag_logits, multihot_diag) + CE(gen_drug_logits, multihot_drug) + CE(gen_lab_logits, multihot_lab) + CE(gen_proc_logits, multihot_proc))/4
+                        loss.backward()
+
+                        prediction_module_loss += (loss.item() / visit_timegaps.size(0)) * args.batch_size
+                        generation_module_loss += (g_loss.item() + d_loss.item() / visit_timegaps.size(0)) * args.batch_size
+
+                        if args.max_grad_norm > 0:
+                            nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
+                        optim.step()
+
+                        if (global_step + 1) % args.log_interval == 0:
+                            avg_prediction_module_loss = prediction_module_loss / args.log_interval
+                            avg_generation_module_loss = generation_module_loss / args.log_interval
+
+                            print(
+                                '| step {:5} | prediction module loss {:7.4f} | generation module loss {:7.4f} |'.format(
+                                    global_step, avg_prediction_module_loss, avg_generation_module_loss))
+
+                            prediction_module_loss, generation_module_loss = 0.0, 0.0
+                            start_time = time.time()
+                        global_step += 1
+                    model.eval()
+
+                    train_res = evaluator.eval(train_dataloader, [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id],
+                                         [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id],
+                                         ['diag', 'drug', 'lab', 'proc'], ['lpl', 'mpl'])
+                    val_res = evaluator.eval(dev_dataloader, [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id],
+                                       [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id],
+                                       ['diag', 'drug', 'lab', 'proc'], ['lpl', 'mpl'])
+                    test_res = evaluator.eval(test_dataloader, [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id],
+                                        [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id],
+                                        ['diag', 'drug', 'lab', 'proc'], ['lpl', 'mpl'])
+                    train_diag_lpl, tran_drug_lpl, train_lab_lpl, train_proc_lpl = train_res['lpl_diag'], train_res[
+                        'lpl_drug'], train_res['lpl_lab'], train_res['lpl_proc']
+                    val_diag_lpl, val_drug_lpl, val_lab_lpl, val_proc_lpl = val_res['lpl_diag'], val_res['lpl_drug'], \
+                    val_res['lpl_lab'], val_res['lpl_proc']
+                    test_diag_lpl, test_drug_lpl, test_lab_lpl, test_proc_lpl = test_res['lpl_diag'], test_res[
+                        'lpl_drug'], test_res['lpl_lab'], test_res['lpl_proc']
+
+                    train_diag_mpl, tran_drug_mpl, train_lab_mpl, train_proc_mpl = train_res['mpl_diag'], train_res[
+                        'mpl_drug'], train_res['mpl_lab'], train_res['mpl_proc']
+                    val_diag_mpl, val_drug_mpl, val_lab_mpl, val_proc_mpl = val_res['mpl_diag'], val_res['mpl_drug'], \
+                    val_res['mpl_lab'], val_res['mpl_proc']
+                    test_diag_mpl, test_drug_mpl, test_lab_mpl, test_proc_mpl = test_res['mpl_diag'], test_res[
+                        'mpl_drug'], test_res['mpl_lab'], test_res['mpl_proc']
+
+                    choosing_statistic = np.median(
+                        [val_diag_lpl, val_drug_lpl, val_lab_lpl, val_proc_lpl, val_diag_mpl, val_drug_mpl, val_lab_mpl,
+                         val_proc_mpl])
+
+                    print('-' * 71)
+                    print('Epoch: {:5}'.format(epoch_id))
+                    print('Diagnosis:')
+                    print('train lpl {:7.4f} | dev lpl {:7.4f} | test lpl {:7.4f}'.format(train_diag_lpl, val_diag_lpl,
+                                                                                          test_diag_lpl))
+                    print('train mpl {:7.4f} | dev mpl {:7.4f} | test mpl {:7.4f}'.format(train_diag_mpl, val_diag_mpl,
+                                                                                          test_diag_mpl))
+                    print('Drug:')
+                    print('train lpl {:7.4f} | dev lpl {:7.4f} | test lpl {:7.4f}'.format(tran_drug_lpl, val_drug_lpl,
+                                                                                          test_drug_lpl))
+                    print('train mpl {:7.4f} | dev mpl {:7.4f} | test mpl {:7.4f}'.format(tran_drug_mpl, val_drug_mpl,
+                                                                                          test_drug_mpl))
+                    print('Lab:')
+                    print('train lpl {:7.4f} | dev lpl {:7.4f} | test lpl {:7.4f}'.format(train_lab_lpl, val_lab_lpl,
+                                                                                          test_lab_lpl))
+                    print('train mpl {:7.4f} | dev mpl {:7.4f} | test mpl {:7.4f}'.format(train_lab_mpl, val_lab_mpl,
+                                                                                          test_lab_mpl))
+                    print('Procedure:')
+                    print('train lpl {:7.4f} | dev lpl {:7.4f} | test lpl {:7.4f}'.format(train_proc_lpl, val_proc_lpl,
+                                                                                          test_proc_lpl))
+                    print('train mpl {:7.4f} | dev mpl {:7.4f} | test mpl {:7.4f}'.format(train_proc_mpl, val_proc_mpl,
+                                                                                          test_proc_mpl))
+                    print('-' * 71)
+
+                    if choosing_statistic <= best_choosing_statistic:
+                        best_diag_lpl, best_drug_lpl, best_lab_lpl, best_proc_lpl = test_diag_lpl, test_drug_lpl, test_lab_lpl, test_proc_lpl
+                        best_diag_mpl, best_drug_mpl, best_lab_mpl, best_proc_mpl = test_diag_mpl, test_drug_mpl, test_lab_mpl, test_proc_mpl
+                        best_dev_epoch = epoch_id
+                        best_choosing_statistic = choosing_statistic
+                        torch.save([model, args], model_path)
+                        print(f'model saved to {model_path}')
+                    if epoch_id - best_dev_epoch >= args.max_epochs_before_stop:
+                        break
+
+                print()
+                print('training ends at {} epoch'.format(epoch_id))
+                print('Final statistics:')
+                print(
+                    'lpl: diag {:7.4f} | drug {:7.4f} | lab {:7.4f} | proc {:7.4f}'.format(best_diag_lpl, best_drug_lpl,
+                                                                                           best_lab_lpl, best_proc_lpl))
+                print(
+                    'mpl: diag {:7.4f} | drug {:7.4f} | lab {:7.4f} | proc {:7.4f}'.format(best_diag_mpl, best_drug_mpl,
+                                                                                           best_lab_mpl, best_proc_mpl))
+                with open(args.save_dir + csv_filename, 'w') as csvfile:
+                    writer = csv.writer(csvfile)
+                    writer.writerow(
+                        [best_diag_lpl, best_drug_lpl, best_lab_lpl, best_proc_lpl, best_diag_mpl, best_drug_mpl,
+                         best_lab_mpl, best_proc_mpl])
+                print()
+
+if __name__ == '__main__':
+
+    modes = ['train']
+    short_ICD = True
+    seeds = [10, 11, 12]
+    save_path = './saved_'
+    model_names = ['medGAN']
+    save_dirs = [save_path+name+'/' for name in model_names]
+    datas = ['mimic']
+    max_lens = [20]
+    max_nums = [10]
+    for mode in modes:
+        for seed in seeds:
+            for model_name, save_dir in zip(model_names, save_dirs):
+                for data, max_len, max_num in zip(datas, max_lens, max_nums):
+                    if model_name in ['medGAN']:
+                        model_type = 'GAN'
+                        main(seed, model_type, model_name, data, max_len, max_num, save_dir, mode, short_ICD)
