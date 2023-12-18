@@ -81,9 +81,12 @@ class Evaluator:
                 if self.model.name == 'MedDiffGa':
                     diag_logits, drug_logits, lab_logits, proc_logits, Delta_ts, added_z, learned_z = self.model(diag_seq, drug_seq, lab_seq, proc_seq,time_step,visit_timegaps,diag_timegaps,drug_timegaps,lab_timegaps,proc_timegaps,
                     diag_mask,drug_mask,lab_mask,proc_mask,diag_length,drug_length,lab_length,proc_length,demo)
-                elif self.model.name == 'GAN':
-                    _, _, _, _, diag_logits, drug_logits, lab_logits, proc_logits, _, _, _, _ = self.model(
-                        diag_seq, drug_seq, lab_seq, proc_seq)
+                elif self.model.name == 'GAN' or self.model.name == 'WGAN-GP':
+                    _, _, _, _, diag_logits, drug_logits, lab_logits, proc_logits, _, _ = self.model(
+                        diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
+                elif self.model.name == 'MLP':
+                    diag_logits, drug_logits, lab_logits, proc_logits, _, _, _, _, _, _ = self.model(
+                        diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
                 else:
                     print('Invalid model name')
 

@@ -11,3 +11,6 @@
 /ehrGAN_dir/
 /DDPM_dir/
 /saved_MedDiffGa/
+/saved_LSTM-medGAN/
+/saved_LSTM-MLP/
+/saved_synTEG/
