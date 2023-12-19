@@ -17,6 +17,10 @@ import warnings
 import random
 torch.autograd.set_detect_anomaly(True)
 
+def kl_loss(concat_miu, concat_logvar):
+    loss = -0.5 * torch.sum(1 + concat_logvar - concat_miu.pow(2) - concat_logvar.exp())
+    return loss.mean()
+
 
 def compute_gradient_penalty(critic, real_samples, fake_samples):
     # Assuming real_samples and fake_samples are of shape [batch, seq_len, d_model]
@@ -38,7 +42,7 @@ def compute_gradient_penalty(critic, real_samples, fake_samples):
     gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
     return gradient_penalty
 
-def main(seed, name, model, data, max_len, max_num, sav_dir, mode, short_ICD):
+def main(seed, name, model, data, max_len, max_num, sav_dir, mode, short_ICD, toy):
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
     parser.add_argument('--seed', default=seed, type=int, help='seed')
@@ -75,6 +79,7 @@ def main(seed, name, model, data, max_len, max_num, sav_dir, mode, short_ICD):
     parser.add_argument('--short_ICD', default=short_ICD, type=bool_flag, nargs='?', const=True, help='use short ICD codes')
     parser.add_argument('--lambda_gp', default=10, type=float)
     parser.add_argument('--critic_iterations', default=5, type=int)
+    parser.add_argument('--toy', default=toy, type=bool_flag, nargs='?', const=True, help='use toy dataset')
     args = parser.parse_args()
     if args.mode == 'train':
         train(args)
@@ -150,12 +155,20 @@ def train(args):
             raise ValueError('Invalid disease')
         device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
 
-        if args.short_ICD:
+        if args.short_ICD and not args.toy:
             train_dataset = pancreas_Gendataset(data_path + 'train_3dig' + str(args.target_disease) + '.csv',
                                                 args.max_len, args.max_num_codes, pad_id_list, nan_id_list, device)
             dev_dataset = pancreas_Gendataset(data_path + 'val_3dig' + str(args.target_disease) + '.csv',
                                               args.max_len, args.max_num_codes, pad_id_list, nan_id_list, device)
             test_dataset = pancreas_Gendataset(data_path + 'test_3dig' + str(args.target_disease) + '.csv',
+                                               args.max_len,
+                                               args.max_num_codes, pad_id_list, nan_id_list, device)
+        elif args.toy:
+            train_dataset = pancreas_Gendataset(data_path + 'toy_3dig' + str(args.target_disease) + '.csv',
+                                                args.max_len, args.max_num_codes, pad_id_list, nan_id_list, device)
+            dev_dataset = pancreas_Gendataset(data_path + 'toy_3dig' + str(args.target_disease) + '.csv',
+                                              args.max_len, args.max_num_codes, pad_id_list, nan_id_list, device)
+            test_dataset = pancreas_Gendataset(data_path + 'toy_3dig' + str(args.target_disease) + '.csv',
                                                args.max_len,
                                                args.max_num_codes, pad_id_list, nan_id_list, device)
         else:
@@ -185,6 +198,10 @@ def train(args):
             discriminator = Discriminator(args.d_model)
             discriminator.to(device)
             model = synTEG(args.name, pad_id_list, args.d_model, args.dropout, generator)
+        elif args.model == 'TWIN':
+            generator = VAE_generator()
+            generator.to(device)
+            model = TWIN(args.name, pad_id_list, args.d_model, args.dropout, 5, generator)
         else:
             raise ValueError('Invalid model')
         model.to(device)
@@ -221,8 +238,6 @@ def train(args):
 
         if args.name == 'WGAN-GP':
             current_step = 0
-
-
         for epoch_id in range(args.n_epochs):
             print('epoch: {:5} '.format(epoch_id))
             model.train()
@@ -238,6 +253,8 @@ def train(args):
                     real_diag_logits, real_drug_logits, real_lab_logits, real_proc_logits, _, _, _, _, h, _ = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
                 elif args.model == 'synTEG':
                     real_diag_logits, real_drug_logits, real_lab_logits, real_proc_logits, gen_diag_logits, gen_drug_logits, gen_lab_logits, gen_proc_logits, h, v_gen = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
+                elif args.model == 'TWIN':
+                    real_diag_logits, real_drug_logits, real_lab_logits, real_proc_logits, miu, logvar = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
                 else:
                     raise ValueError('Invalid model')
 
@@ -354,7 +371,7 @@ def train(args):
                     multihot_lab[valid_lab_batch_indices, valid_lab_seq_indices, valid_lab_code_indices] = 1.0
                     multihot_proc[valid_proc_batch_indices, valid_proc_seq_indices, valid_proc_code_indices] = 1.0
 
-                    loss = args.lambda_ce + (CE(real_diag_logits, multihot_diag) + CE(real_drug_logits, multihot_drug) + CE(real_lab_logits, multihot_lab) + CE(real_proc_logits, multihot_proc))/4 + 1e-10
+                    loss = args.lambda_ce * (CE(real_diag_logits, multihot_diag) + CE(real_drug_logits, multihot_drug) + CE(real_lab_logits, multihot_lab) + CE(real_proc_logits, multihot_proc))/4 + 1e-10
                     loss.backward(retain_graph=True)
                     optim.step()
                     prediction_module_loss += (loss.item() / visit_timegaps.size(0)) * args.batch_size
@@ -372,6 +389,50 @@ def train(args):
                         prediction_module_loss = 0.0
                         start_time = time.time()
                     global_step += 1
+                elif args.name == 'VAE':
+                    optim.zero_grad()
+                    multihot_diag = torch.zeros_like(real_diag_logits, dtype=torch.float32)
+                    multihot_drug = torch.zeros_like(real_drug_logits, dtype=torch.float32)
+                    multihot_lab = torch.zeros_like(real_lab_logits, dtype=torch.float32)
+                    multihot_proc = torch.zeros_like(real_proc_logits, dtype=torch.float32)
+                    valid_diag_batch_indices, valid_diag_seq_indices, valid_diag_code_indices = torch.where(
+                        diag_mask)
+                    valid_drug_batch_indices, valid_drug_seq_indices, valid_drug_code_indices = torch.where(
+                        drug_mask)
+                    valid_lab_batch_indices, valid_lab_seq_indices, valid_lab_code_indices = torch.where(
+                        lab_mask)
+                    valid_proc_batch_indices, valid_proc_seq_indices, valid_proc_code_indices = torch.where(
+                        proc_mask)
+                    multihot_diag[valid_diag_batch_indices, valid_diag_seq_indices, valid_diag_code_indices] = 1.0
+                    multihot_drug[valid_drug_batch_indices, valid_drug_seq_indices, valid_drug_code_indices] = 1.0
+                    multihot_lab[valid_lab_batch_indices, valid_lab_seq_indices, valid_lab_code_indices] = 1.0
+                    multihot_proc[valid_proc_batch_indices, valid_proc_seq_indices, valid_proc_code_indices] = 1.0
+
+                    a = args.lambda_ce * (CE(real_diag_logits, multihot_diag) + CE(real_drug_logits, multihot_drug) + CE(real_lab_logits, multihot_lab) + CE(real_proc_logits, multihot_proc))/4 + 1e-10
+                    b = args.lambda_gen * kl_loss(miu, logvar)
+                    loss = a + b
+                    loss.backward()
+                    optim.step()
+
+                    prediction_module_loss += (a.item() / visit_timegaps.size(0)) * args.batch_size
+                    generation_module_loss += (b.item() / visit_timegaps.size(0)) * args.batch_size
+
+                    if args.max_grad_norm > 0:
+                        nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
+
+                    if (global_step + 1) % args.log_interval == 0:
+                        avg_prediction_module_loss = prediction_module_loss / args.log_interval
+                        avg_generation_module_loss = generation_module_loss / args.log_interval
+
+                        print(
+                            '| step {:5} | prediction module loss {:7.4f} | generation module loss {:7.4f} |'.format(
+                                global_step, avg_prediction_module_loss, avg_generation_module_loss))
+
+
+                        prediction_module_loss, generation_module_loss = 0.0, 0.0
+                        start_time = time.time()
+                    global_step += 1
+
             model.eval()
 
             with torch.no_grad():
@@ -457,9 +518,10 @@ if __name__ == '__main__':
 
     modes = ['train']
     short_ICD = True
+    toy = False
     seeds = [10, 11, 12]
     save_path = './saved_'
-    model_names = ['LSTM-medGAN', 'LSTM-MLP', 'synTEG']
+    model_names = ['TWIN']
     save_dirs = [save_path+name+'/' for name in model_names]
     datas = ['mimic']
     max_lens = [20]
@@ -470,10 +532,13 @@ if __name__ == '__main__':
                 for data, max_len, max_num in zip(datas, max_lens, max_nums):
                     if model_name in ['LSTM-medGAN']:
                         model_type = 'GAN'
-                        main(seed, model_type, model_name, data, max_len, max_num, save_dir, mode, short_ICD)
+                        main(seed, model_type, model_name, data, max_len, max_num, save_dir, mode, short_ICD, toy)
                     elif model_name in ['LSTM-MLP']:
                         model_type = 'MLP'
-                        main(seed, model_type, model_name, data, max_len, max_num, save_dir, mode, short_ICD)
+                        main(seed, model_type, model_name, data, max_len, max_num, save_dir, mode, short_ICD, toy)
                     elif model_name in ['synTEG']:
                         model_type = 'WGAN-GP'
-                        main(seed, model_type, model_name, data, max_len, max_num, save_dir, mode, short_ICD)
+                        main(seed, model_type, model_name, data, max_len, max_num, save_dir, mode, short_ICD, toy)
+                    elif model_name in ['TWIN']:
+                        model_type = 'VAE'
+                        main(seed, model_type, model_name, data, max_len, max_num, save_dir, mode, short_ICD, toy)

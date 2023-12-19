@@ -87,6 +87,9 @@ class Evaluator:
                 elif self.model.name == 'MLP':
                     diag_logits, drug_logits, lab_logits, proc_logits, _, _, _, _, _, _ = self.model(
                         diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
+                elif self.model.name == 'VAE':
+                    diag_logits, drug_logits, lab_logits, proc_logits, _, _ = self.model(
+                        diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
                 else:
                     print('Invalid model name')
 

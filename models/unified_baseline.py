@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from models.baseline import Attention
+import torch.nn.functional as F
 
 
 class Discriminator(nn.Module):
@@ -66,6 +67,128 @@ class Linear_generator(nn.Module):
         z = z.reshape(original_shape)
 
         return z
+
+class VAE_generator(nn.Module):
+    def __init__(self, d_model=256, l_model = 128, h_model=64):
+        super(VAE_generator, self).__init__()
+        self.d_model = d_model
+        self.h_model = h_model
+        self.l_model = l_model
+        self.fc1 = nn.Linear(d_model, l_model)
+        self.fc2 = nn.Linear(l_model, h_model)
+        self.fc1_reverse = nn.Linear(l_model, d_model)
+        self.fc2_reverse = nn.Linear(h_model, l_model)
+        self.mean_layer = nn.Linear(h_model, h_model)
+        self.logvar_layer = nn.Linear(h_model, h_model)
+        self.relu = nn.ReLU(inplace=False)
+        self.sigmoid = nn.Sigmoid()
+
+        self.encoder = nn.Sequential(self.fc1, self.relu, self.fc2, self.relu)
+        self.decoder = nn.Sequential(nn.Linear(h_model, h_model), self.relu, self.fc2_reverse, self.relu, self.fc1_reverse)
+
+    def encode(self, x):
+        x = self.encoder(x)
+        return self.mean_layer(x), self.logvar_layer(x)
+
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std, device=std.device)
+        return mu + eps * std
+
+    def decode(self, z):
+        return self.decoder(z)
+
+    def forward(self, x):
+        miu, logvar = self.encode(x)
+        z = self.reparameterize(miu, logvar)
+        return self.decode(z), miu, logvar
+class TWIN(nn.Module):
+    def __init__(self, name, vocab_list, d_model, dropout, K, generator):
+        super(TWIN, self).__init__()
+        self.name = name
+        self.dropout = nn.Dropout(dropout)
+        self.visit_generator = generator
+        self.K = K
+        self.diag_embedding = nn.Embedding(vocab_list[0]+1, d_model)
+        self.drug_embedding = nn.Embedding(vocab_list[1]+1, d_model)
+        self.lab_embedding = nn.Embedding(vocab_list[2]+1, d_model)
+        self.proc_embedding = nn.Embedding(vocab_list[3]+1, d_model)
+        self.diag_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_list[0]))
+        self.drug_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_list[1]))
+        self.lab_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_list[2]))
+        self.proc_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_list[3]))
+        #TWIN does not have hidden state learner
+
+    def retrive_top_k_within_batch(self, h):
+
+        batch_size, seq_len, d_model = h.shape
+        h_reshaped = h.reshape(batch_size * seq_len, d_model)
+
+        sim_matrix = torch.matmul(h_reshaped, h_reshaped.transpose(0,1))
+        mask = torch.eye(batch_size * seq_len, device=h.device)
+        sim_matrix.masked_fill_(mask.bool(), float('-inf'))
+        top_k_values, top_k_indices = torch.topk(sim_matrix, self.K, dim=-1)
+
+        top_k_values = top_k_values.reshape(batch_size, seq_len, self.K)
+        top_k_indices = top_k_indices.reshape(batch_size, seq_len, self.K)
+
+        return top_k_values, top_k_indices
+
+    def calculate_attention(self, h, top_k_indices, top_k_values):
+        batch_size, seq_len, d_model = h.shape
+        h_reshaped = h.reshape(batch_size * seq_len, d_model)
+        top_k_indices_reshaped = top_k_indices.reshape(batch_size * seq_len, self.K)
+        top_k_values_softmax = F.softmax(top_k_values, dim=-1)
+
+        selected_h = torch.zeros(batch_size * seq_len, self.K, d_model, device=h.device)
+        for i in range(self.K):
+            selected_h[:, i, :] = h_reshaped[top_k_indices_reshaped[:, i]]
+        selected_h = selected_h.reshape(batch_size, seq_len, self.K, d_model)
+        weighted_h = selected_h * top_k_values_softmax.unsqueeze(-1)
+        weighted_h = weighted_h.sum(dim=-2)
+        return weighted_h + h
+
+    def forward(self, diag_seq, drug_seq, lab_seq, proc_seq, lengths=None):
+        batch_size, seq_len, code_len = diag_seq.shape
+        diag_h = self.dropout(self.diag_embedding(diag_seq)).sum(dim=-2)
+        drug_h = self.dropout(self.drug_embedding(drug_seq)).sum(dim=-2)
+        lab_h = self.dropout(self.lab_embedding(lab_seq)).sum(dim=-2)
+        proc_h = self.dropout(self.proc_embedding(proc_seq)).sum(dim=-2)
+
+        diag_top_k_h, diag_top_k_indices = self.retrive_top_k_within_batch(diag_h)
+        drug_top_k_h, drug_top_k_indices = self.retrive_top_k_within_batch(drug_h)
+        lab_top_k_h, lab_top_k_indices = self.retrive_top_k_within_batch(lab_h)
+        proc_top_k_h, proc_top_k_indices = self.retrive_top_k_within_batch(proc_h)
+
+        diag_h_bar = self.calculate_attention(diag_h, diag_top_k_indices, diag_top_k_h)
+        drug_h_bar = self.calculate_attention(drug_h, drug_top_k_indices, drug_top_k_h)
+        lab_h_bar = self.calculate_attention(lab_h, lab_top_k_indices, lab_top_k_h)
+        proc_h_bar = self.calculate_attention(proc_h, proc_top_k_indices, proc_top_k_h)
+
+        diag_h_miu, diag_h_logvar = self.visit_generator.encode(diag_h_bar)
+        drug_h_miu, drug_h_logvar = self.visit_generator.encode(drug_h_bar)
+        lab_h_miu, lab_h_logvar = self.visit_generator.encode(lab_h_bar)
+        proc_h_miu, proc_h_logvar = self.visit_generator.encode(proc_h_bar)
+
+        diag_z = self.visit_generator.reparameterize(diag_h_miu, diag_h_logvar)
+        drug_z = self.visit_generator.reparameterize(drug_h_miu + diag_h_miu, drug_h_logvar + diag_h_logvar)
+        lab_z = self.visit_generator.reparameterize(lab_h_miu + diag_h_miu, lab_h_logvar + diag_h_logvar)
+        proc_z = self.visit_generator.reparameterize(proc_h_miu + diag_h_miu, proc_h_logvar + diag_h_logvar)
+
+        diag_v_gen = self.visit_generator.decode(diag_z)
+        drug_v_gen = self.visit_generator.decode(drug_z)
+        lab_v_gen = self.visit_generator.decode(lab_z)
+        proc_v_gen = self.visit_generator.decode(proc_z)
+
+        diag_logits = self.diag_output_mlp(diag_v_gen)
+        drug_logits = self.drug_output_mlp(drug_v_gen)
+        lab_logits = self.lab_output_mlp(lab_v_gen)
+        proc_logits = self.proc_output_mlp(proc_v_gen)
+
+        concat_miu = torch.cat([diag_h_miu, drug_h_miu, lab_h_miu, proc_h_miu], dim=-1)
+        concat_logvar = torch.cat([diag_h_logvar, drug_h_logvar, lab_h_logvar, proc_h_logvar], dim=-1)
+
+        return diag_logits, drug_logits, lab_logits, proc_logits, concat_miu, concat_logvar
 
 class synTEG(nn.Module):
     def __init__(self, name, vocab_list, d_model, dropout, generator):

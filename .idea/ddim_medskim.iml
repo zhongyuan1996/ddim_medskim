@@ -8,6 +8,9 @@
       <excludeFolder url="file://$MODULE_DIR$/figure" />
       <excludeFolder url="file://$MODULE_DIR$/saved_rebuttal" />
       <excludeFolder url="file://$MODULE_DIR$/tabDDPM_dir" />
+      <excludeFolder url="file://$MODULE_DIR$/DDPM_dir" />
+      <excludeFolder url="file://$MODULE_DIR$/saved_MedDiffGa" />
+      <excludeFolder url="file://$MODULE_DIR$/saved_synTEG" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.10 (deepl)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />

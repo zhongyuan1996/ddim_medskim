@@ -169,9 +169,9 @@ def train(args):
             drug_pad_id = len(drug2id)
             lab_pad_id = len(lab2id)
             proc_pad_id = len(proc2id)
-            drug_nan_id = 146
+            drug_nan_id = 234
             lab_nan_id = 206
-            proc_nan_id = 24
+            proc_nan_id = 28
             pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
             nan_id_list = [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id]
             data_path = './data/mimic/'
