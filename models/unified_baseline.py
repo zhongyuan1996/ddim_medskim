@@ -113,10 +113,10 @@ class TWIN(nn.Module):
         self.drug_embedding = nn.Embedding(vocab_list[1]+1, d_model)
         self.lab_embedding = nn.Embedding(vocab_list[2]+1, d_model)
         self.proc_embedding = nn.Embedding(vocab_list[3]+1, d_model)
-        self.diag_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_list[0]))
-        self.drug_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_list[1]))
-        self.lab_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_list[2]))
-        self.proc_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_list[3]))
+        self.diag_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_list[0]))
+        self.drug_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_list[1]))
+        self.lab_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_list[2]))
+        self.proc_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_list[3]))
         #TWIN does not have hidden state learner
 
     def retrive_top_k_within_batch(self, h):
@@ -200,10 +200,10 @@ class synTEG(nn.Module):
         self.drug_embedding = nn.Embedding(vocab_list[1]+1, d_model)
         self.lab_embedding = nn.Embedding(vocab_list[2]+1, d_model)
         self.proc_embedding = nn.Embedding(vocab_list[3]+1, d_model)
-        self.diag_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_list[0]))
-        self.drug_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_list[1]))
-        self.lab_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_list[2]))
-        self.proc_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_list[3]))
+        self.diag_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_list[0]))
+        self.drug_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_list[1]))
+        self.lab_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_list[2]))
+        self.proc_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_list[3]))
         self.hiddne_state_learner = Transformer_hidden_state_learner(d_model, 2, dropout)
 
     def forward(self, diag_seq, drug_seq, lab_seq, proc_seq, lengths=None):
@@ -242,10 +242,10 @@ class LSTM_MLP(nn.Module):
         self.drug_embedding = nn.Embedding(vocab_list[1]+1, d_model)
         self.lab_embedding = nn.Embedding(vocab_list[2]+1, d_model)
         self.proc_embedding = nn.Embedding(vocab_list[3]+1, d_model)
-        self.diag_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_list[0]))
-        self.drug_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_list[1]))
-        self.lab_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_list[2]))
-        self.proc_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_list[3]))
+        self.diag_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_list[0]))
+        self.drug_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_list[1]))
+        self.lab_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_list[2]))
+        self.proc_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_list[3]))
         self.lstm = nn.LSTM(d_model, d_model, 1, bidirectional=False, batch_first=True, dropout=dropout)
 
     def hidden_state_learner(self, v, lengths):
@@ -280,10 +280,10 @@ class LSTM_medGAN(nn.Module):
         self.drug_embedding = nn.Embedding(vocab_list[1]+1, d_model)
         self.lab_embedding = nn.Embedding(vocab_list[2]+1, d_model)
         self.proc_embedding = nn.Embedding(vocab_list[3]+1, d_model)
-        self.diag_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_list[0]))
-        self.drug_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_list[1]))
-        self.lab_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_list[2]))
-        self.proc_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_list[3]))
+        self.diag_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_list[0]))
+        self.drug_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_list[1]))
+        self.lab_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_list[2]))
+        self.proc_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_list[3]))
         self.lstm = nn.LSTM(d_model, d_model, 1, bidirectional=False, batch_first=True, dropout=dropout)
 
     def hidden_state_learner(self, v, lengths):

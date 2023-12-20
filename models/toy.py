@@ -255,10 +255,10 @@ class MedDiffGa(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.emb_dropout = nn.Dropout(dropout_emb)
         # self.output_mlp = nn.Sequential(nn.Linear(d_model, vocab_size))
-        self.diag_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_size[0]))
-        self.drug_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_size[1]))
-        self.lab_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_size[2]))
-        self.proc_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_size[3]))
+        self.diag_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_size[0]))
+        self.drug_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_size[1]))
+        self.lab_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_size[2]))
+        self.proc_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_size[3]))
         self.pooler = MaxPoolLayer()
         self.rnns = nn.LSTM(d_model, d_model, num_layers, bidirectional=False, batch_first=True, dropout=dropout)
         self.positional_encoder = PositionalEncoder(d_model)
@@ -367,9 +367,9 @@ class MedDiffGa(nn.Module):
         Delta_ts_emb = self.positional_encoder(Delta_ts.unsqueeze(-1))
         Delta_ts_emb = self.fc2(self.relu(self.fc1(Delta_ts_emb))).squeeze(-2).view(batch_size * seq_len, -1)
 
-        # U = torch.randn_like(h)
+        U = torch.randn_like(h)
 
-        H = torch.stack((h,De, Delta_ts_emb), dim=-2)
+        H = torch.stack((h,De, Delta_ts_emb, U), dim=-2)
 
         diag_mask = diag_mask.view(batch_size * seq_len, num_cui_per_visit).unsqueeze(-1)
         drug_mask = drug_mask.view(batch_size * seq_len, num_cui_per_visit).unsqueeze(-1)

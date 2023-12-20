@@ -96,7 +96,7 @@ def main(seed, name, data, max_len, max_num, sav_dir, mode, focal_alpha, focal_g
     parser.add_argument('--target_rate', default=0.3, type=float)
     parser.add_argument('--max_grad_norm', default=1.0, type=float, help='max grad norm (0 to disable)')
     parser.add_argument('--warmup_steps', default=200, type=int)
-    parser.add_argument('--n_epochs', default=5, type=int)
+    parser.add_argument('--n_epochs', default=10, type=int)
     parser.add_argument('--log_interval', default=100, type=int)
     parser.add_argument('--mode', default=mode)
     parser.add_argument('--model', default=name)
@@ -107,6 +107,8 @@ def main(seed, name, data, max_len, max_num, sav_dir, mode, focal_alpha, focal_g
     parser.add_argument('--focal_alpha', default=focal_alpha, type=float)
     parser.add_argument('--focal_gamma', default=focal_gamma, type=float)
     parser.add_argument('--short_ICD', default=short_ICD, type=bool_flag, nargs='?', const=True, help='use short ICD codes')
+    parser.add_argument('--toy', default=False, type=bool_flag, nargs='?', const=True, help='use toy dataset')
+
     args = parser.parse_args()
     if args.mode == 'train':
         train(args)
@@ -114,6 +116,110 @@ def main(seed, name, data, max_len, max_num, sav_dir, mode, focal_alpha, focal_g
         gen(args)
     else:
         raise ValueError('Invalid mode')
+
+def gen(args):
+    saving_path = './data/synthetic/'
+    print(args)
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    if torch.cuda.is_available() and args.cuda:
+        torch.cuda.manual_seed(args.seed)
+    if not os.path.exists(args.save_dir):
+        os.makedirs(args.save_dir)
+    files = os.listdir(str(args.save_dir))
+    csv_filename = str(args.model) + '_' + str(args.target_disease) + '_' + str(args.seed) + '.csv'
+    checkpoint_filepath = os.path.join(args.save_dir, str(args.model) + '_' + str(args.target_disease) + '_' + str(args.seed) + '_' + str(args.focal_alpha) + '_' + str(args.focal_gamma) + '.pt')
+
+    if args.target_disease == 'pancreas':
+        code2id = pd.read_csv('./data/pancreas/code_to_int_mapping.csv', header=None)
+        demo_len = 15
+        pad_id = len(code2id)
+        data_path = './data/pancreas/'
+    elif args.target_disease == 'mimic' and args.short_ICD:
+        diag2id = pd.read_csv('./data/mimic/diagnosis_to_int_mapping_3dig.csv', header=None)
+        drug2id = pd.read_csv('./data/mimic/drug_to_int_mapping_3dig.csv', header=None)
+        lab2id = pd.read_csv('./data/mimic/lab_to_int_mapping_3dig.csv', header=None)
+        proc2id = pd.read_csv('./data/mimic/proc_to_int_mapping_3dig.csv', header=None)
+        id2diag = dict(zip(diag2id[1], diag2id[0]))
+        id2drug = dict(zip(drug2id[1], drug2id[0]))
+        id2lab = dict(zip(lab2id[1], lab2id[0]))
+        id2proc = dict(zip(proc2id[1], proc2id[0]))
+        demo_len = 76
+        diag_pad_id = len(diag2id)
+        drug_pad_id = len(drug2id)
+        lab_pad_id = len(lab2id)
+        proc_pad_id = len(proc2id)
+        drug_nan_id = 146
+        lab_nan_id = 206
+        proc_nan_id = 24
+        pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
+        nan_id_list = [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id]
+        data_path = './data/mimic/'
+    elif args.target_disease == 'mimic' and not args.short_ICD:
+        diag2id = pd.read_csv('./data/mimic/diagnosis_to_int_mapping_5dig.csv', header=None)
+        drug2id = pd.read_csv('./data/mimic/drug_to_int_mapping_5dig.csv', header=None)
+        lab2id = pd.read_csv('./data/mimic/lab_to_int_mapping_5dig.csv', header=None)
+        proc2id = pd.read_csv('./data/mimic/proc_to_int_mapping_5dig.csv', header=None)
+        id2diag = dict(zip(diag2id[1], diag2id[0]))
+        id2drug = dict(zip(drug2id[1], drug2id[0]))
+        id2lab = dict(zip(lab2id[1], lab2id[0]))
+        id2proc = dict(zip(proc2id[1], proc2id[0]))
+        demo_len = 76
+        diag_pad_id = len(diag2id)
+        drug_pad_id = len(drug2id)
+        lab_pad_id = len(lab2id)
+        proc_pad_id = len(proc2id)
+        drug_nan_id = 146
+        lab_nan_id = 206
+        proc_nan_id = 24
+        pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
+        nan_id_list = [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id]
+        data_path = './data/mimic/'
+    else:
+        raise ValueError('Invalid disease')
+    device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
+
+    if args.short_ICD and not args.toy:
+        test_dataset = pancreas_Gendataset(data_path + 'test_3dig' + str(args.target_disease) + '.csv',
+                                           args.max_len,
+                                           args.max_num_codes, pad_id_list, nan_id_list, device)
+    elif args.toy:
+        test_dataset = pancreas_Gendataset(data_path + 'toy_3dig' + str(args.target_disease) + '.csv',
+                                           args.max_len,
+                                           args.max_num_codes, pad_id_list, nan_id_list, device)
+    else:
+        test_dataset = pancreas_Gendataset(data_path + 'test_5dig' + str(args.target_disease) + '.csv',
+                                           args.max_len,
+                                           args.max_num_codes, pad_id_list, nan_id_list, device)
+    test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=gen_collate_fn)
+
+    model, _ = torch.load(checkpoint_filepath)
+
+    for i, data in tqdm(enumerate(test_dataloader), total=len(test_dataloader), desc="Generating"):
+        diag_seq, drug_seq, lab_seq, proc_seq, time_step, visit_timegaps, diag_timegaps, drug_timegaps, lab_timegaps, proc_timegaps, \
+            diag_mask, drug_mask, lab_mask, proc_mask, diag_length, drug_length, lab_length, proc_length, demo = data
+        diag_logits, drug_logits, lab_logits, proc_logits, Delta_ts, added_z, learned_z = model(diag_seq, drug_seq,
+                                                                                                lab_seq, proc_seq,
+                                                                                                time_step,
+                                                                                                visit_timegaps,
+                                                                                                diag_timegaps,
+                                                                                                drug_timegaps,
+                                                                                                lab_timegaps,
+                                                                                                proc_timegaps, \
+                                                                                                diag_mask, drug_mask,
+                                                                                                lab_mask, proc_mask,
+                                                                                                diag_length,
+                                                                                                drug_length, lab_length,
+                                                                                                proc_length, demo)
+
+
+        _, topk_diag_indices = torch.topk(diag_logits, 10, dim=-1)
+        _, topk_drug_indices = torch.topk(drug_logits, 10, dim=-1)
+        _, topk_lab_indices = torch.topk(lab_logits, 10, dim=-1)
+        _, topk_proc_indices = torch.topk(proc_logits, 10, dim=-1)
+
+    return
 
 def train(args):
     print(args)
@@ -220,7 +326,7 @@ def train(args):
              'weight_decay': 0.0, 'lr': args.learning_rate}
         ]
         optim = Adam(grouped_parameters)
-        # CE = nn.BCEWithLogitsLoss(reduction='mean')
+        CE = nn.BCEWithLogitsLoss(reduction='mean')
         MSE = nn.MSELoss(reduction='mean')
 
         print('parameters:')
@@ -304,7 +410,8 @@ def train(args):
                 #     length_mask[i, :lengths[i]] = 1.0
 
                 # a = focal(logits, multihot_ehr) * args.lambda_ce
-                a = (focal(diag_logits, multihot_diag) + focal(drug_logits, multihot_drug) + focal(lab_logits, multihot_lab) + focal(proc_logits, multihot_proc)) * args.lambda_ce
+                a = (CE(diag_logits, multihot_diag) + CE(drug_logits, multihot_drug) + CE(lab_logits, multihot_lab) + CE(proc_logits, multihot_proc)) * args.lambda_ce
+                # a = (focal(diag_logits, multihot_diag) + focal(drug_logits, multihot_drug) + focal(lab_logits, multihot_lab) + focal(proc_logits, multihot_proc)) * args.lambda_ce
                 b = torch.log(MSE(Delta_ts * length_mask, visit_timegaps * length_mask) + 1e-10) * args.lambda_timegap
                 c = MSE(added_z, learned_z) * args.lambda_diff
                 loss = a + b + c
@@ -391,85 +498,12 @@ def train(args):
             writer.writerow([best_diag_lpl, best_drug_lpl, best_lab_lpl, best_proc_lpl, best_diag_mpl, best_drug_mpl, best_lab_mpl, best_proc_mpl])
         print()
 
-def gen(args):
-    print(args)
-
-    model_path = os.path.join(args.save_dir, str(args.model) + '_' + str(args.target_disease) + '_' + str(args.seed) + '.pt')
-    check_path(model_path)
-
-    if args.target_disease == 'pancreas':
-        code2id = pd.read_csv('./data/pancreas/code_to_int_mapping.csv', header=None)
-        demo_len = 15
-        pad_id = len(code2id)
-        data_path = './data/pancreas/'
-        id2code = dict(zip(code2id[1], code2id[0]))
-    elif args.target_disease == 'mimic':
-        code2id = pd.read_csv('./data/mimic/code_to_int_mapping.csv', header=None)
-        demo_len = 70
-        pad_id = len(code2id)
-        data_path = './data/mimic/'
-        id2code = dict(zip(code2id[1], code2id[0]))
-    else:
-        raise ValueError('Invalid disease')
-    device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
-
-    if args.model in ('MedDiffGa'):
-
-        train_dataset = pancreas_Gendataset(data_path + 'train_' + str(args.target_disease) + '.csv',
-                                  args.max_len, args.max_num_codes, pad_id, device)
-        dev_dataset = pancreas_Gendataset(data_path + 'val_' + str(args.target_disease) + '.csv',
-                                args.max_len,args.max_num_codes, pad_id, device)
-        test_dataset = pancreas_Gendataset(data_path + 'test_' + str(args.target_disease) + '.csv',  args.max_len,
-                                 args.max_num_codes, pad_id, device)
-        train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=True, collate_fn=gen_collate_fn)
-        dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=gen_collate_fn)
-        test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=gen_collate_fn)
-    if args.model == 'MedDiffGa':
-            model = MedDiffGa(pad_id, args.d_model, args.dropout, args.dropout_emb, args.num_layers, demo_len, device)
-    else:
-            raise ValueError('Invalid model')
-    model.to(device)
-    v_len = 20
-    c_len = 10
-    # total_patient = 2000
-    # demo = torch.randint(0, 2, (total_patient, demo_len), dtype=torch.float).to(device)
-    demo_csv = pd.read_csv(data_path + 'toy_' + str(args.target_disease) + '.csv')
-    demo = demo_csv['Demographic'].apply(lambda x: ast.literal_eval(x)).tolist()
-    demo = torch.tensor(demo, dtype=torch.float).to(device)
-    model.load_state_dict(torch.load(model_path, map_location=device)[0].state_dict())
-    model.eval()
-    with torch.no_grad():
-
-        logits, ehr, time_gap = model.inference(demo, v_len, c_len)
-
-    def map_indices_to_codes(id2code, code_selection_list):
-        # Convert indices to codes
-        mapped_data = [[[id2code.get(code, 'Unknown') for code in visit] for visit in patient] for patient in
-                       code_selection_list]
-        return mapped_data
-
-    # Map the generated indices in EHR to actual codes
-    mapped_ehr = map_indices_to_codes(id2code, ehr.cpu().numpy())
-
-    # Flatten EHR and Time Gaps for saving to CSV
-    formatted_ehr = ['; '.join([', '.join(map(str, visit)) for visit in patient]) for patient in mapped_ehr]
-    formatted_time_gap = ['; '.join(map(str, patient)) for patient in time_gap.cpu().numpy()]
-
-    # Create a DataFrame and save to CSV
-    ehr_df = pd.DataFrame({
-        'Patient_EHR': formatted_ehr,
-        'Time_Gaps': formatted_time_gap
-    })
-    ehr_df.to_csv(args.save_dir + 'generated_ehr' + args.seed + '.csv', index=False)
-
-
-
 
 if __name__ == '__main__':
 
     modes = ['train']
     short_ICD = True
-    seeds = [10, 11, 12]
+    seeds = [10]
     focal_alphas = [0.5]
     focal_gammas = [1.0]
     # seeds = [11]

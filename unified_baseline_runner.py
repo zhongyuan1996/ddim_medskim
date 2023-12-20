@@ -17,6 +17,10 @@ import warnings
 import random
 torch.autograd.set_detect_anomaly(True)
 
+
+def indices_to_codes(indices, mapping):
+    return [[mapping.get(idx) for idx in seq] for seq in indices]
+
 def kl_loss(concat_miu, concat_logvar):
     loss = -0.5 * torch.sum(1 + concat_logvar - concat_miu.pow(2) - concat_logvar.exp())
     return loss.mean()
@@ -89,7 +93,126 @@ def main(seed, name, model, data, max_len, max_num, sav_dir, mode, short_ICD, to
         raise ValueError('Invalid mode')
 
 def gen(args):
-    pass
+    saving_path = './data/synthetic/'
+    print(args)
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    if torch.cuda.is_available() and args.cuda:
+        torch.cuda.manual_seed(args.seed)
+    if not os.path.exists(args.save_dir):
+        os.makedirs(args.save_dir)
+    files = os.listdir(str(args.save_dir))
+    csv_filename = str(args.model) + '_' + str(args.target_disease) + '_' + str(args.seed) + '.csv'
+    checkpoint_filepath = os.path.join(args.save_dir, str(args.model) + '_' + str(args.target_disease) + '_' + str(args.seed) + '.pt')
+
+    if args.target_disease == 'pancreas':
+        code2id = pd.read_csv('./data/pancreas/code_to_int_mapping.csv', header=None)
+        demo_len = 15
+        pad_id = len(code2id)
+        data_path = './data/pancreas/'
+    elif args.target_disease == 'mimic' and args.short_ICD:
+        diag2id = pd.read_csv('./data/mimic/diagnosis_to_int_mapping_3dig.csv', header=None)
+        drug2id = pd.read_csv('./data/mimic/drug_to_int_mapping_3dig.csv', header=None)
+        lab2id = pd.read_csv('./data/mimic/lab_to_int_mapping_3dig.csv', header=None)
+        proc2id = pd.read_csv('./data/mimic/proc_to_int_mapping_3dig.csv', header=None)
+        id2diag = dict(zip(diag2id[1], diag2id[0]))
+        id2drug = dict(zip(drug2id[1], drug2id[0]))
+        id2lab = dict(zip(lab2id[1], lab2id[0]))
+        id2proc = dict(zip(proc2id[1], proc2id[0]))
+        demo_len = 76
+        diag_pad_id = len(diag2id)
+        drug_pad_id = len(drug2id)
+        lab_pad_id = len(lab2id)
+        proc_pad_id = len(proc2id)
+        drug_nan_id = 146
+        lab_nan_id = 206
+        proc_nan_id = 24
+        pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
+        nan_id_list = [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id]
+        data_path = './data/mimic/'
+    elif args.target_disease == 'mimic' and not args.short_ICD:
+        diag2id = pd.read_csv('./data/mimic/diagnosis_to_int_mapping_5dig.csv', header=None)
+        drug2id = pd.read_csv('./data/mimic/drug_to_int_mapping_5dig.csv', header=None)
+        lab2id = pd.read_csv('./data/mimic/lab_to_int_mapping_5dig.csv', header=None)
+        proc2id = pd.read_csv('./data/mimic/proc_to_int_mapping_5dig.csv', header=None)
+        id2diag = dict(zip(diag2id[1], diag2id[0]))
+        id2drug = dict(zip(drug2id[1], drug2id[0]))
+        id2lab = dict(zip(lab2id[1], lab2id[0]))
+        id2proc = dict(zip(proc2id[1], proc2id[0]))
+        demo_len = 76
+        diag_pad_id = len(diag2id)
+        drug_pad_id = len(drug2id)
+        lab_pad_id = len(lab2id)
+        proc_pad_id = len(proc2id)
+        drug_nan_id = 146
+        lab_nan_id = 206
+        proc_nan_id = 24
+        pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
+        nan_id_list = [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id]
+        data_path = './data/mimic/'
+    else:
+        raise ValueError('Invalid disease')
+    device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
+
+    if args.short_ICD and not args.toy:
+        test_dataset = pancreas_Gendataset(data_path + 'test_3dig' + str(args.target_disease) + '.csv',
+                                           args.max_len,
+                                           args.max_num_codes, pad_id_list, nan_id_list, device)
+    elif args.toy:
+        test_dataset = pancreas_Gendataset(data_path + 'toy_3dig' + str(args.target_disease) + '.csv',
+                                           args.max_len,
+                                           args.max_num_codes, pad_id_list, nan_id_list, device)
+    else:
+        test_dataset = pancreas_Gendataset(data_path + 'test_5dig' + str(args.target_disease) + '.csv',
+                                           args.max_len,
+                                           args.max_num_codes, pad_id_list, nan_id_list, device)
+    test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=gen_collate_fn)
+
+    model, _ = torch.load(checkpoint_filepath)
+
+    for i, data in tqdm(enumerate(test_dataloader), total=len(test_dataloader), desc="Generating"):
+        diag_seq, drug_seq, lab_seq, proc_seq, time_step, visit_timegaps, diag_timegaps, drug_timegaps, lab_timegaps, proc_timegaps, \
+            diag_mask, drug_mask, lab_mask, proc_mask, diag_length, drug_length, lab_length, proc_length, demo = data
+        if args.model == 'LSTM-medGAN':
+            _, _, _, _, gen_diag_logits, gen_drug_logits, gen_lab_logits, gen_proc_logits, _, _ = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
+        elif args.model == 'LSTM-MLP':
+            gen_diag_logits, gen_drug_logits, gen_lab_logits, gen_proc_logits, _, _, _, _, _, _ = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
+        elif args.model == 'synTEG':
+            _, _, _, _, gen_diag_logits, gen_drug_logits, gen_lab_logits, gen_proc_logits, _, _ = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
+        elif args.model == 'TWIN':
+            gen_diag_logits, gen_drug_logits, gen_lab_logits, gen_proc_logits, _, _ = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
+        else:
+            raise ValueError('Invalid model')
+
+        _, topk_diag_indices = torch.topk(gen_diag_logits, 10, dim=-1)
+        _, topk_drug_indices = torch.topk(gen_drug_logits, 10, dim=-1)
+        _, topk_lab_indices = torch.topk(gen_lab_logits, 10, dim=-1)
+        _, topk_proc_indices = torch.topk(gen_proc_logits, 10, dim=-1)
+
+        # if args.short_ICD:
+        #     synthetic_file_name = 'synthetic' + str(args.model) + '_' + str(args.target_disease) + '3dig3' + '.csv'
+        # else:
+        #     synthetic_file_name = 'synthetic' + str(args.model) + '_' + str(args.target_disease) + '3dig5' + '.csv'
+        #
+        # diag_codes = indices_to_codes(topk_diag_indices.tolist(), id2diag)
+        # drug_codes = indices_to_codes(topk_drug_indices.tolist(), id2drug)
+        # lab_codes = indices_to_codes(topk_lab_indices.tolist(), id2lab)
+        # proc_codes = indices_to_codes(topk_proc_indices.tolist(), id2proc)
+        #
+        # # Open a CSV file to write the data
+        # with open(synthetic_file_name, 'w', newline='') as file:
+        #     writer = csv.writer(file)
+        #     writer.writerow(['Diag Codes', 'Drug Codes', 'Lab Codes', 'Proc Codes'])
+        #
+        #     for i in range(len(diag_codes)):
+        #         row = [
+        #             ','.join(map(str, diag_codes[i])),
+        #             ','.join(map(str, drug_codes[i])),
+        #             ','.join(map(str, lab_codes[i])),
+        #             ','.join(map(str, proc_codes[i]))
+        #         ]
+        #         writer.writerow(row)
 
 def train(args):
     print(args)
@@ -516,12 +639,12 @@ def train(args):
 
 if __name__ == '__main__':
 
-    modes = ['train']
+    modes = ['gen']
     short_ICD = True
     toy = False
     seeds = [10, 11, 12]
     save_path = './saved_'
-    model_names = ['TWIN']
+    model_names = ['LSTM-MLP']
     save_dirs = [save_path+name+'/' for name in model_names]
     datas = ['mimic']
     max_lens = [20]
