@@ -15,6 +15,7 @@ from utils.icd_rel import *
 from models.evaluators import Evaluator
 import warnings
 import random
+from collections import Counter
 torch.autograd.set_detect_anomaly(True)
 
 class FocalLoss(nn.Module):
@@ -71,12 +72,12 @@ class FocalLoss(nn.Module):
 #     mean_loss = total_loss / total_samples
 #     return mean_loss
 
-def main(seed, name, data, max_len, max_num, sav_dir, mode, focal_alpha, focal_gamma, short_ICD):
+def main(seed, name, data, max_len, max_num, sav_dir, mode, focal_alpha, focal_gamma, short_ICD, subset):
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
     parser.add_argument('--seed', default=seed, type=int, help='seed')
-    parser.add_argument('-bs', '--batch_size', default=32, type=int)
-    parser.add_argument('-me', '--max_epochs_before_stop', default=15, type=int)
+    parser.add_argument('-bs', '--batch_size', default=24, type=int)
+    parser.add_argument('-me', '--max_epochs_before_stop', default=10, type=int)
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
     parser.add_argument('--dropout_emb', default=0.1, type=float, help='dropout rate of embedding layers')
@@ -101,13 +102,14 @@ def main(seed, name, data, max_len, max_num, sav_dir, mode, focal_alpha, focal_g
     parser.add_argument('--mode', default=mode)
     parser.add_argument('--model', default=name)
     parser.add_argument('--save_dir', default=sav_dir)
-    parser.add_argument('--lambda_timegap', default=0.11, type=float)
+    parser.add_argument('--lambda_timegap', default=0.000011, type=float)
     parser.add_argument('--lambda_diff', default=0.5, type=float)
-    parser.add_argument('--lambda_ce', default=10, type=float)
+    parser.add_argument('--lambda_ce', default=10000, type=float)
     parser.add_argument('--focal_alpha', default=focal_alpha, type=float)
     parser.add_argument('--focal_gamma', default=focal_gamma, type=float)
     parser.add_argument('--short_ICD', default=short_ICD, type=bool_flag, nargs='?', const=True, help='use short ICD codes')
-    parser.add_argument('--toy', default=False, type=bool_flag, nargs='?', const=True, help='use toy dataset')
+    parser.add_argument('--toy', default=subset, type=bool_flag, nargs='?', const=True, help='use toy dataset')
+    parser.add_argument('--subtask', default='')
 
     args = parser.parse_args()
     if args.mode == 'train':
@@ -176,29 +178,87 @@ def gen(args):
         pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
         nan_id_list = [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id]
         data_path = './data/mimic/'
+    elif args.target_disease == 'breast':
+        diag2id = pd.read_csv('./data/breast/ae_to_int_mapping.csv', header=None)
+        drug2id = pd.read_csv('./data/breast/drug_to_int_mapping.csv', header=None)
+        lab2id = pd.read_csv('./data/breast/lab_to_int_mapping.csv', header=None)
+        proc2id = pd.read_csv('./data/breast/proc_to_int_mapping.csv', header=None)
+        id2diag = dict(zip(diag2id[1], diag2id[0]))
+        id2drug = dict(zip(drug2id[1], drug2id[0]))
+        id2lab = dict(zip(lab2id[1], lab2id[0]))
+        id2proc = dict(zip(proc2id[1], proc2id[0]))
+        demo_len = 10
+        diag_pad_id = len(diag2id)
+        drug_pad_id = len(drug2id)
+        lab_pad_id = len(lab2id)
+        proc_pad_id = len(proc2id)
+        diag_nan_id =  51
+        drug_nan_id = 101
+        lab_nan_id = 10
+        proc_nan_id = 4
+        pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
+        nan_id_list = [diag_nan_id, drug_nan_id, lab_nan_id, proc_nan_id]
+        data_path = './data/breast/'
+    elif args.target_disease == 'mimic4':
+        diag2id = pd.read_csv('./data/mimic4/diagnosis_to_int_mapping_mimic4.csv', header=None)
+        drug2id = pd.read_csv('./data/mimic4/drug_to_int_mapping_mimic4.csv', header=None)
+        lab2id = pd.read_csv('./data/mimic4/lab_to_int_mapping_mimic4.csv', header=None)
+        proc2id = pd.read_csv('./data/mimic4/proc_to_int_mapping_mimic4.csv', header=None)
+        demo_len = 2
+        diag_pad_id = len(diag2id)
+        drug_pad_id = len(drug2id)
+        lab_pad_id = len(lab2id)
+        proc_pad_id = len(proc2id)
+        diag_nan_id = 855
+        drug_nan_id = 38
+        lab_nan_id = 147
+        proc_nan_id = 2
+        pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
+        nan_id_list = [diag_nan_id, drug_nan_id, lab_nan_id, proc_nan_id]
+        data_path = './data/mimic4/'
     else:
         raise ValueError('Invalid disease')
     device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
 
+
     if args.short_ICD and not args.toy:
-        test_dataset = pancreas_Gendataset(data_path + 'test_3dig' + str(args.target_disease) + '.csv',
+        train_dataset = pancreas_Gendataset(data_path + 'train_3dig' + str(args.target_disease) + '.csv',
                                            args.max_len,
                                            args.max_num_codes, pad_id_list, nan_id_list, device)
     elif args.toy:
-        test_dataset = pancreas_Gendataset(data_path + 'toy_3dig' + str(args.target_disease) + '.csv',
-                                           args.max_len,
-                                           args.max_num_codes, pad_id_list, nan_id_list, device)
+        train_dataset = pancreas_Gendataset(data_path + 'train_3dig' + str(args.target_disease) + '3_subset' + '.csv',
+                                       args.max_len,
+                                       args.max_num_codes, pad_id_list, nan_id_list, device)
+    elif args.subtask == 'arf':
+        train_dataset = pancreas_Gendataset(data_path + 'train_3dig' + str(args.target_disease) + '_arf' + '.csv',
+                                       args.max_len,
+                                       args.max_num_codes, pad_id_list, nan_id_list, device, task = 'arf')
+    elif args.subtask == 'shock':
+        train_dataset = pancreas_Gendataset(data_path + 'train_3dig' + str(args.target_disease) + '_shock' + '.csv',
+                                       args.max_len,
+                                       args.max_num_codes, pad_id_list, nan_id_list, device, task = 'shock')
+    elif args.subtask == 'mortality':
+        train_dataset = pancreas_Gendataset(data_path + 'train_3dig' + str(args.target_disease) + '_mortality' + '.csv',
+                                        args.max_len,
+                                        args.max_num_codes, pad_id_list, nan_id_list, device, task = 'mortality')
     else:
-        test_dataset = pancreas_Gendataset(data_path + 'test_5dig' + str(args.target_disease) + '.csv',
+        train_dataset = pancreas_Gendataset(data_path + 'train_5dig' + str(args.target_disease) + '.csv',
                                            args.max_len,
                                            args.max_num_codes, pad_id_list, nan_id_list, device)
-    test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=gen_collate_fn)
+    train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=False, collate_fn=gen_collate_fn)
 
     model, _ = torch.load(checkpoint_filepath)
+    model.eval()
 
-    for i, data in tqdm(enumerate(test_dataloader), total=len(test_dataloader), desc="Generating"):
+    diag_pd_list, drug_pd_list, lab_pd_list, proc_pd_list = [], [], [], []
+    diag_ad_list, drug_ad_list, lab_ad_list, proc_ad_list = [], [], [], []
+    diag_data, drug_data, lab_data, proc_data, timegap = [], [], [], [], []
+    labels = []
+    demographic = []
+
+    for i, data in tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc="Generating"):
         diag_seq, drug_seq, lab_seq, proc_seq, time_step, visit_timegaps, diag_timegaps, drug_timegaps, lab_timegaps, proc_timegaps, \
-            diag_mask, drug_mask, lab_mask, proc_mask, diag_length, drug_length, lab_length, proc_length, demo = data
+            diag_mask, drug_mask, lab_mask, proc_mask, diag_length, drug_length, lab_length, proc_length, demo, label = data
         diag_logits, drug_logits, lab_logits, proc_logits, Delta_ts, added_z, learned_z = model(diag_seq, drug_seq,
                                                                                                 lab_seq, proc_seq,
                                                                                                 time_step,
@@ -214,15 +274,268 @@ def gen(args):
                                                                                                 proc_length, demo)
 
 
-        _, topk_diag_indices = torch.topk(diag_logits, 10, dim=-1)
-        _, topk_drug_indices = torch.topk(drug_logits, 10, dim=-1)
-        _, topk_lab_indices = torch.topk(lab_logits, 10, dim=-1)
-        _, topk_proc_indices = torch.topk(proc_logits, 10, dim=-1)
+
+        k = 20
+        _, topk_diag_indices = torch.topk(diag_logits, min(k,diag_logits.shape[-1]), dim=-1)
+        _, topk_drug_indices = torch.topk(drug_logits,  min(k,drug_logits.shape[-1]), dim=-1)
+        _, topk_lab_indices = torch.topk(lab_logits,  min(k,lab_logits.shape[-1]), dim=-1)
+        _, topk_proc_indices = torch.topk(proc_logits,  min(k,proc_logits.shape[-1]), dim=-1)
+
+        diag_data.extend(topk_diag_indices.tolist())
+        drug_data.extend(topk_drug_indices.tolist())
+        lab_data.extend(topk_lab_indices.tolist())
+        proc_data.extend(topk_proc_indices.tolist())
+        labels.extend(label.tolist())
+        timegap.extend(Delta_ts.tolist())
+        demographic.extend(demo.tolist())
+
+        diag_mask = torch.arange(diag_seq.size(1), device=device)[None, :] < diag_length[:, None]
+        drug_mask = torch.arange(drug_seq.size(1), device=device)[None, :] < drug_length[:, None]
+        lab_mask = torch.arange(lab_seq.size(1), device=device)[None, :] < lab_length[:, None]
+        proc_mask = torch.arange(proc_seq.size(1), device=device)[None, :] < proc_length[:, None]
+
+        # Apply masks to the topk indices and real sequences
+        topk_diag_indices = topk_diag_indices * diag_mask.unsqueeze(-1)
+        topk_drug_indices = topk_drug_indices * drug_mask.unsqueeze(-1)
+        topk_lab_indices = topk_lab_indices * lab_mask.unsqueeze(-1)
+        topk_proc_indices = topk_proc_indices * proc_mask.unsqueeze(-1)
+
+        perscent = 0.5
+
+        diag_pd = Presence_Disclosure(model, diag_seq, topk_diag_indices, 'diag', diag_length, perscent)
+        drug_pd = Presence_Disclosure(model, drug_seq, topk_drug_indices, 'drug', drug_length, perscent)
+        lab_pd = Presence_Disclosure(model, lab_seq, topk_lab_indices, 'lab', lab_length, perscent)
+        proc_pd = Presence_Disclosure(model, proc_seq, topk_proc_indices, 'proc', proc_length, perscent)
+
+        diag_ad = Attribute_Disclosure(model, diag_seq, topk_diag_indices, 'diag', diag_length, perscent, diag_pad_id)
+        drug_ad = Attribute_Disclosure(model, drug_seq, topk_drug_indices, 'drug', drug_length, perscent, drug_pad_id)
+        lab_ad = Attribute_Disclosure(model, lab_seq, topk_lab_indices, 'lab', lab_length, perscent, lab_pad_id)
+        proc_ad = Attribute_Disclosure(model, proc_seq, topk_proc_indices, 'proc', proc_length, perscent, proc_pad_id)
+
+        diag_pd_list.append(diag_pd)
+        drug_pd_list.append(drug_pd)
+        lab_pd_list.append(lab_pd)
+        proc_pd_list.append(proc_pd)
+
+        diag_ad_list.append(diag_ad)
+        drug_ad_list.append(drug_ad)
+        lab_ad_list.append(lab_ad)
+        proc_ad_list.append(proc_ad)
+
+    assert len(labels) == len(diag_data)
+
+    patients_df = pd.DataFrame({
+        'DIAGNOSES_int': diag_data,
+        'DRG_CODE_int': drug_data,
+        'LAB_ITEM_int': lab_data,
+        'PROC_ITEM_int': proc_data,
+        'time_gaps': timegap,
+        'MORTALITY': labels,
+        'demo': demographic
+    })
+
+
+    if args.subtask == 'arf':
+        patients_df.to_csv(data_path + str(args.model) + '_synthetic_3dig' + str(args.target_disease) + '_arf.csv', index=False)
+    elif args.subtask == 'shock':
+        patients_df.to_csv(data_path + str(args.model) + '_synthetic_3dig' + str(args.target_disease) + '_shock.csv', index=False)
+    elif args.subtask == 'mortality':
+        patients_df.to_csv(data_path + str(args.model) + '_synthetic_3dig' + str(args.target_disease) + '_mortality.csv', index=False)
+    elif args.short_ICD:
+        patients_df.to_csv(data_path + str(args.model) + '_synthetic_3dig' + str(args.target_disease) + '.csv',
+                               index=False)
+    else:
+        patients_df.to_csv(data_path + str(args.model) + '_synthetic_5dig' + str(args.target_disease) + '.csv', index=False)
+
+    print('diag_pd', np.mean(diag_pd_list))
+    print('drug_pd', np.mean(drug_pd_list))
+    print('lab_pd', np.mean(lab_pd_list))
+    print('proc_pd', np.mean(proc_pd_list))
+    print('total_pd', np.mean(diag_pd_list) + np.mean(drug_pd_list) + np.mean(lab_pd_list) + np.mean(proc_pd_list))
+    print('*'*50)
+    print('diag_ad', np.mean(diag_ad_list))
+    print('drug_ad', np.mean(drug_ad_list))
+    print('lab_ad', np.mean(lab_ad_list))
+    print('proc_ad', np.mean(proc_ad_list))
+    print('total_ad', np.mean(diag_ad_list) + np.mean(drug_ad_list) + np.mean(lab_ad_list) + np.mean(proc_ad_list))
 
     return
 
+def Attribute_Disclosure(model, real_seq, synthetic_seq, modality, seq_length, code_disclosure_percentage, pad_id, k=5):
+    batchsize, seqlen, codelen = real_seq.shape
+    # Select 1% of patients for attribute disclosure
+    num_disclosed_patients = max(int(batchsize * 0.01), 1)
+    disclosed_patients_idx = np.random.choice(batchsize, num_disclosed_patients, replace=False)
+
+    total_success = 0
+    total_masked_features = 0
+
+    if modality == 'diag':
+        synthetic_emb = model.diag_embedding(synthetic_seq).sum(dim=-2)
+    elif modality == 'drug':
+        synthetic_emb = model.drug_embedding(synthetic_seq).sum(dim=-2)
+    elif modality == 'lab':
+        synthetic_emb = model.lab_embedding(synthetic_seq).sum(dim=-2)
+    elif modality == 'proc':
+        synthetic_emb = model.proc_embedding(synthetic_seq).sum(dim=-2)
+    flat_synthetic_emb = synthetic_emb.view(-1, synthetic_emb.shape[-1])
+
+    for idx in disclosed_patients_idx:
+        # Aggregate all viable codes from the compromised patient
+        all_non_padding_codes = []
+        for visit_idx in range(seq_length[idx].item()):
+            visit_codes = real_seq[idx, visit_idx, :]
+            non_padding_mask = visit_codes != pad_id
+            all_non_padding_codes.extend(visit_codes[non_padding_mask].cpu().numpy())
+
+        # Select a percentage of these codes as known to the attacker
+        num_known_codes = max(1,int(len(all_non_padding_codes) * code_disclosure_percentage))
+        known_codes = np.random.choice(all_non_padding_codes, num_known_codes, replace=False)
+
+        known_codes_mask = torch.full(real_seq[idx, :, :].shape, True)  # Initialize mask to True (known)
+        known_visit_indices = []
+        all_masked_codes_idx = []
+        # Mask the codes unknown to the attacker in each visit
+        for visit_idx in range(seq_length[idx].item()):
+            visit_codes = real_seq[idx, visit_idx, :]
+            non_padding_mask = visit_codes != pad_id
+            visit_unknown_codes_mask = np.isin(visit_codes.cpu().numpy(), known_codes,
+                                               invert=True) & non_padding_mask.cpu().numpy()
+
+            # Update the known codes mask for the current visit
+            known_codes_mask[visit_idx] = torch.from_numpy(~visit_unknown_codes_mask)
+
+            # Store the indices of masked codes for this visit
+            masked_codes_idx = np.where(visit_unknown_codes_mask)[0]
+            all_masked_codes_idx.append(masked_codes_idx)
+
+            if np.any(~visit_unknown_codes_mask):
+                known_visit_indices.append(visit_idx)
+
+        # Apply the inverse of mask to get only known codes
+        known_codes = torch.where(known_codes_mask, real_seq[idx].cpu(), torch.tensor(pad_id))
+        # Get the embedding of the real known visits
+        if modality == 'diag':
+            device = next(model.parameters()).device
+            known_codes = known_codes.to(device)
+            real_emb = model.diag_embedding(known_codes).sum(dim=-2)
+        elif modality == 'drug':
+            device = next(model.parameters()).device
+            known_codes = known_codes.to(device)
+            real_emb = model.drug_embedding(known_codes).sum(dim=-2)
+        elif modality == 'lab':
+            device = next(model.parameters()).device
+            known_codes = known_codes.to(device)
+            real_emb = model.lab_embedding(known_codes).sum(dim=-2)
+        elif modality == 'proc':
+            device = next(model.parameters()).device
+            known_codes = known_codes.to(device)
+            real_emb = model.proc_embedding(known_codes).sum(dim=-2)
+
+        for visit_idx in known_visit_indices:
+            masked_codes_idx = all_masked_codes_idx[visit_idx]
+            # Calculate similarity for the known visit
+            flat_real_emb = real_emb[visit_idx].view(-1, real_emb.shape[-1])
+            similarity = F.cosine_similarity(flat_real_emb, flat_synthetic_emb, dim=-1)
+            top_k_indices = torch.topk(similarity, k, largest=True).indices
+
+            reconstructed_visit = infer_and_reconstruct_visit(top_k_indices, synthetic_seq, masked_codes_idx,
+                                                              known_codes[visit_idx])
+
+            # Calculate sensitivity for this visit
+            original_visit = real_seq[idx, visit_idx, :]
+            sensitivity = calculate_visit_sensitivity(reconstructed_visit, original_visit, masked_codes_idx)
+            total_success += sensitivity
+            total_masked_features += 1
+
+    mean_sensitivity = total_success / total_masked_features if total_masked_features > 0 else 0
+    return mean_sensitivity
+
+def infer_and_reconstruct_visit(top_k_indices, synthetic_seq, masked_codes_idx, known_codes):
+    # Get those visits from the synthetic sequence by the top k indices
+    selected_visits = synthetic_seq.view(-1, synthetic_seq.shape[-1])[top_k_indices]
+    # Convert selected_visits to python list and count the number of each code
+    selected_visits_list = selected_visits.view(-1).cpu().numpy().tolist()
+    code_count = Counter(selected_visits_list)
+
+    for idx in masked_codes_idx:
+        if code_count:
+            # Get the most common code
+            most_common_code, _ = code_count.most_common(1)[0]
+            known_codes[idx] = most_common_code
+            # Remove this code from the counter
+            del code_count[most_common_code]
+        else:
+            # If code_count is exhausted, append a placeholder value
+            known_codes[idx] = -1
+
+    return known_codes
+
+def handle_no_available_code():
+    # Define how to handle the situation where all potential codes are already used.
+    return -1  # Example: returning a placeholder code like -1
+
+
+def calculate_visit_sensitivity(reconstructed_visit, original_visit, masked_codes_idx):
+    # Initialize counts
+    correct_inferences = 0
+    total_masked_features = len(masked_codes_idx)
+
+    # Compare only the masked (inferred) positions
+    for idx in masked_codes_idx:
+        if reconstructed_visit[idx] == original_visit[idx]:
+            correct_inferences += 1
+
+    # Calculate sensitivity
+    sensitivity = correct_inferences / total_masked_features if total_masked_features > 0 else 0
+    return sensitivity
+
+
+def Presence_Disclosure(model, real_seq, synthetic_seq, modality, seq_length, percentage = 0.1):
+    batchsize, seqlen, codelen = real_seq.shape
+    #randomly choose 5% of the patients to be disclosed
+    num_disclosed = max(int(batchsize * percentage),1)
+    disclosed_idx = np.random.choice(batchsize, num_disclosed, replace=False)
+    #first use the embedding layer to get the embedding of the real and synthetic codes
+    if modality == 'diag':
+        real_emb = model.diag_embedding(real_seq).sum(dim=-2)
+        synthetic_emb = model.diag_embedding(synthetic_seq).sum(dim=-2)
+    elif modality == 'drug':
+        real_emb = model.drug_embedding(real_seq).sum(dim=-2)
+        synthetic_emb = model.drug_embedding(synthetic_seq).sum(dim=-2)
+    elif modality == 'lab':
+        real_emb = model.lab_embedding(real_seq).sum(dim=-2)
+        synthetic_emb = model.lab_embedding(synthetic_seq).sum(dim=-2)
+    elif modality == 'proc':
+        real_emb = model.proc_embedding(real_seq).sum(dim=-2)
+        synthetic_emb = model.proc_embedding(synthetic_seq).sum(dim=-2)
+
+    flat_real_emb = real_emb.view(-1, real_emb.shape[-1])
+    flat_synthetic_emb = synthetic_emb.view(-1, synthetic_emb.shape[-1])
+    similarity = F.cosine_similarity(flat_real_emb.unsqueeze(1), flat_synthetic_emb.unsqueeze(0), dim=-1)
+
+    success_count = 0
+    total_count = 0
+
+    for idx in disclosed_idx:
+        valid_length = seq_length[idx].item()  # Get the non-padding length for the current sequence
+        for visit_idx in range(valid_length):  # Only iterate over non-padded visits
+            flat_idx = idx * seqlen + visit_idx
+            matched_idx = torch.argmax(similarity[flat_idx]).item()
+            if matched_idx // seqlen == idx:
+                success_count += 1
+            total_count += 1  # Increment total_count within the valid_length loop
+
+    sensitivity = success_count / total_count if total_count > 0 else 0
+    return sensitivity
+
+
+
 def train(args):
     print(args)
+    #check if using cuda
+    # print(torch.cuda.is_available())
+    # exit()
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -281,6 +594,61 @@ def train(args):
             pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
             nan_id_list = [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id]
             data_path = './data/mimic/'
+        elif args.target_disease == 'breast':
+            diag2id = pd.read_csv('./data/breast/ae_to_int_mapping.csv', header=None)
+            drug2id = pd.read_csv('./data/breast/drug_to_int_mapping.csv', header=None)
+            lab2id = pd.read_csv('./data/breast/lab_to_int_mapping.csv', header=None)
+            proc2id = pd.read_csv('./data/breast/proc_to_int_mapping.csv', header=None)
+            id2diag = dict(zip(diag2id[1], diag2id[0]))
+            id2drug = dict(zip(drug2id[1], drug2id[0]))
+            id2lab = dict(zip(lab2id[1], lab2id[0]))
+            id2proc = dict(zip(proc2id[1], proc2id[0]))
+            demo_len = 10
+            diag_pad_id = len(diag2id)
+            drug_pad_id = len(drug2id)
+            lab_pad_id = len(lab2id)
+            proc_pad_id = len(proc2id)
+            diag_nan_id = 51
+            drug_nan_id = 101
+            lab_nan_id = 10
+            proc_nan_id = 4
+            pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
+            nan_id_list = [diag_nan_id, drug_nan_id, lab_nan_id, proc_nan_id]
+            data_path = './data/breast/'
+        elif args.target_disease == 'mimic4':
+            diag2id = pd.read_csv('./data/mimic4/diagnosis_to_int_mapping_mimic4.csv', header=None)
+            drug2id = pd.read_csv('./data/mimic4/drug_to_int_mapping_mimic4.csv', header=None)
+            lab2id = pd.read_csv('./data/mimic4/lab_to_int_mapping_mimic4.csv', header=None)
+            proc2id = pd.read_csv('./data/mimic4/proc_to_int_mapping_mimic4.csv', header=None)
+            demo_len = 2
+            diag_pad_id = len(diag2id)
+            drug_pad_id = len(drug2id)
+            lab_pad_id = len(lab2id)
+            proc_pad_id = len(proc2id)
+            diag_nan_id = 855
+            drug_nan_id = 38
+            lab_nan_id = 147
+            proc_nan_id = 2
+            pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
+            nan_id_list = [diag_nan_id, drug_nan_id, lab_nan_id, proc_nan_id]
+            data_path = './data/mimic4/'
+        elif args.target_disease == 'eicu':
+            diag2id = pd.read_csv('./data/eicu/diagnosis_to_int_mapping_3dig.csv', header=None)
+            drug2id = pd.read_csv('./data/eicu/drug_to_int_mapping_3dig.csv', header=None)
+            lab2id = pd.read_csv('./data/eicu/lab_to_int_mapping_3dig.csv', header=None)
+            proc2id = pd.read_csv('./data/eicu/proc_to_int_mapping_3dig.csv', header=None)
+            demo_len = 2
+            diag_pad_id = len(diag2id)
+            drug_pad_id = len(drug2id)
+            lab_pad_id = len(lab2id)
+            proc_pad_id = len(proc2id)
+            diag_nan_id = 0
+            drug_nan_id = 148
+            lab_nan_id = 158
+            proc_nan_id = 1207
+            pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
+            nan_id_list = [diag_nan_id, drug_nan_id, lab_nan_id, proc_nan_id]
+            data_path = './data/eicu/'
         else:
             raise ValueError('Invalid disease')
         device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
@@ -313,7 +681,7 @@ def train(args):
             dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=gen_collate_fn)
             test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=gen_collate_fn)
         if args.model == 'MedDiffGa':
-                model = MedDiffGa(pad_id_list, args.d_model, args.dropout, args.dropout_emb, args.num_layers, demo_len, device)
+                model = MedDiffGa(pad_id_list, args.d_model, args.dropout, args.dropout_emb, args.num_layers, demo_len, device,channel_list=[args.d_model,int(args.d_model*2),int(args.d_model*4)])
         else:
                 raise ValueError('Invalid model')
         model.to(device)
@@ -362,7 +730,7 @@ def train(args):
                     # ehr, time_step, code_timegaps, code_mask, lengths, visit_timegaps, demo = data
                     # logits, Delta_ts, added_z, learned_z = model(ehr, None, lengths, time_step, code_mask, code_timegaps, visit_timegaps, demo)
                     diag_seq, drug_seq, lab_seq, proc_seq, time_step, visit_timegaps, diag_timegaps, drug_timegaps, lab_timegaps, proc_timegaps,\
-                        diag_mask, drug_mask, lab_mask, proc_mask, diag_length, drug_length, lab_length, proc_length, demo = data
+                        diag_mask, drug_mask, lab_mask, proc_mask, diag_length, drug_length, lab_length, proc_length, demo, _ = data
                     diag_logits, drug_logits, lab_logits, proc_logits, Delta_ts, added_z, learned_z = model(diag_seq, drug_seq, lab_seq, proc_seq, time_step, visit_timegaps, diag_timegaps, drug_timegaps, lab_timegaps, proc_timegaps,\
                         diag_mask, drug_mask, lab_mask, proc_mask, diag_length, drug_length, lab_length, proc_length, demo)
                 else:
@@ -410,9 +778,10 @@ def train(args):
                 #     length_mask[i, :lengths[i]] = 1.0
 
                 # a = focal(logits, multihot_ehr) * args.lambda_ce
-                a = (CE(diag_logits, multihot_diag) + CE(drug_logits, multihot_drug) + CE(lab_logits, multihot_lab) + CE(proc_logits, multihot_proc)) * args.lambda_ce
-                # a = (focal(diag_logits, multihot_diag) + focal(drug_logits, multihot_drug) + focal(lab_logits, multihot_lab) + focal(proc_logits, multihot_proc)) * args.lambda_ce
-                b = torch.log(MSE(Delta_ts * length_mask, visit_timegaps * length_mask) + 1e-10) * args.lambda_timegap
+                # a = (CE(diag_logits, multihot_diag) + CE(drug_logits, multihot_drug) + CE(lab_logits, multihot_lab) + CE(proc_logits, multihot_proc)) * args.lambda_ce
+                a = (focal(diag_logits, multihot_diag) + focal(drug_logits, multihot_drug) + focal(lab_logits, multihot_lab) + focal(proc_logits, multihot_proc)) * args.lambda_ce
+                b = (MSE(Delta_ts * length_mask, visit_timegaps * length_mask) + 1e-10) * args.lambda_timegap
+                # b = 0
                 c = MSE(added_z, learned_z) * args.lambda_diff
                 loss = a + b + c
                 # loss = CE(logits, multihot_ehr) + MSE(Delta_ts, visit_timegaps) + MSE(added_z, learned_z)
@@ -443,14 +812,14 @@ def train(args):
             proc_nan_id = 24
             model.eval()
             if args.model in ('MedDiffGa'):
-                train_res = eva.eval(train_dataloader, [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id], [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id], ['diag', 'drug', 'lab', 'proc'], ['lpl', 'mpl'])
+                # train_res = eva.eval(train_dataloader, [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id], [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id], ['diag', 'drug', 'lab', 'proc'], ['lpl', 'mpl'])
                 val_res = eva.eval(dev_dataloader, [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id], [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id], ['diag', 'drug', 'lab', 'proc'], ['lpl', 'mpl'])
                 test_res = eva.eval(test_dataloader, [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id], [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id], ['diag', 'drug', 'lab', 'proc'], ['lpl', 'mpl'])
-                train_diag_lpl, tran_drug_lpl, train_lab_lpl, train_proc_lpl = train_res['lpl_diag'], train_res['lpl_drug'], train_res['lpl_lab'], train_res['lpl_proc']
+                # train_diag_lpl, tran_drug_lpl, train_lab_lpl, train_proc_lpl = train_res['lpl_diag'], train_res['lpl_drug'], train_res['lpl_lab'], train_res['lpl_proc']
                 val_diag_lpl, val_drug_lpl, val_lab_lpl, val_proc_lpl = val_res['lpl_diag'], val_res['lpl_drug'], val_res['lpl_lab'], val_res['lpl_proc']
                 test_diag_lpl, test_drug_lpl, test_lab_lpl, test_proc_lpl = test_res['lpl_diag'], test_res['lpl_drug'], test_res['lpl_lab'], test_res['lpl_proc']
 
-                train_diag_mpl, tran_drug_mpl, train_lab_mpl, train_proc_mpl = train_res['mpl_diag'], train_res['mpl_drug'], train_res['mpl_lab'], train_res['mpl_proc']
+                # train_diag_mpl, tran_drug_mpl, train_lab_mpl, train_proc_mpl = train_res['mpl_diag'], train_res['mpl_drug'], train_res['mpl_lab'], train_res['mpl_proc']
                 val_diag_mpl, val_drug_mpl, val_lab_mpl, val_proc_mpl = val_res['mpl_diag'], val_res['mpl_drug'], val_res['mpl_lab'], val_res['mpl_proc']
                 test_diag_mpl, test_drug_mpl, test_lab_mpl, test_proc_mpl = test_res['mpl_diag'], test_res['mpl_drug'], test_res['mpl_lab'], test_res['mpl_proc']
 
@@ -460,6 +829,8 @@ def train(args):
                 raise ValueError('Invalid model')
             print('-' * 71)
             # print('train lpl {:7.4f} | dev lpl {:7.4f} | test lpl {:7.4f}'.format(train_lpl, val_lpl, test_lpl))
+            train_diag_lpl, tran_drug_lpl, train_lab_lpl, train_proc_lpl = 0, 0, 0, 0
+            train_diag_mpl, tran_drug_mpl, train_lab_mpl, train_proc_mpl = 0, 0, 0, 0
             print('Epoch: {:5}'.format(epoch_id))
             print('Diagnosis:')
             print('train lpl {:7.4f} | dev lpl {:7.4f} | test lpl {:7.4f}'.format(train_diag_lpl, val_diag_lpl, test_diag_lpl))
@@ -500,18 +871,20 @@ def train(args):
 
 
 if __name__ == '__main__':
-
     modes = ['train']
     short_ICD = True
+    subset = False
     seeds = [10]
-    focal_alphas = [0.5]
-    focal_gammas = [1.0]
+    # focal_alphas = [0.25, 0.5, 0.75, 1]
+    # focal_gammas = [0, 1, 2, 5]
+    focal_alphas = [0.75]
+    focal_gammas = [5]
     # seeds = [11]
     # names = ['toy','LSTM','Hitatime', 'Hita']
-    save_path = './saved_'
+    save_path = './saved_EHRPD_'
     names = ['MedDiffGa']
     save_dirs = [save_path+name+'/' for name in names]
-    datas = ['mimic']
+    datas = ['eicu']
     max_lens = [20]
     max_nums = [10]
     for mode in modes:
@@ -520,7 +893,7 @@ if __name__ == '__main__':
                 for focal_gamma in focal_gammas:
                     for name, save_dir in zip(names, save_dirs):
                         for data, max_len, max_num in zip(datas, max_lens, max_nums):
-                            main(seed, name, data, max_len, max_num, save_dir, mode, focal_alpha, focal_gamma, short_ICD)
+                            main(seed, name, data, max_len, max_num, save_dir, mode, focal_alpha, focal_gamma, short_ICD, subset)
 
     # csv_path = './saved_models/'
     #

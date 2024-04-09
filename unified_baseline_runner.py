@@ -13,9 +13,13 @@ from models.unified_baseline import *
 from utils.utils import check_path, export_config, bool_flag
 from utils.icd_rel import *
 from models.evaluators import Evaluator
+from generatingModelTestingGround import Presence_Disclosure, Attribute_Disclosure
 import warnings
 import random
 torch.autograd.set_detect_anomaly(True)
+# import os
+# os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+
 
 
 def indices_to_codes(indices, mapping):
@@ -50,10 +54,10 @@ def main(seed, name, model, data, max_len, max_num, sav_dir, mode, short_ICD, to
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
     parser.add_argument('--seed', default=seed, type=int, help='seed')
-    parser.add_argument('-bs', '--batch_size', default=32, type=int)
-    parser.add_argument('-me', '--max_epochs_before_stop', default=5, type=int)
+    parser.add_argument('-bs', '--batch_size', default=128, type=int)
+    parser.add_argument('-me', '--max_epochs_before_stop', default=4, type=int)
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
-    parser.add_argument('--h_model', default=128, type=int, help='dimension of hidden layers')
+    parser.add_argument('--h_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--dropout', default=0.1, type=float, help='dropout rate of hidden layers')
     parser.add_argument('--dropout_emb', default=0.1, type=float, help='dropout rate of embedding layers')
     parser.add_argument('--num_layers', default=1, type=int, help='number of transformer layers of EHR encoder')
@@ -72,7 +76,7 @@ def main(seed, name, model, data, max_len, max_num, sav_dir, mode, short_ICD, to
     parser.add_argument('--target_rate', default=0.3, type=float)
     parser.add_argument('--max_grad_norm', default=1.0, type=float, help='max grad norm (0 to disable)')
     parser.add_argument('--warmup_steps', default=200, type=int)
-    parser.add_argument('--n_epochs', default=30, type=int)
+    parser.add_argument('--n_epochs', default=15, type=int)
     parser.add_argument('--log_interval', default=100, type=int)
     parser.add_argument('--mode', default=mode)
     parser.add_argument('--model', default=model)
@@ -84,6 +88,7 @@ def main(seed, name, model, data, max_len, max_num, sav_dir, mode, short_ICD, to
     parser.add_argument('--lambda_gp', default=10, type=float)
     parser.add_argument('--critic_iterations', default=5, type=int)
     parser.add_argument('--toy', default=toy, type=bool_flag, nargs='?', const=True, help='use toy dataset')
+    parser.add_argument('--subtask', default='')
     args = parser.parse_args()
     if args.mode == 'train':
         train(args)
@@ -151,29 +156,70 @@ def gen(args):
         pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
         nan_id_list = [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id]
         data_path = './data/mimic/'
+    elif args.target_disease == 'breast':
+        diag2id = pd.read_csv('./data/breast/ae_to_int_mapping.csv', header=None)
+        drug2id = pd.read_csv('./data/breast/drug_to_int_mapping.csv', header=None)
+        lab2id = pd.read_csv('./data/breast/lab_to_int_mapping.csv', header=None)
+        proc2id = pd.read_csv('./data/breast/proc_to_int_mapping.csv', header=None)
+        id2diag = dict(zip(diag2id[1], diag2id[0]))
+        id2drug = dict(zip(drug2id[1], drug2id[0]))
+        id2lab = dict(zip(lab2id[1], lab2id[0]))
+        id2proc = dict(zip(proc2id[1], proc2id[0]))
+        demo_len = 10
+        diag_pad_id = len(diag2id)
+        drug_pad_id = len(drug2id)
+        lab_pad_id = len(lab2id)
+        proc_pad_id = len(proc2id)
+        diag_nan_id =  51
+        drug_nan_id = 101
+        lab_nan_id = 10
+        proc_nan_id = 4
+        pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
+        nan_id_list = [diag_nan_id, drug_nan_id, lab_nan_id, proc_nan_id]
+        data_path = './data/breast/'
     else:
         raise ValueError('Invalid disease')
     device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
 
-    if args.short_ICD and not args.toy:
-        test_dataset = pancreas_Gendataset(data_path + 'test_3dig' + str(args.target_disease) + '.csv',
-                                           args.max_len,
-                                           args.max_num_codes, pad_id_list, nan_id_list, device)
+
+    if args.subtask == 'arf':
+        train_dataset = pancreas_Gendataset(data_path + 'train_3dig' + str(args.target_disease) + '_arf' + '.csv',
+                                            args.max_len,
+                                            args.max_num_codes, pad_id_list, nan_id_list, device, task='arf')
+    elif args.subtask == 'shock':
+        train_dataset = pancreas_Gendataset(data_path + 'train_3dig' + str(args.target_disease) + '_shock' + '.csv',
+                                            args.max_len,
+                                            args.max_num_codes, pad_id_list, nan_id_list, device, task='shock')
+    elif args.subtask == 'mortality':
+        train_dataset = pancreas_Gendataset(data_path + 'train_3dig' + str(args.target_disease) + '_mortality' + '.csv',
+                                            args.max_len,
+                                            args.max_num_codes, pad_id_list, nan_id_list, device, task='mortality')
+    elif args.short_ICD and not args.toy:
+        train_dataset = pancreas_Gendataset(data_path + 'train_3dig' + str(args.target_disease) + '.csv',
+                                            args.max_len,
+                                            args.max_num_codes, pad_id_list, nan_id_list, device)
     elif args.toy:
-        test_dataset = pancreas_Gendataset(data_path + 'toy_3dig' + str(args.target_disease) + '.csv',
-                                           args.max_len,
-                                           args.max_num_codes, pad_id_list, nan_id_list, device)
+        train_dataset = pancreas_Gendataset(data_path + 'train_3dig' + str(args.target_disease) + '3_subset' + '.csv',
+                                            args.max_len,
+                                            args.max_num_codes, pad_id_list, nan_id_list, device)
     else:
-        test_dataset = pancreas_Gendataset(data_path + 'test_5dig' + str(args.target_disease) + '.csv',
+        train_dataset = pancreas_Gendataset(data_path + 'train_5dig' + str(args.target_disease) + '.csv',
                                            args.max_len,
                                            args.max_num_codes, pad_id_list, nan_id_list, device)
-    test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=gen_collate_fn)
+    train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=False, collate_fn=gen_collate_fn)
 
     model, _ = torch.load(checkpoint_filepath)
+    model.eval()
 
-    for i, data in tqdm(enumerate(test_dataloader), total=len(test_dataloader), desc="Generating"):
+    diag_pd_list, drug_pd_list, lab_pd_list, proc_pd_list = [], [], [], []
+    diag_ad_list, drug_ad_list, lab_ad_list, proc_ad_list = [], [], [], []
+    diag_data, drug_data, lab_data, proc_data, timegap = [], [], [], [], []
+    labels = []
+    demographic = []
+
+    for i, data in tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc="Generating"):
         diag_seq, drug_seq, lab_seq, proc_seq, time_step, visit_timegaps, diag_timegaps, drug_timegaps, lab_timegaps, proc_timegaps, \
-            diag_mask, drug_mask, lab_mask, proc_mask, diag_length, drug_length, lab_length, proc_length, demo = data
+            diag_mask, drug_mask, lab_mask, proc_mask, diag_length, drug_length, lab_length, proc_length, demo, label = data
         if args.model == 'LSTM-medGAN':
             _, _, _, _, gen_diag_logits, gen_drug_logits, gen_lab_logits, gen_proc_logits, _, _ = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
         elif args.model == 'LSTM-MLP':
@@ -182,37 +228,97 @@ def gen(args):
             _, _, _, _, gen_diag_logits, gen_drug_logits, gen_lab_logits, gen_proc_logits, _, _ = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
         elif args.model == 'TWIN':
             gen_diag_logits, gen_drug_logits, gen_lab_logits, gen_proc_logits, _, _ = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
+        elif args.model == 'LSTM-TabDDPM':
+            gen_diag_logits, gen_drug_logits, gen_lab_logits, gen_proc_logits, _, _, _, _, _, _, _ ,_ = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
+        elif args.model == 'EVA':
+            gen_diag_logits, gen_drug_logits, gen_lab_logits, gen_proc_logits, _, _ = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
         else:
             raise ValueError('Invalid model')
+        k = 20
+        _, topk_diag_indices = torch.topk(gen_diag_logits, min(k,gen_diag_logits.shape[-1]), dim=-1)
+        _, topk_drug_indices = torch.topk(gen_drug_logits,  min(k,gen_drug_logits.shape[-1]), dim=-1)
+        _, topk_lab_indices = torch.topk(gen_lab_logits,  min(k,gen_lab_logits.shape[-1]), dim=-1)
+        _, topk_proc_indices = torch.topk(gen_proc_logits,  min(k,gen_proc_logits.shape[-1]), dim=-1)
 
-        _, topk_diag_indices = torch.topk(gen_diag_logits, 10, dim=-1)
-        _, topk_drug_indices = torch.topk(gen_drug_logits, 10, dim=-1)
-        _, topk_lab_indices = torch.topk(gen_lab_logits, 10, dim=-1)
-        _, topk_proc_indices = torch.topk(gen_proc_logits, 10, dim=-1)
+        diag_data.extend(topk_diag_indices.tolist())
+        drug_data.extend(topk_drug_indices.tolist())
+        lab_data.extend(topk_lab_indices.tolist())
+        proc_data.extend(topk_proc_indices.tolist())
+        labels.extend(label.tolist())
+        timegap_placeholder = torch.arange(0, args.max_len).unsqueeze(0).repeat(topk_diag_indices.shape[0], 1)
+        timegap.extend(timegap_placeholder.tolist())
+        demographic.extend(demo.tolist())
 
-        # if args.short_ICD:
-        #     synthetic_file_name = 'synthetic' + str(args.model) + '_' + str(args.target_disease) + '3dig3' + '.csv'
-        # else:
-        #     synthetic_file_name = 'synthetic' + str(args.model) + '_' + str(args.target_disease) + '3dig5' + '.csv'
-        #
-        # diag_codes = indices_to_codes(topk_diag_indices.tolist(), id2diag)
-        # drug_codes = indices_to_codes(topk_drug_indices.tolist(), id2drug)
-        # lab_codes = indices_to_codes(topk_lab_indices.tolist(), id2lab)
-        # proc_codes = indices_to_codes(topk_proc_indices.tolist(), id2proc)
-        #
-        # # Open a CSV file to write the data
-        # with open(synthetic_file_name, 'w', newline='') as file:
-        #     writer = csv.writer(file)
-        #     writer.writerow(['Diag Codes', 'Drug Codes', 'Lab Codes', 'Proc Codes'])
-        #
-        #     for i in range(len(diag_codes)):
-        #         row = [
-        #             ','.join(map(str, diag_codes[i])),
-        #             ','.join(map(str, drug_codes[i])),
-        #             ','.join(map(str, lab_codes[i])),
-        #             ','.join(map(str, proc_codes[i]))
-        #         ]
-        #         writer.writerow(row)
+        diag_mask = torch.arange(diag_seq.size(1), device=device)[None, :] < diag_length[:, None]
+        drug_mask = torch.arange(drug_seq.size(1), device=device)[None, :] < drug_length[:, None]
+        lab_mask = torch.arange(lab_seq.size(1), device=device)[None, :] < lab_length[:, None]
+        proc_mask = torch.arange(proc_seq.size(1), device=device)[None, :] < proc_length[:, None]
+
+        # Apply masks to the topk indices and real sequences
+        topk_diag_indices = topk_diag_indices * diag_mask.unsqueeze(-1)
+        topk_drug_indices = topk_drug_indices * drug_mask.unsqueeze(-1)
+        topk_lab_indices = topk_lab_indices * lab_mask.unsqueeze(-1)
+        topk_proc_indices = topk_proc_indices * proc_mask.unsqueeze(-1)
+
+        perscent = 0.35
+
+        diag_pd = Presence_Disclosure(model, diag_seq, topk_diag_indices, 'diag', diag_length, perscent)
+        drug_pd = Presence_Disclosure(model, drug_seq, topk_drug_indices, 'drug', drug_length, perscent)
+        lab_pd = Presence_Disclosure(model, lab_seq, topk_lab_indices, 'lab', lab_length, perscent)
+        proc_pd = Presence_Disclosure(model, proc_seq, topk_proc_indices, 'proc', proc_length, perscent)
+
+        diag_ad = Attribute_Disclosure(model, diag_seq, topk_diag_indices, 'diag', diag_length, perscent, diag_pad_id)
+        drug_ad = Attribute_Disclosure(model, drug_seq, topk_drug_indices, 'drug', drug_length, perscent, drug_pad_id)
+        lab_ad = Attribute_Disclosure(model, lab_seq, topk_lab_indices, 'lab', lab_length, perscent, lab_pad_id)
+        proc_ad = Attribute_Disclosure(model, proc_seq, topk_proc_indices, 'proc', proc_length, perscent, proc_pad_id)
+
+        diag_pd_list.append(diag_pd)
+        drug_pd_list.append(drug_pd)
+        lab_pd_list.append(lab_pd)
+        proc_pd_list.append(proc_pd)
+
+        diag_ad_list.append(diag_ad)
+        drug_ad_list.append(drug_ad)
+        lab_ad_list.append(lab_ad)
+        proc_ad_list.append(proc_ad)
+
+    assert len(labels) == len(diag_data)
+
+    patients_df = pd.DataFrame({
+        'DIAGNOSES_int': diag_data,
+        'DRG_CODE_int': drug_data,
+        'LAB_ITEM_int': lab_data,
+        'PROC_ITEM_int': proc_data,
+        'time_gaps': timegap,
+        'MORTALITY': labels,
+        'demo': demographic
+    })
+
+
+    if args.subtask == 'arf':
+        patients_df.to_csv(data_path + str(args.model) + '_synthetic_3dig' + str(args.target_disease) + '_arf.csv', index=False)
+    elif args.subtask == 'shock':
+        patients_df.to_csv(data_path + str(args.model) + '_synthetic_3dig' + str(args.target_disease) + '_shock.csv', index=False)
+    elif args.subtask == 'mortality':
+        patients_df.to_csv(data_path + str(args.model) + '_synthetic_3dig' + str(args.target_disease) + '_mortality.csv', index=False)
+    elif args.short_ICD:
+        patients_df.to_csv(data_path + str(args.model) + '_synthetic_3dig' + str(args.target_disease) + '.csv', index=False)
+    else:
+        patients_df.to_csv(data_path + str(args.model) + '_synthetic_5dig' + str(args.target_disease) + '.csv', index=False)
+
+    print('diag_pd', np.mean(diag_pd_list))
+    print('drug_pd', np.mean(drug_pd_list))
+    print('lab_pd', np.mean(lab_pd_list))
+    print('proc_pd', np.mean(proc_pd_list))
+    print('total_pd', np.mean(diag_pd_list) + np.mean(drug_pd_list) + np.mean(lab_pd_list) + np.mean(proc_pd_list))
+    print('*'*50)
+    print('diag_ad', np.mean(diag_ad_list))
+    print('drug_ad', np.mean(drug_ad_list))
+    print('lab_ad', np.mean(lab_ad_list))
+    print('proc_ad', np.mean(proc_ad_list))
+    print('total_ad', np.mean(diag_ad_list) + np.mean(drug_ad_list) + np.mean(lab_ad_list) + np.mean(proc_ad_list))
+
+    return
 
 def train(args):
     print(args)
@@ -274,6 +380,61 @@ def train(args):
             pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
             nan_id_list = [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id]
             data_path = './data/mimic/'
+        elif args.target_disease == 'mimic4':
+            diag2id = pd.read_csv('./data/mimic4/diagnosis_to_int_mapping_mimic4.csv', header=None)
+            drug2id = pd.read_csv('./data/mimic4/drug_to_int_mapping_mimic4.csv', header=None)
+            lab2id = pd.read_csv('./data/mimic4/lab_to_int_mapping_mimic4.csv', header=None)
+            proc2id = pd.read_csv('./data/mimic4/proc_to_int_mapping_mimic4.csv', header=None)
+            demo_len = 2
+            diag_pad_id = len(diag2id)
+            drug_pad_id = len(drug2id)
+            lab_pad_id = len(lab2id)
+            proc_pad_id = len(proc2id)
+            diag_nan_id = 855
+            drug_nan_id = 38
+            lab_nan_id = 147
+            proc_nan_id = 2
+            pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
+            nan_id_list = [diag_nan_id, drug_nan_id, lab_nan_id, proc_nan_id]
+            data_path = './data/mimic4/'
+        elif args.target_disease == 'eicu':
+            diag2id = pd.read_csv('./data/eicu/diagnosis_to_int_mapping_3dig.csv', header=None)
+            drug2id = pd.read_csv('./data/eicu/drug_to_int_mapping_3dig.csv', header=None)
+            lab2id = pd.read_csv('./data/eicu/lab_to_int_mapping_3dig.csv', header=None)
+            proc2id = pd.read_csv('./data/eicu/proc_to_int_mapping_3dig.csv', header=None)
+            demo_len = 2
+            diag_pad_id = len(diag2id)
+            drug_pad_id = len(drug2id)
+            lab_pad_id = len(lab2id)
+            proc_pad_id = len(proc2id)
+            diag_nan_id = 0
+            drug_nan_id = 148
+            lab_nan_id = 158
+            proc_nan_id = 1207
+            pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
+            nan_id_list = [diag_nan_id, drug_nan_id, lab_nan_id, proc_nan_id]
+            data_path = './data/eicu/'
+        elif args.target_disease == 'breast':
+            diag2id = pd.read_csv('./data/breast/ae_to_int_mapping.csv', header=None)
+            drug2id = pd.read_csv('./data/breast/drug_to_int_mapping.csv', header=None)
+            lab2id = pd.read_csv('./data/breast/lab_to_int_mapping.csv', header=None)
+            proc2id = pd.read_csv('./data/breast/proc_to_int_mapping.csv', header=None)
+            id2diag = dict(zip(diag2id[1], diag2id[0]))
+            id2drug = dict(zip(drug2id[1], drug2id[0]))
+            id2lab = dict(zip(lab2id[1], lab2id[0]))
+            id2proc = dict(zip(proc2id[1], proc2id[0]))
+            demo_len = 10
+            diag_pad_id = len(diag2id)
+            drug_pad_id = len(drug2id)
+            lab_pad_id = len(lab2id)
+            proc_pad_id = len(proc2id)
+            diag_nan_id = 51
+            drug_nan_id = 101
+            lab_nan_id = 10
+            proc_nan_id = 4
+            pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
+            nan_id_list = [diag_nan_id, drug_nan_id, lab_nan_id, proc_nan_id]
+            data_path = './data/breast/'
         else:
             raise ValueError('Invalid disease')
         device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
@@ -308,7 +469,7 @@ def train(args):
         test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=gen_collate_fn)
 
         if args.model == 'LSTM-medGAN':
-            generator = Linear_generator(args.d_model, 256)
+            generator = Linear_generator(args.d_model, args.h_model)
             generator.to(device)
             discriminator = Discriminator(args.d_model)
             discriminator.to(device)
@@ -316,15 +477,31 @@ def train(args):
         elif args.model == 'LSTM-MLP':
             model = LSTM_MLP(args.name, pad_id_list, args.d_model, args.dropout, None)
         elif args.model == 'synTEG':
-            generator = Linear_generator(args.d_model, 256)
+            generator = Linear_generator(args.d_model, args.h_model)
             generator.to(device)
             discriminator = Discriminator(args.d_model)
             discriminator.to(device)
             model = synTEG(args.name, pad_id_list, args.d_model, args.dropout, generator)
         elif args.model == 'TWIN':
-            generator = VAE_generator()
+            generator = VAE_generator(args.d_model, int(args.h_model / 2), int(args.h_model / 4))
             generator.to(device)
             model = TWIN(args.name, pad_id_list, args.d_model, args.dropout, 5, generator)
+        elif args.model == 'LSTM-TabDDPM':
+            generator = Diff_generator(args.d_model, args.dropout, device)
+            generator.to(device)
+            model = LSTM_TabDDPM(args.name, pad_id_list, args.d_model, args.dropout, generator)
+        elif args.model == 'EVA':
+            generator = VAE_generator(args.d_model, int(args.h_model / 2), int(args.h_model / 4))
+            generator.to(device)
+            model = EVA(args.name, pad_id_list, args.d_model, args.dropout, generator)
+        elif args.model == 'LSTM-Meddiff':
+            generator = Diff_generator(args.d_model * 4, args.dropout, device)
+            generator.to(device)
+            model = LSTM_Meddiff(args.name, pad_id_list, args.d_model, args.dropout, generator)
+        elif args.model == 'LSTM-ScoEHR':
+            generator = Diff_generator(args.d_model, args.dropout, device)
+            generator.to(device)
+            model = LSTM_ScoEHR(args.name, pad_id_list, args.d_model, args.dropout, generator)
         else:
             raise ValueError('Invalid model')
         model.to(device)
@@ -357,6 +534,7 @@ def train(args):
         print('-' * 71)
         global_step, best_dev_epoch, total_loss = 0, 0, 0.0
         generation_module_loss, prediction_module_loss = 0.0, 0.0
+        time_pred_loss = 0.0
         best_choosing_statistic = 1e10
 
         if args.name == 'WGAN-GP':
@@ -369,15 +547,19 @@ def train(args):
             for i, data in enumerate(tqdm(train_dataloader, desc="Training", leave=False)):
 
                 diag_seq, drug_seq, lab_seq, proc_seq, time_step, visit_timegaps, diag_timegaps, drug_timegaps, lab_timegaps, proc_timegaps,\
-                    diag_mask, drug_mask, lab_mask, proc_mask, diag_length, drug_length, lab_length, proc_length, demo = data
+                    diag_mask, drug_mask, lab_mask, proc_mask, diag_length, drug_length, lab_length, proc_length, demo, _ = data
                 if args.model == 'LSTM-medGAN':
-                    real_diag_logits, real_drug_logits, real_lab_logits, real_proc_logits, gen_diag_logits, gen_drug_logits, gen_lab_logits, gen_proc_logits, h, v_gen = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
+                    real_diag_logits, real_drug_logits, real_lab_logits, real_proc_logits, gen_diag_logits, gen_drug_logits, gen_lab_logits, gen_proc_logits, h, v_gen = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length, None)
                 elif args.model == 'LSTM-MLP':
                     real_diag_logits, real_drug_logits, real_lab_logits, real_proc_logits, _, _, _, _, h, _ = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
                 elif args.model == 'synTEG':
                     real_diag_logits, real_drug_logits, real_lab_logits, real_proc_logits, gen_diag_logits, gen_drug_logits, gen_lab_logits, gen_proc_logits, h, v_gen = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
                 elif args.model == 'TWIN':
-                    real_diag_logits, real_drug_logits, real_lab_logits, real_proc_logits, miu, logvar = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
+                    real_diag_logits, real_drug_logits, real_lab_logits, real_proc_logits, miu, logvar, time_pred = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length, time_step)
+                elif args.model == 'LSTM-TabDDPM' or args.model == 'LSTM-Meddiff' or args.model == 'LSTM-ScoEHR':
+                    real_diag_logits, real_drug_logits, real_lab_logits, real_proc_logits, gen_diag_logits, gen_drug_logits, gen_lab_logits, gen_proc_logits, h, v_gen, added_noise, learned_noise = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
+                elif args.model == 'EVA':
+                    real_diag_logits, real_drug_logits, real_lab_logits, real_proc_logits, miu, logvar  = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
                 else:
                     raise ValueError('Invalid model')
 
@@ -387,17 +569,20 @@ def train(args):
                         optim.zero_grad()
                         generator_optim.zero_grad()
 
-                        generator_discriminator_out = discriminator(v_gen)
+                        generator_discriminator_out = discriminator(v_gen[:, 0:-1, :])
+                        #generator_discriminator_out = discriminator(v_gen)
                         true_labels = torch.ones_like(generator_discriminator_out, device=device)
                         generator_loss = CE(generator_discriminator_out, true_labels) * args.lambda_gen
                         generator_loss.backward(retain_graph=True)
                         generator_optim.step()
 
                         discriminator_optim.zero_grad()
-                        true_discriminator_out = discriminator(h)
+                        true_discriminator_out = discriminator(h[:, 1:, :])
+                        # true_discriminator_out = discriminator(h)
                         true_discriminator_loss = CE(true_discriminator_out, true_labels)
 
-                        generator_discriminator_out = discriminator(v_gen.detach())
+                        generator_discriminator_out = discriminator(v_gen.detach()[:, 0:-1, :])
+                        # generator_discriminator_out = discriminator(v_gen.detach())
                         generator_discriminator_loss = CE(generator_discriminator_out, 1 - true_labels)
                         discriminator_loss = (true_discriminator_loss + generator_discriminator_loss) / 2 * args.lambda_gen
                         discriminator_loss.backward(retain_graph=True)
@@ -531,8 +716,64 @@ def train(args):
                     multihot_lab[valid_lab_batch_indices, valid_lab_seq_indices, valid_lab_code_indices] = 1.0
                     multihot_proc[valid_proc_batch_indices, valid_proc_seq_indices, valid_proc_code_indices] = 1.0
 
+                    if args.model == 'TWIN' and time_pred is not None:
+                        sequence_range = torch.arange(args.max_len, device=diag_seq.device).expand(diag_seq.size(0),
+                                                                                                   args.max_len)
+                        expanded_lengths = diag_length.unsqueeze(-1).expand_as(sequence_range)
+                        length_mask = (sequence_range < expanded_lengths).float()
+                        c = MSE(time_step * length_mask, time_pred * length_mask)
+                    else :
+                        c = 0
+
                     a = args.lambda_ce * (CE(real_diag_logits, multihot_diag) + CE(real_drug_logits, multihot_drug) + CE(real_lab_logits, multihot_lab) + CE(real_proc_logits, multihot_proc))/4 + 1e-10
                     b = args.lambda_gen * kl_loss(miu, logvar)
+                    loss = a + b + c
+                    loss.backward()
+                    optim.step()
+
+                    prediction_module_loss += (a.item() / visit_timegaps.size(0)) * args.batch_size
+                    generation_module_loss += (b.item() / visit_timegaps.size(0)) * args.batch_size
+                    time_pred_loss += c
+
+                    if args.max_grad_norm > 0:
+                        nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
+
+                    if (global_step + 1) % args.log_interval == 0:
+                        avg_prediction_module_loss = prediction_module_loss / args.log_interval
+                        avg_generation_module_loss = generation_module_loss / args.log_interval
+                        avg_time_pred_loss = time_pred_loss / args.log_interval
+
+                        print(
+                            '| step {:5} | prediction module loss {:7.4f} | generation module loss {:7.4f} |'.format(
+                                global_step, avg_prediction_module_loss, avg_generation_module_loss))
+                        print('| step {:5} | time prediction loss {:7.4f} |'.format(global_step, avg_time_pred_loss))
+
+                        prediction_module_loss, generation_module_loss = 0.0, 0.0
+                        time_pred_loss = 0.0
+                        start_time = time.time()
+                    global_step += 1
+                elif args.name == 'Diff':
+                    optim.zero_grad()
+                    multihot_diag = torch.zeros_like(real_diag_logits, dtype=torch.float32)
+                    multihot_drug = torch.zeros_like(real_drug_logits, dtype=torch.float32)
+                    multihot_lab = torch.zeros_like(real_lab_logits, dtype=torch.float32)
+                    multihot_proc = torch.zeros_like(real_proc_logits, dtype=torch.float32)
+                    valid_diag_batch_indices, valid_diag_seq_indices, valid_diag_code_indices = torch.where(
+                        diag_mask)
+                    valid_drug_batch_indices, valid_drug_seq_indices, valid_drug_code_indices = torch.where(
+                        drug_mask)
+                    valid_lab_batch_indices, valid_lab_seq_indices, valid_lab_code_indices = torch.where(
+                        lab_mask)
+                    valid_proc_batch_indices, valid_proc_seq_indices, valid_proc_code_indices = torch.where(
+                        proc_mask)
+                    multihot_diag[valid_diag_batch_indices, valid_diag_seq_indices, valid_diag_code_indices] = 1.0
+                    multihot_drug[valid_drug_batch_indices, valid_drug_seq_indices, valid_drug_code_indices] = 1.0
+                    multihot_lab[valid_lab_batch_indices, valid_lab_seq_indices, valid_lab_code_indices] = 1.0
+                    multihot_proc[valid_proc_batch_indices, valid_proc_seq_indices, valid_proc_code_indices] = 1.0
+
+                    a = args.lambda_ce * (CE(real_diag_logits, multihot_diag) + CE(real_drug_logits, multihot_drug) + CE(real_lab_logits, multihot_lab) + CE(real_proc_logits, multihot_proc))/4 + 1e-10
+                    # a = args.lambda_ce * (CE(gen_diag_logits, multihot_diag) + CE(gen_drug_logits, multihot_drug) + CE(gen_lab_logits, multihot_lab) + CE(gen_proc_logits, multihot_proc))/4 + 1e-10
+                    b = args.lambda_gen * (MSE(added_noise,learned_noise))
                     loss = a + b
                     loss.backward()
                     optim.step()
@@ -551,32 +792,30 @@ def train(args):
                             '| step {:5} | prediction module loss {:7.4f} | generation module loss {:7.4f} |'.format(
                                 global_step, avg_prediction_module_loss, avg_generation_module_loss))
 
-
                         prediction_module_loss, generation_module_loss = 0.0, 0.0
                         start_time = time.time()
                     global_step += 1
-
             model.eval()
 
             with torch.no_grad():
-                train_res = evaluator.eval(train_dataloader, [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id],
-                                     [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id],
-                                     ['diag', 'drug', 'lab', 'proc'], ['lpl', 'mpl'])
+                # train_res = evaluator.eval(train_dataloader, [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id],
+                #                      [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id],
+                #                      ['diag', 'drug', 'lab', 'proc'], ['lpl', 'mpl'])
                 val_res = evaluator.eval(dev_dataloader, [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id],
                                    [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id],
                                    ['diag', 'drug', 'lab', 'proc'], ['lpl', 'mpl'])
                 test_res = evaluator.eval(test_dataloader, [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id],
                                     [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id],
                                     ['diag', 'drug', 'lab', 'proc'], ['lpl', 'mpl'])
-                train_diag_lpl, tran_drug_lpl, train_lab_lpl, train_proc_lpl = train_res['lpl_diag'], train_res[
-                    'lpl_drug'], train_res['lpl_lab'], train_res['lpl_proc']
+                # train_diag_lpl, tran_drug_lpl, train_lab_lpl, train_proc_lpl = train_res['lpl_diag'], train_res[
+                #     'lpl_drug'], train_res['lpl_lab'], train_res['lpl_proc']
                 val_diag_lpl, val_drug_lpl, val_lab_lpl, val_proc_lpl = val_res['lpl_diag'], val_res['lpl_drug'], \
                 val_res['lpl_lab'], val_res['lpl_proc']
                 test_diag_lpl, test_drug_lpl, test_lab_lpl, test_proc_lpl = test_res['lpl_diag'], test_res[
                     'lpl_drug'], test_res['lpl_lab'], test_res['lpl_proc']
 
-                train_diag_mpl, tran_drug_mpl, train_lab_mpl, train_proc_mpl = train_res['mpl_diag'], train_res[
-                    'mpl_drug'], train_res['mpl_lab'], train_res['mpl_proc']
+                # train_diag_mpl, tran_drug_mpl, train_lab_mpl, train_proc_mpl = train_res['mpl_diag'], train_res[
+                #     'mpl_drug'], train_res['mpl_lab'], train_res['mpl_proc']
                 val_diag_mpl, val_drug_mpl, val_lab_mpl, val_proc_mpl = val_res['mpl_diag'], val_res['mpl_drug'], \
                 val_res['mpl_lab'], val_res['mpl_proc']
                 test_diag_mpl, test_drug_mpl, test_lab_mpl, test_proc_mpl = test_res['mpl_diag'], test_res[
@@ -589,6 +828,8 @@ def train(args):
                 print('-' * 71)
                 print('Epoch: {:5}'.format(epoch_id))
                 print('Time: {:5.2f}s'.format(time.time() - start_time))
+                train_diag_lpl, tran_drug_lpl, train_lab_lpl, train_proc_lpl = 0, 0, 0, 0
+                train_diag_mpl, tran_drug_mpl, train_lab_mpl, train_proc_mpl = 0, 0, 0, 0
                 print('Diagnosis:')
                 print('train lpl {:7.4f} | dev lpl {:7.4f} | test lpl {:7.4f}'.format(train_diag_lpl, val_diag_lpl,
                                                                                       test_diag_lpl))
@@ -639,12 +880,14 @@ def train(args):
 
 if __name__ == '__main__':
 
-    modes = ['gen']
+    modes = ['train']
     short_ICD = True
-    toy = False
-    seeds = [10, 11, 12]
-    save_path = './saved_'
-    model_names = ['LSTM-MLP']
+    subset = False
+    seeds = [111]
+    save_path = './saved_rebuttal_Q1_'
+    # model_names = ['LSTM-Meddiff', 'LSTM-ScoEHR']
+    model_names = ['TWIN']
+    # model_names = ['LSTM-MLP', 'LSTM-medGAN', 'synTEG', 'TWIN', 'LSTM-TabDDPM', 'EVA']
     save_dirs = [save_path+name+'/' for name in model_names]
     datas = ['mimic']
     max_lens = [20]
@@ -655,13 +898,25 @@ if __name__ == '__main__':
                 for data, max_len, max_num in zip(datas, max_lens, max_nums):
                     if model_name in ['LSTM-medGAN']:
                         model_type = 'GAN'
-                        main(seed, model_type, model_name, data, max_len, max_num, save_dir, mode, short_ICD, toy)
+                        main(seed, model_type, model_name, data, max_len, max_num, save_dir, mode, short_ICD, subset)
                     elif model_name in ['LSTM-MLP']:
                         model_type = 'MLP'
-                        main(seed, model_type, model_name, data, max_len, max_num, save_dir, mode, short_ICD, toy)
+                        main(seed, model_type, model_name, data, max_len, max_num, save_dir, mode, short_ICD, subset)
                     elif model_name in ['synTEG']:
                         model_type = 'WGAN-GP'
-                        main(seed, model_type, model_name, data, max_len, max_num, save_dir, mode, short_ICD, toy)
+                        main(seed, model_type, model_name, data, max_len, max_num, save_dir, mode, short_ICD, subset)
                     elif model_name in ['TWIN']:
                         model_type = 'VAE'
-                        main(seed, model_type, model_name, data, max_len, max_num, save_dir, mode, short_ICD, toy)
+                        main(seed, model_type, model_name, data, max_len, max_num, save_dir, mode, short_ICD, subset)
+                    elif model_name in ['LSTM-TabDDPM']:
+                        model_type = 'Diff'
+                        main(seed, model_type, model_name, data, max_len, max_num, save_dir, mode, short_ICD, subset)
+                    elif model_name in ['EVA']:
+                        model_type = 'VAE'
+                        main(seed, model_type, model_name, data, max_len, max_num, save_dir, mode, short_ICD, subset)
+                    elif model_name in ['LSTM-Meddiff']:
+                        model_type = 'Diff'
+                        main(seed, model_type, model_name, data, max_len, max_num, save_dir, mode, short_ICD, subset)
+                    elif model_name in ['LSTM-ScoEHR']:
+                        model_type = 'Diff'
+                        main(seed, model_type, model_name, data, max_len, max_num, save_dir, mode, short_ICD, subset)

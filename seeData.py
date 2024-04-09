@@ -10,44 +10,44 @@ import ast
 
 random.seed(1234)
 
-train = pd.read_csv('data/mimic/1.4/train_3digmimic.csv')
-test = pd.read_csv('data/mimic/1.4/test_3digmimic.csv')
-val = pd.read_csv('data/mimic/1.4/val_3digmimic.csv')
-
-#join three dataset together
-data = pd.concat([train, test, val])
-diag = data['DIAGNOSES_int'].apply(lambda x: ast.literal_eval(x)).tolist()
-drug = data['DRG_CODE_int'].apply(lambda x: ast.literal_eval(x)).tolist()
-lab = data['LAB_ITEM_int'].apply(lambda x: ast.literal_eval(x)).tolist()
-proc = data['PROC_ITEM_int'].apply(lambda x: ast.literal_eval(x)).tolist()
-
-#itrate though each patient and each visit to get the average and maximum diagnosis, drug, lab, proc length
-diag_length = []
-drug_length = []
-lab_length = []
-proc_length = []
-for patient in diag:
-    for visit in patient:
-        diag_length.append(len(visit))
-for patient in drug:
-    for visit in patient:
-        drug_length.append(len(visit))
-for patient in lab:
-    for visit in patient:
-        lab_length.append(len(visit))
-for patient in proc:
-    for visit in patient:
-        proc_length.append(len(visit))
-
-print("average diagnosis length: " + str(sum(diag_length)/len(diag_length)))
-print("average drug length: " + str(sum(drug_length)/len(drug_length)))
-print("average lab length: " + str(sum(lab_length)/len(lab_length)))
-print("average proc length: " + str(sum(proc_length)/len(proc_length)))
-
-print("max diagnosis length: " + str(max(diag_length)))
-print("max drug length: " + str(max(drug_length)))
-print("max lab length: " + str(max(lab_length)))
-print("max proc length: " + str(max(proc_length)))
+# train = pd.read_csv('data/mimic/1.4/train_3digmimic.csv')
+# test = pd.read_csv('data/mimic/1.4/test_3digmimic.csv')
+# val = pd.read_csv('data/mimic/1.4/val_3digmimic.csv')
+#
+# #join three dataset together
+# data = pd.concat([train, test, val])
+# diag = data['DIAGNOSES_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+# drug = data['DRG_CODE_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+# lab = data['LAB_ITEM_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+# proc = data['PROC_ITEM_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+#
+# #itrate though each patient and each visit to get the average and maximum diagnosis, drug, lab, proc length
+# diag_length = []
+# drug_length = []
+# lab_length = []
+# proc_length = []
+# for patient in diag:
+#     for visit in patient:
+#         diag_length.append(len(visit))
+# for patient in drug:
+#     for visit in patient:
+#         drug_length.append(len(visit))
+# for patient in lab:
+#     for visit in patient:
+#         lab_length.append(len(visit))
+# for patient in proc:
+#     for visit in patient:
+#         proc_length.append(len(visit))
+#
+# print("average diagnosis length: " + str(sum(diag_length)/len(diag_length)))
+# print("average drug length: " + str(sum(drug_length)/len(drug_length)))
+# print("average lab length: " + str(sum(lab_length)/len(lab_length)))
+# print("average proc length: " + str(sum(proc_length)/len(proc_length)))
+#
+# print("max diagnosis length: " + str(max(diag_length)))
+# print("max drug length: " + str(max(drug_length)))
+# print("max lab length: " + str(max(lab_length)))
+# print("max proc length: " + str(max(proc_length)))
 
 
 # ehrs = pickle.load(open('data/mimic/1.4/test.seqs', 'rb'))
@@ -380,3 +380,79 @@ print("max proc length: " + str(max(proc_length)))
 #     print('timestep')
 #     print(a_timestep[i])
 #     print('------------------')
+
+
+ARF_labels_set = pd.read_csv('data/mimic/1.4/ARF.csv')
+shock_labels_set = pd.read_csv('data/mimic/1.4/Shock.csv')
+mortality_labels_set = pd.read_csv('data/mimic/1.4/mortality.csv')
+icustay_data = pd.read_csv('data/mimic/1.4/ICUSTAYS.csv')
+
+#merging labels bu ICUSTAY_ID in icustay_data, only keep 'ICUSTAY_ID' and 'ARF_label' columns from ARF_labels_set
+ARF_labels_set = ARF_labels_set[['ICUSTAY_ID', 'ARF_LABEL']]
+shock_labels_set = shock_labels_set[['ICUSTAY_ID', 'Shock_LABEL']]
+mortality_labels_set = mortality_labels_set[['ID', 'mortality_LABEL']]
+mortality_labels_set.rename(columns={'ID':'ICUSTAY_ID', 'mortality_LABEL':'Mortality_LABEL'}, inplace=True)
+
+ARF_labels_set = pd.merge(ARF_labels_set, icustay_data, on='ICUSTAY_ID')
+shock_labels_set = pd.merge(shock_labels_set, icustay_data, on='ICUSTAY_ID')
+mortality_labels_set = pd.merge(mortality_labels_set, icustay_data, on='ICUSTAY_ID')
+
+#Create label at admission level: if any of the ICUSTAY_ID has ARF_LABEL = 1, then the HADM_ID has ARF = 1, else ARF = 0
+ARF_labels_set = ARF_labels_set.groupby('SUBJECT_ID').max().reset_index()
+shock_labels_set = shock_labels_set.groupby('SUBJECT_ID').max().reset_index()
+mortality_labels_set = mortality_labels_set.groupby('SUBJECT_ID').max().reset_index()
+
+ARF_labels_set = ARF_labels_set[['SUBJECT_ID','ARF_LABEL']]
+shock_labels_set = shock_labels_set[['SUBJECT_ID','Shock_LABEL']]
+mortality_labels_set = mortality_labels_set[['SUBJECT_ID','Mortality_LABEL']]
+
+multomoda_data = pd.read_csv('data/mimic/1.4/mimic_4moda_with_timegaps.csv')
+arf_data = pd.merge(multomoda_data, ARF_labels_set, on='SUBJECT_ID', how = 'right').fillna(0)
+shock_data = pd.merge(multomoda_data, shock_labels_set, on='SUBJECT_ID', how = 'right').fillna(0)
+mortality_data = pd.merge(multomoda_data, mortality_labels_set, on='SUBJECT_ID', how = 'right').fillna(0)
+
+
+#cast ARF_LABEL and Shock_LABEL to int
+arf_data['ARF_LABEL'] = arf_data['ARF_LABEL'].astype(int)
+shock_data['Shock_LABEL'] = shock_data['Shock_LABEL'].astype(int)
+mortality_data['Mortality_LABEL'] = mortality_data['Mortality_LABEL'].astype(int)
+
+arf_data.to_csv('data/mimic/1.4/mimic_4moda_arf.csv', index=False)
+shock_data.to_csv('data/mimic/1.4/mimic_4moda_shock.csv', index=False)
+mortality_data.to_csv('data/mimic/1.4/mimic_4moda_mortality.csv', index=False)
+
+train_r = 0.75
+test_r = 0.1
+val_r = 0.15
+seed = 1234
+
+train, remaining = train_test_split(arf_data, train_size=train_r, random_state=seed)
+test, val = train_test_split(remaining, train_size=test_r / (test_r + val_r), random_state=seed)
+toy = train.head(128)
+
+train.to_csv('train_' + '3dig' + 'mimic_arf.csv', index=False)
+test.to_csv('test_' + '3dig' + 'mimic_arf.csv', index=False)
+val.to_csv('val_' + '3dig' + 'mimic_arf.csv', index=False)
+toy.to_csv('toy_' + '3dig' + 'mimic_arf.csv', index=False)
+
+train, remaining = train_test_split(shock_data, train_size=train_r, random_state=seed)
+test, val = train_test_split(remaining, train_size=test_r / (test_r + val_r), random_state=seed)
+toy = train.head(128)
+
+train.to_csv('train_' + '3dig' + 'mimic_shock.csv', index=False)
+test.to_csv('test_' + '3dig' + 'mimic_shock.csv', index=False)
+val.to_csv('val_' + '3dig' + 'mimic_shock.csv', index=False)
+toy.to_csv('toy_' + '3dig' + 'mimic_shock.csv', index=False)
+
+train, remaining = train_test_split(mortality_data, train_size=train_r, random_state=seed)
+test, val = train_test_split(remaining, train_size=test_r / (test_r + val_r), random_state=seed)
+toy = train.head(128)
+
+train.to_csv('train_' + '3dig' + 'mimic_mortality.csv', index=False)
+test.to_csv('test_' + '3dig' + 'mimic_mortality.csv', index=False)
+val.to_csv('val_' + '3dig' + 'mimic_mortality.csv', index=False)
+toy.to_csv('toy_' + '3dig' + 'mimic_mortality.csv', index=False)
+
+
+
+

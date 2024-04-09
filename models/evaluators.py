@@ -75,7 +75,7 @@ class Evaluator:
 
         for i, data in tqdm(enumerate(dataloader), total=len(dataloader), desc="Evaluating"):
             diag_seq, drug_seq, lab_seq, proc_seq, time_step, visit_timegaps, diag_timegaps, drug_timegaps, lab_timegaps, proc_timegaps, \
-                diag_mask, drug_mask, lab_mask, proc_mask, diag_length, drug_length, lab_length, proc_length, demo = data
+                diag_mask, drug_mask, lab_mask, proc_mask, diag_length, drug_length, lab_length, proc_length, demo, _ = data
 
             with torch.no_grad():
                 if self.model.name == 'MedDiffGa':
@@ -88,7 +88,10 @@ class Evaluator:
                     diag_logits, drug_logits, lab_logits, proc_logits, _, _, _, _, _, _ = self.model(
                         diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
                 elif self.model.name == 'VAE':
-                    diag_logits, drug_logits, lab_logits, proc_logits, _, _ = self.model(
+                    diag_logits, drug_logits, lab_logits, proc_logits, _, _, _ = self.model(
+                        diag_seq, drug_seq, lab_seq, proc_seq, diag_length, time_step)
+                elif self.model.name == 'Diff':
+                    _, _, _, _, diag_logits, drug_logits, lab_logits, proc_logits, _, _ ,_ ,_ = self.model(
                         diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
                 else:
                     print('Invalid model name')

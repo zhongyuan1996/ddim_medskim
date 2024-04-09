@@ -65,6 +65,33 @@ class PositionalEncoder(nn.Module):
 
         return pos
 
+class VisitLevelPositionalEncoder(nn.Module):
+    def __init__(self, d_model):
+        super(VisitLevelPositionalEncoder, self).__init__()
+        self.d_model = d_model
+
+    def forward(self, code_timegaps):
+        # Expand time gaps to [batch_size, seq_len, d_model]
+        code_timegaps = code_timegaps.unsqueeze(-1).expand(-1, -1, self.d_model)
+
+        div_term = torch.exp(torch.arange(0, self.d_model).float() * (-math.log(10000.0) / self.d_model))
+
+        # Making sure div_term can be broadcasted over code_timegaps
+        div_term = div_term.unsqueeze(0).unsqueeze(0)
+        pos = code_timegaps * div_term.to(code_timegaps.device)
+
+        # Use torch.where to avoid in-place operations
+        even_indices = torch.arange(0, self.d_model, 2, device=code_timegaps.device)
+        odd_indices = torch.arange(1, self.d_model, 2, device=code_timegaps.device)
+
+        sin = torch.sin(pos[:, :, even_indices])
+        cos = torch.cos(pos[:, :, odd_indices])
+
+        # Intermix sin and cos values
+        pos = torch.stack((sin, cos), dim=3).flatten(start_dim=2)
+
+        return pos
+
 class LSTM_with_time(nn.Module):
     def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, num_heads, max_pos):
         super().__init__()
@@ -255,10 +282,14 @@ class MedDiffGa(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.emb_dropout = nn.Dropout(dropout_emb)
         # self.output_mlp = nn.Sequential(nn.Linear(d_model, vocab_size))
-        self.diag_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_size[0]))
-        self.drug_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_size[1]))
-        self.lab_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_size[2]))
-        self.proc_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_size[3]))
+        # self.diag_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.1), nn.Linear(d_model, vocab_size[0]))
+        # self.drug_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.1), nn.Linear(d_model, vocab_size[1]))
+        # self.lab_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_size[2]))
+        # self.proc_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.1), nn.Linear(d_model, vocab_size[3]))
+        self.diag_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_size[0]))
+        self.drug_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_size[1]))
+        self.lab_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_size[2]))
+        self.proc_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_size[3]))
         self.pooler = MaxPoolLayer()
         self.rnns = nn.LSTM(d_model, d_model, num_layers, bidirectional=False, batch_first=True, dropout=dropout)
         self.positional_encoder = PositionalEncoder(d_model)
@@ -333,6 +364,12 @@ class MedDiffGa(nn.Module):
         lab_eta = self.encoder_time_vs_code(lab_seq, lab_timegaps, 'lab')
         proc_eta = self.encoder_time_vs_code(proc_seq, proc_timegaps, 'proc')
 
+        #ablation studt 1:
+        # diag_eta = self.diag_embedding(diag_seq)
+        # drug_eta = self.drug_embedding(drug_seq)
+        # lab_eta = self.lab_embedding(lab_seq)
+        # proc_eta = self.proc_embedding(proc_seq)
+
         diag_s = diag_eta.sum(dim=-2)
         drug_s = drug_eta.sum(dim=-2)
         lab_s = lab_eta.sum(dim=-2)
@@ -352,8 +389,11 @@ class MedDiffGa(nn.Module):
         rnn_output, _ = self.rnns(rnn_input)
         h, _ = pad_packed_sequence(rnn_output, batch_first=True, total_length=seq_len)
 
+        #ablation study 2:
         Delta_ts, _ = self.timegap_predictor(h)
         Delta_ts = Delta_ts.squeeze(-1)
+
+
         # mask = (torch.arange(seq_len, device=lengths.device).expand(batch_size, seq_len) < lengths.unsqueeze(1))
         # masked_Delta_ts = Delta_ts * mask
         # masked_Delta_ts = masked_Delta_ts.unsqueeze(-1)
@@ -364,12 +404,22 @@ class MedDiffGa(nn.Module):
 
         h = h.view(batch_size * seq_len, -1)
         De = De.unsqueeze(1).expand(-1, seq_len, -1).reshape(batch_size * seq_len, -1)
+
+        #ablation study 2:
         Delta_ts_emb = self.positional_encoder(Delta_ts.unsqueeze(-1))
         Delta_ts_emb = self.fc2(self.relu(self.fc1(Delta_ts_emb))).squeeze(-2).view(batch_size * seq_len, -1)
 
-        U = torch.randn_like(h)
+        # U = torch.randn_like(h)
 
-        H = torch.stack((h,De, Delta_ts_emb, U), dim=-2)
+        H = torch.stack((h,De, Delta_ts_emb), dim=-2)
+        #ablation study 2:
+        # H = torch.stack((h,De), dim=-2)
+        #ablation study 3:
+        # H = torch.stack((h, Delta_ts_emb), dim=-2)
+        #ABLATION STUDY 4:
+        H = torch.zeros_like(H)
+
+
 
         diag_mask = diag_mask.view(batch_size * seq_len, num_cui_per_visit).unsqueeze(-1)
         drug_mask = drug_mask.view(batch_size * seq_len, num_cui_per_visit).unsqueeze(-1)

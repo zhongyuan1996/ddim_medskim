@@ -480,11 +480,19 @@ class ehrGANDatasetWOAggregate(Dataset):
 
 
 class pancreas_Gendataset(Dataset):
-    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, pad_id_list, nan_id_list, device):
+    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, pad_id_list, nan_id_list, device, task = None):
 
         data = pd.read_csv(dir_ehr)
+        if task == 'mortality':
+            self.labels = data['Mortality_LABEL'].tolist()
+        elif task == 'arf':
+            self.labels = data['ARF_LABEL'].tolist()
+        elif task == 'shock':
+            self.labels = data['Shock_LABEL'].tolist()
+        else:
+            self.labels = data['MORTALITY'].tolist()
         # self.multihot_ehr = data['code_multihot'].apply(lambda x: ast.literal_eval(x)).tolist()
-        self.demo = data['Demographic'].apply(lambda x: ast.literal_eval(x)).tolist()
+        self.demo = data['Demographic'].apply(lambda x: ast.literal_eval(x) if pd.notna(x) else print(x)).tolist()
         diag = data['DIAGNOSES_int'].apply(lambda x: ast.literal_eval(x)).tolist()
         drug = data['DRG_CODE_int'].apply(lambda x: ast.literal_eval(x)).tolist()
         lab = data['LAB_ITEM_int'].apply(lambda x: ast.literal_eval(x)).tolist()
@@ -553,21 +561,12 @@ class pancreas_Gendataset(Dataset):
             torch.tensor(self.drug_lens[idx], dtype=torch.long).to(self.device),\
             torch.tensor(self.lab_lens[idx], dtype=torch.long).to(self.device),\
             torch.tensor(self.proc_lens[idx], dtype=torch.long).to(self.device),\
-            torch.tensor(self.demo[idx], dtype=torch.float).to(self.device)
-
-
-
-        # return torch.tensor(self.ehr[idx], dtype=torch.long).to(self.device),\
-        #     torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device),\
-        #     torch.tensor(self.code_timegaps[idx], dtype=torch.long).to(self.device),\
-        #     torch.tensor(self.code_mask[idx], dtype=torch.float).to(self.device),\
-        #     torch.tensor(self.lengths[idx], dtype=torch.long).to(self.device),\
-        #     torch.tensor(self.visit_timegap[idx], dtype=torch.float).to(self.device),\
-        #     torch.tensor(self.demo[idx], dtype=torch.float).to(self.device)
+            torch.tensor(self.demo[idx], dtype=torch.float).to(self.device),\
+            torch.tensor(self.labels[idx], dtype=torch.long).to(self.device)
 
 def gen_collate_fn(batch):
-    diag, drug, lab, proc, time_step, visit_timegap, diag_timegaps, drug_timegaps, lab_timegaps, proc_timegaps, diag_mask, drug_mask, lab_mask, proc_mask, diag_lens, drug_lens, lab_lens, proc_lens, demo = \
-        [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []
+    diag, drug, lab, proc, time_step, visit_timegap, diag_timegaps, drug_timegaps, lab_timegaps, proc_timegaps, diag_mask, drug_mask, lab_mask, proc_mask, diag_lens, drug_lens, lab_lens, proc_lens, demo, label = \
+        [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []
     for data in batch:
         diag.append(data[0])
         drug.append(data[1])
@@ -588,6 +587,7 @@ def gen_collate_fn(batch):
         lab_lens.append(data[16])
         proc_lens.append(data[17])
         demo.append(data[18])
+        label.append(data[19])
 
     return torch.stack(diag,0), \
         torch.stack(drug,0), \
@@ -607,17 +607,232 @@ def gen_collate_fn(batch):
         torch.stack(drug_lens,0), \
         torch.stack(lab_lens,0), \
         torch.stack(proc_lens,0),\
-        torch.stack(demo,0)
+        torch.stack(demo,0),\
+        torch.stack(label,0)
+
+class pancreas_Gendataset_unimodal(Dataset):
+    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, pad_id, nan_id, modality, device):
+
+        data = pd.read_csv(dir_ehr)
+        self.label = data['MORTALITY'].tolist()
+        if modality == 'diag':
+            ehr_codes = data['DIAGNOSES_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+            ehr_codes_timegaps = data['code_time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
+        elif modality == 'drug':
+            ehr_codes = data['DRG_CODE_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+            ehr_codes_timegaps = data['drug_time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
+        elif modality == 'lab':
+            ehr_codes = data['LAB_ITEM_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+            ehr_codes_timegaps = data['lab_time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
+
+        elif modality == 'proc':
+            ehr_codes = data['PROC_ITEM_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+            ehr_codes_timegaps = data['proc_time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
+        else:
+            raise ValueError('modality not supported')
+
+        time_steps = data['time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
+        visit_consecutive_timegaps = data['consecutive_time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
+
+        self.ehr_codes, self.mask_ehr, self.lengths = padMatrix(ehr_codes, max_numcode_pervisit, max_len, pad_id)
+
+        self.time_step = padTime(time_steps, max_len, 100000)
+        self.visit_timegap = padTime(visit_consecutive_timegaps, max_len, 100000)
+        self.ehr_codes_timegaps, _, _ = padMatrix(ehr_codes_timegaps, max_numcode_pervisit, max_len, 100000)
+        self.codemask = codeMask_inverse(ehr_codes, max_numcode_pervisit, max_len, nan_id)
+
+        self.device = device
+
+    def __len__(self):
+        return len(self.label)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        return torch.tensor(self.label[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.ehr_codes[idx], dtype=torch.long).to(self.device), \
+            torch.tensor(self.mask_ehr[idx], dtype=torch.float).to(self.device), \
+            torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device), \
+            torch.tensor(self.visit_timegap[idx], dtype=torch.float).to(self.device), \
+            torch.tensor(self.ehr_codes_timegaps[idx], dtype=torch.long).to(self.device), \
+            torch.tensor(self.codemask[idx], dtype=torch.float).to(self.device), \
+            torch.tensor(self.lengths[idx], dtype=torch.long).to(self.device)
 
 
-    # ehr, time_step, code_timegaps, code_mask, length, visit_timegap, demo= [], [], [], [], [], [], []
-    # for data in batch:
-    #     ehr.append(data[0])
-    #     time_step.append(data[1])
-    #     code_timegaps.append(data[2])
-    #     code_mask.append(data[3])
-    #     length.append(data[4])
-    #     visit_timegap.append(data[5])
-    #     demo.append(data[6])
-    #
-    # return torch.stack(ehr, 0), torch.stack(time_step, 0), torch.stack(code_timegaps, 0), torch.stack(code_mask, 0), torch.stack(length, 0), torch.stack(visit_timegap, 0), torch.stack(demo, 0)
+def gen_collate_fn_unimodal(batch):
+    label, ehr_codes, mask_ehr, time_step, visit_timegap, ehr_codes_timegaps, codemask, lengths = \
+        [], [], [], [], [], [], [], []
+    for data in batch:
+        label.append(data[0])
+        ehr_codes.append(data[1])
+        mask_ehr.append(data[2])
+        time_step.append(data[3])
+        visit_timegap.append(data[4])
+        ehr_codes_timegaps.append(data[5])
+        codemask.append(data[6])
+        lengths.append(data[7])
+
+    return torch.stack(label,0), \
+        torch.stack(ehr_codes,0), \
+        torch.stack(mask_ehr,0), \
+        torch.stack(time_step,0), \
+        torch.stack(visit_timegap,0), \
+        torch.stack(ehr_codes_timegaps,0), \
+        torch.stack(codemask,0), \
+        torch.stack(lengths,0)
+
+class pancreas_Gendataset_unimodal_for_baselines(Dataset):
+    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, pad_id, nan_id, modality, device):
+
+        data = pd.read_csv(dir_ehr)
+        self.label = data['MORTALITY'].tolist()
+
+        if modality == 'diag':
+            ehr_codes = data['DIAGNOSES_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+        elif modality == 'drug':
+            ehr_codes = data['DRG_CODE_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+        elif modality == 'lab':
+            ehr_codes = data['LAB_ITEM_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+        elif modality == 'proc':
+            ehr_codes = data['PROC_ITEM_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+        else:
+            raise ValueError('modality not supported')
+
+        time_steps = data['time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
+
+        self.ehr_codes, self.mask_ehr, self.lengths = padMatrix(ehr_codes, max_numcode_pervisit, max_len, pad_id)
+        self.time_step = padTime(time_steps, max_len, 100000)
+        self.codemask = codeMask_inverse(ehr_codes, max_numcode_pervisit, max_len, nan_id)
+
+        self.device = device
+
+    def __len__(self):
+        return len(self.label)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        return torch.tensor(self.label[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.ehr_codes[idx], dtype=torch.long).to(self.device), \
+            torch.tensor(self.mask_ehr[idx], dtype=torch.float).to(self.device), \
+            torch.tensor(self.time_step[idx], dtype=torch.long).to(self.device), \
+            torch.tensor(self.codemask[idx], dtype=torch.float).to(self.device), \
+            torch.tensor(self.lengths[idx], dtype=torch.long).to(self.device)
+
+
+def gen_collate_fn_unimodal_for_baselines(batch):
+    label, ehr_codes, mask_ehr, time_step, codemask, lengths = [], [], [], [], [], []
+    for data in batch:
+        label.append(data[0])
+        ehr_codes.append(data[1])
+        mask_ehr.append(data[2])
+        time_step.append(data[3])
+        codemask.append(data[4])
+        lengths.append(data[5])
+
+    return torch.stack(label,0), \
+        torch.stack(ehr_codes,0), \
+        torch.stack(mask_ehr,0), \
+        torch.stack(time_step,0), \
+        torch.stack(codemask,0), \
+        torch.stack(lengths,0)
+
+class pancreas_Gendataset_multimodal(Dataset):
+    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, pad_id_list, nan_id_list, task, device):
+
+        data = pd.read_csv(dir_ehr)
+        if task == 'mortality':
+            self.label = data['Mortality_LABEL'].tolist()
+        elif task == 'arf':
+            self.label = data['ARF_LABEL'].tolist()
+        elif task == 'shock':
+            self.label = data['Shock_LABEL'].tolist()
+        else:
+            self.label = data['MORTALITY'].tolist()
+
+        self.demo = data['Demographic'].apply(lambda x: ast.literal_eval(x)).tolist()
+        diag = data['DIAGNOSES_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+        drug = data['DRG_CODE_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+        lab = data['LAB_ITEM_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+        proc = data['PROC_ITEM_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+
+        self.diag, _, self.diag_lens = padMatrix(diag, max_numcode_pervisit, max_len, pad_id_list[0])
+        self.drug, _, self.drug_lens = padMatrix(drug, max_numcode_pervisit, max_len, pad_id_list[1])
+        self.lab, _, self.lab_lens = padMatrix(lab, max_numcode_pervisit, max_len, pad_id_list[2])
+        self.proc, _, self.proc_lens = padMatrix(proc, max_numcode_pervisit, max_len, pad_id_list[3])
+
+        self.diag_mask = codeMask_inverse(diag, max_numcode_pervisit, max_len, nan_id_list[0])
+        self.drug_mask = codeMask_inverse(drug, max_numcode_pervisit, max_len, nan_id_list[1])
+        self.lab_mask = codeMask_inverse(lab, max_numcode_pervisit, max_len, nan_id_list[2])
+        self.proc_mask = codeMask_inverse(proc, max_numcode_pervisit, max_len, nan_id_list[3])
+
+
+        self.device = device
+
+    def __len__(self):
+        return len(self.label)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        return torch.tensor(self.label[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.diag[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.drug[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.lab[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.proc[idx], dtype=torch.long).to(self.device),\
+        torch.tensor(self.demo[idx], dtype=torch.float).to(self.device)
+
+def gen_collate_fn_multimodal(batch):
+    label, diag, drug, lab, proc, demo = [], [], [], [], [], []
+    for data in batch:
+        label.append(data[0])
+        diag.append(data[1])
+        drug.append(data[2])
+        lab.append(data[3])
+        proc.append(data[4])
+        demo.append(data[5])
+    return torch.stack(label,0), torch.stack(diag,0), torch.stack(drug,0), torch.stack(lab,0), torch.stack(proc,0), torch.stack(demo,0)
+
+class pancreas_Gendataset_multimodal_for_baselines(Dataset):
+    def __init__(self, dir_ehr, max_len, max_numcode_pervisit, pad_id_list, nan_id_list, task, device):
+
+        data = pd.read_csv(dir_ehr)
+        self.label = data['MORTALITY'].tolist()
+
+        diag = data['DIAGNOSES_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+        drug = data['DRG_CODE_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+        lab = data['LAB_ITEM_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+        proc = data['PROC_ITEM_int'].apply(lambda x: ast.literal_eval(x)).tolist()
+
+        self.demo = data['demo'].apply(lambda x: ast.literal_eval(x)).tolist()
+        # time_steps = data['time_gaps'].apply(lambda x: ast.literal_eval(x)).tolist()
+
+        self.diag, _, self.diag_lens = padMatrix(diag, max_numcode_pervisit, max_len, pad_id_list[0])
+        self.drug, _, self.drug_lens = padMatrix(drug, max_numcode_pervisit, max_len, pad_id_list[1])
+        self.lab, _, self.lab_lens = padMatrix(lab, max_numcode_pervisit, max_len, pad_id_list[2])
+        self.proc, _, self.proc_lens = padMatrix(proc, max_numcode_pervisit, max_len, pad_id_list[3])
+
+        self.diag_mask = codeMask_inverse(diag, max_numcode_pervisit, max_len, nan_id_list[0])
+        self.drug_mask = codeMask_inverse(drug, max_numcode_pervisit, max_len, nan_id_list[1])
+        self.lab_mask = codeMask_inverse(lab, max_numcode_pervisit, max_len, nan_id_list[2])
+        self.proc_mask = codeMask_inverse(proc, max_numcode_pervisit, max_len, nan_id_list[3])
+
+        self.device = device
+
+    def __len__(self):
+        return len(self.label)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        return torch.tensor(self.label[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.diag[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.drug[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.lab[idx], dtype=torch.long).to(self.device),\
+            torch.tensor(self.proc[idx], dtype=torch.long).to(self.device),\
+        torch.tensor(self.demo[idx], dtype=torch.float).to(self.device)
+
