@@ -5,37 +5,23 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="2491d45f-b8a3-4f10-9ad2-4bac301ec90a" name="Changes" comment="adding rebuttals">
-      <change afterPath="$PROJECT_DIR$/.idea/copilot/chatSessions/00000000000.xd" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/copilot/chatSessions/blobs/version" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/other.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/adverse_event_prediction.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/arf_shock_mort_prediction.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/database_experiment.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/deltat_analysis.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/evaluating_deltat.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/getting_setting2_syndata.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/health_risk_prediction.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/models/arf_shock_mort_baselines.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/models/health_risk_baselines.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/models/model.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/models/operations.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/severe_outcome_minority_aug.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/learnAndPredDifference.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_EHRPD_learnDiff_MedDiffGa/MedDiffGa_mimic_10_0.75_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_EHRPD_learnDiff_MedDiffGa/MedDiffGa_mimic_10_0.75_5.pt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_Q1None_TWIN/TWIN_mimic_10.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_Q1None_TWIN/TWIN_mimic_10.pt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_Q1None_TWIN/TWIN_mimic_111.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_Q1None_TWIN/TWIN_mimic_111.pt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/saved_rebuttal_Q1time_TWIN/TWIN_mimic_10.pt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/ddim_medskim.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/ddim_medskim.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_12_16_2023_12_06_PM_[Changes]/shelved.patch" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_12_16_2023_12_06_PM__Changes_.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase_[Changes]/shelved.patch" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase_[Changes]1/shelved.patch" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase__Changes_.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase__Changes_1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/copilot/chatSessions/00000000000.xd" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/copilot/chatSessions/blobs/version" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/generatingModelTestingGround.py" beforeDir="false" afterPath="$PROJECT_DIR$/generatingModelTestingGround.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/dataset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/evaluators.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/evaluators.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/adverse_event_prediction.py" beforeDir="false" afterPath="$PROJECT_DIR$/adverse_event_prediction.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/arf_shock_mort_prediction.py" beforeDir="false" afterPath="$PROJECT_DIR$/arf_shock_mort_prediction.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/health_risk_prediction.py" beforeDir="false" afterPath="$PROJECT_DIR$/health_risk_prediction.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/models/toy.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/toy.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/unified_baseline.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/unified_baseline.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/seeData.py" beforeDir="false" afterPath="$PROJECT_DIR$/seeData.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/severe_outcome_minority_aug.py" beforeDir="false" afterPath="$PROJECT_DIR$/severe_outcome_minority_aug.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/unified_baseline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/unified_baseline_runner.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -82,52 +68,53 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_ADD_EXTERNAL_FILES": "true",
-    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "Python.adverse_event_prediction.executor": "Run",
-    "Python.arf_shock_mort_prediction.executor": "Run",
-    "Python.benchmark.executor": "Run",
-    "Python.data_processing.executor": "Run",
-    "Python.database_experiment.executor": "Run",
-    "Python.deltat_analysis.executor": "Run",
-    "Python.eicu_4moda.executor": "Run",
-    "Python.extract_data.executor": "Run",
-    "Python.generate_labels.executor": "Debug",
-    "Python.generatingModelTestingGround.executor": "Run",
-    "Python.getting_setting2_syndata.executor": "Run",
-    "Python.health_risk_prediction.executor": "Run",
-    "Python.inclusionexclusion.executor": "Run",
-    "Python.labeldistribution.executor": "Run",
-    "Python.mimic4_4moda.executor": "Run",
-    "Python.mimic_4moda.executor": "Run",
-    "Python.mimic_data_gen.executor": "Debug",
-    "Python.promptEHR_PDAD (1).executor": "Run",
-    "Python.promptEHR_PDAD.executor": "Debug",
-    "Python.seeData.executor": "Run",
-    "Python.seepklfile.executor": "Run",
-    "Python.seepklfile_mimic4_HALO.executor": "Run",
-    "Python.severe_outcome_minority_aug.executor": "Run",
-    "Python.toy.executor": "Run",
-    "Python.unified_baseline.executor": "Run",
-    "Python.unified_baseline_runner.executor": "Run",
-    "Python.visulizations.executor": "Run",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "D:/plots",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_ADD_EXTERNAL_FILES&quot;: &quot;true&quot;,
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;Python.adverse_event_prediction.executor&quot;: &quot;Run&quot;,
+    &quot;Python.arf_shock_mort_prediction.executor&quot;: &quot;Run&quot;,
+    &quot;Python.benchmark.executor&quot;: &quot;Run&quot;,
+    &quot;Python.data_processing.executor&quot;: &quot;Run&quot;,
+    &quot;Python.database_experiment.executor&quot;: &quot;Run&quot;,
+    &quot;Python.deltat_analysis.executor&quot;: &quot;Run&quot;,
+    &quot;Python.eicu_4moda.executor&quot;: &quot;Run&quot;,
+    &quot;Python.extract_data.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_labels.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.generatingModelTestingGround.executor&quot;: &quot;Run&quot;,
+    &quot;Python.getting_setting2_syndata.executor&quot;: &quot;Run&quot;,
+    &quot;Python.health_risk_prediction.executor&quot;: &quot;Run&quot;,
+    &quot;Python.inclusionexclusion.executor&quot;: &quot;Run&quot;,
+    &quot;Python.labeldistribution.executor&quot;: &quot;Run&quot;,
+    &quot;Python.learnAndPredDifference.executor&quot;: &quot;Run&quot;,
+    &quot;Python.mimic4_4moda.executor&quot;: &quot;Run&quot;,
+    &quot;Python.mimic_4moda.executor&quot;: &quot;Run&quot;,
+    &quot;Python.mimic_data_gen.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.promptEHR_PDAD (1).executor&quot;: &quot;Run&quot;,
+    &quot;Python.promptEHR_PDAD.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.seeData.executor&quot;: &quot;Run&quot;,
+    &quot;Python.seepklfile.executor&quot;: &quot;Run&quot;,
+    &quot;Python.seepklfile_mimic4_HALO.executor&quot;: &quot;Run&quot;,
+    &quot;Python.severe_outcome_minority_aug.executor&quot;: &quot;Run&quot;,
+    &quot;Python.toy.executor&quot;: &quot;Run&quot;,
+    &quot;Python.unified_baseline.executor&quot;: &quot;Run&quot;,
+    &quot;Python.unified_baseline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.visulizations.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/plots&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Users\yfz5556\PycharmProjects\ddim_medskim" />
@@ -140,31 +127,8 @@
       <recent name="C:\Users\yfz5556\PycharmProjects\ddim_medskim" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.generatingModelTestingGround">
-    <configuration name="eicu_4moda" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="ddim_medskim" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="D:/dataPreprocessing/eicu/eicu" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="D:/dataPreprocessing/eicu/eicu/eicu_4moda.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="generatingModelTestingGround" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+  <component name="RunManager" selected="Python.arf_shock_mort_prediction">
+    <configuration name="adverse_event_prediction" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="ddim_medskim" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -178,7 +142,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/generatingModelTestingGround.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/adverse_event_prediction.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -187,7 +151,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="seepklfile" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="arf_shock_mort_prediction" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="ddim_medskim" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -196,35 +160,58 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="D:/dataPreprocessing/eicu/eicu" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="D:/dataPreprocessing/eicu/eicu/seepklfile.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="unified_baseline" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="ddim_medskim" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/models" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/models/unified_baseline.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/arf_shock_mort_prediction.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="health_risk_prediction" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="ddim_medskim" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/health_risk_prediction.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="severe_outcome_minority_aug" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="ddim_medskim" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/severe_outcome_minority_aug.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -258,18 +245,18 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.generatingModelTestingGround" />
-        <item itemvalue="Python.eicu_4moda" />
-        <item itemvalue="Python.seepklfile" />
+        <item itemvalue="Python.arf_shock_mort_prediction" />
+        <item itemvalue="Python.severe_outcome_minority_aug" />
+        <item itemvalue="Python.adverse_event_prediction" />
+        <item itemvalue="Python.health_risk_prediction" />
         <item itemvalue="Python.unified_baseline_runner" />
-        <item itemvalue="Python.unified_baseline" />
       </list>
     </recent_temporary>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-python-sdk-d68999036c7f-b11f5e8da5ad-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-233.14475.56" />
+        <option value="bundled-python-sdk-c69650fc56ca-b11f5e8da5ad-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-233.15619.17" />
       </set>
     </attachedChunks>
   </component>
@@ -435,7 +422,18 @@
       <workItem from="1710017232022" duration="42000" />
       <workItem from="1710266980082" duration="966000" />
       <workItem from="1710342819637" duration="598000" />
-      <workItem from="1712324859238" duration="76721000" />
+      <workItem from="1712324859238" duration="77661000" />
+      <workItem from="1712773793622" duration="5118000" />
+      <workItem from="1717456748562" duration="9378000" />
+      <workItem from="1718558520216" duration="19546000" />
+      <workItem from="1719600923187" duration="6000" />
+      <workItem from="1724701860171" duration="67000" />
+      <workItem from="1724701980939" duration="22000" />
+      <workItem from="1725821200436" duration="19000" />
+      <workItem from="1725821292272" duration="14889000" />
+      <workItem from="1725893208557" duration="1177000" />
+      <workItem from="1730221535784" duration="8390000" />
+      <workItem from="1730736618199" duration="5257000" />
     </task>
     <task id="LOCAL-00075" summary="GAN runner with bash and save csv">
       <created>1682623147663</created>
@@ -780,7 +778,7 @@
       <option name="project" value="LOCAL" />
       <updated>1684704709098</updated>
     </task>
-    <option name="localTasksCounter" value="135" />
+    <option name="localTasksCounter" value="136" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -995,16 +993,6 @@
           <line>43</line>
           <option name="timeStamp" value="251" />
         </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/models/toy.py</url>
-          <line>47</line>
-          <option name="timeStamp" value="279" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/models/toy.py</url>
-          <line>49</line>
-          <option name="timeStamp" value="280" />
-        </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
         <breakpoint type="python-exception">
@@ -1018,9 +1006,9 @@
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/ddim_medskim$remastered_model.coverage" NAME="remastered_model Coverage Results" MODIFIED="1679863265153" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$generatingModelTestingGround.coverage" NAME="generatingModelTestingGround Coverage Results" MODIFIED="1712697079564" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$new_model_runner.coverage" NAME="new_model_runner Coverage Results" MODIFIED="1680794613501" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$runner_ehrGAN.coverage" NAME="runner_ehrGAN Coverage Results" MODIFIED="1700516012700" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$baseline_with_diff.coverage" NAME="baseline_with_diff Coverage Results" MODIFIED="1683762452180" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$runner_ehrGAN.coverage" NAME="runner_ehrGAN Coverage Results" MODIFIED="1700516012700" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$new_model_runner.coverage" NAME="new_model_runner Coverage Results" MODIFIED="1680794613501" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$visulizations.coverage" NAME="visulizations Coverage Results" MODIFIED="1706999212796" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$tempData.coverage" NAME="tempData Coverage Results" MODIFIED="1701186928149" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data" />
     <SUITE FILE_PATH="coverage/ddim_medskim$softmax_test_model.coverage" NAME="softmax_test_model Coverage Results" MODIFIED="1675018725893" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
@@ -1028,8 +1016,8 @@
     <SUITE FILE_PATH="coverage/ddim_medskim$medskim.coverage" NAME="medskim Coverage Results" MODIFIED="1686365861304" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$new_model.coverage" NAME="new_model Coverage Results" MODIFIED="1683762804243" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
     <SUITE FILE_PATH="coverage/ddim_medskim$labeldistribution.coverage" NAME="labeldistribution Coverage Results" MODIFIED="1703882790914" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../fiddle/mimic3_experiments/1_data_extraction" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$test_model.coverage" NAME="test_model Coverage Results" MODIFIED="1670897826250" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$tabddpm.coverage" NAME="tabddpm Coverage Results" MODIFIED="1692289355428" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$test_model.coverage" NAME="test_model Coverage Results" MODIFIED="1670897826250" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$test_cond_model__1_.coverage" NAME="test_cond_model (1) Coverage Results" MODIFIED="1669500394782" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$getting_setting2_syndata.coverage" NAME="getting_setting2_syndata Coverage Results" MODIFIED="1705885432119" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$baseline.coverage" NAME="baseline Coverage Results" MODIFIED="1686365749916" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
@@ -1039,8 +1027,8 @@
     <SUITE FILE_PATH="coverage/ddim_medskim$cond_test_model.coverage" NAME="cond_test_model Coverage Results" MODIFIED="1670200881349" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$og_baseline.coverage" NAME="og_baseline Coverage Results" MODIFIED="1683075309579" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$seeData.coverage" NAME="seeData Coverage Results" MODIFIED="1706738698309" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="D:/2.2/hosp" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$health_risk_prediction.coverage" NAME="health_risk_prediction Coverage Results" MODIFIED="1707162591024" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$adverse_event_prediction.coverage" NAME="adverse_event_prediction Coverage Results" MODIFIED="1706971452506" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$health_risk_prediction.coverage" NAME="health_risk_prediction Coverage Results" MODIFIED="1718573671854" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$adverse_event_prediction.coverage" NAME="adverse_event_prediction Coverage Results" MODIFIED="1718632939375" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$test_cond_model.coverage" NAME="test_cond_model Coverage Results" MODIFIED="1669499994545" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
     <SUITE FILE_PATH="coverage/ddim_medskim$meanAndSd.coverage" NAME="meanAndSd Coverage Results" MODIFIED="1691892912960" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$USER_HOME$/OneDrive/PSU/diffRes/experiment/GAN+ATTN" />
     <SUITE FILE_PATH="coverage/ddim_medskim$runner_tabddpm.coverage" NAME="runner_tabddpm Coverage Results" MODIFIED="1701201581414" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
@@ -1056,9 +1044,9 @@
     <SUITE FILE_PATH="coverage/ddim_medskim$promptEHR_datagen.coverage" NAME="promptEHR_datagen Coverage Results" MODIFIED="1700513489320" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/mimic/1.4" />
     <SUITE FILE_PATH="coverage/ddim_medskim$ALL_GAN.coverage" NAME="ALL_GAN Coverage Results" MODIFIED="1683685798092" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
     <SUITE FILE_PATH="coverage/ddim_medskim$promptEHR_PDAD__1_.coverage" NAME="promptEHR_PDAD (1) Coverage Results" MODIFIED="1705179487589" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$unified_baseline_runner.coverage" NAME="unified_baseline_runner Coverage Results" MODIFIED="1712692944237" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$unified_baseline_runner.coverage" NAME="unified_baseline_runner Coverage Results" MODIFIED="1718573648219" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$dataset.coverage" NAME="dataset Coverage Results" MODIFIED="1667506884316" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$severe_outcome_minority_aug.coverage" NAME="severe_outcome_minority_aug Coverage Results" MODIFIED="1706972377568" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$severe_outcome_minority_aug.coverage" NAME="severe_outcome_minority_aug Coverage Results" MODIFIED="1718636081484" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$mimic_4moda.coverage" NAME="mimic_4moda Coverage Results" MODIFIED="1703878044839" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/mimic/1.4" />
     <SUITE FILE_PATH="coverage/ddim_medskim$eicu_4moda.coverage" NAME="eicu_4moda Coverage Results" MODIFIED="1712696959581" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="D:/dataPreprocessing/eicu/eicu" />
     <SUITE FILE_PATH="coverage/ddim_medskim$database_experiment.coverage" NAME="database_experiment Coverage Results" MODIFIED="1705887149792" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
@@ -1078,6 +1066,7 @@
     <SUITE FILE_PATH="coverage/ddim_medskim$deltat_analysis.coverage" NAME="deltat_analysis Coverage Results" MODIFIED="1712517939197" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$testtingGround.coverage" NAME="testtingGround Coverage Results" MODIFIED="1699306200653" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$mimic4_4moda.coverage" NAME="mimic4_4moda Coverage Results" MODIFIED="1706739879597" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="D:/2.2/hosp" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$learnAndPredDifference.coverage" NAME="learnAndPredDifference Coverage Results" MODIFIED="1717460208082" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ddim_medskim$diffUtil.coverage" NAME="diffUtil Coverage Results" MODIFIED="1667527925286" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/utils" />
     <SUITE FILE_PATH="coverage/ddim_medskim$generate_labels.coverage" NAME="generate_labels Coverage Results" MODIFIED="1703798974682" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../fiddle/mimic3_experiments/1_data_extraction" />
     <SUITE FILE_PATH="coverage/ddim_medskim$adacare__1_.coverage" NAME="adacare (1) Coverage Results" MODIFIED="1681928724925" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
@@ -1092,6 +1081,6 @@
     <SUITE FILE_PATH="coverage/ddim_medskim$ddim_LSTM.coverage" NAME="ddim_LSTM Coverage Results" MODIFIED="1669239149204" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
     <SUITE FILE_PATH="coverage/ddim_medskim$extract_data.coverage" NAME="extract_data Coverage Results" MODIFIED="1703798063512" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../fiddle/mimic3_experiments/1_data_extraction" />
     <SUITE FILE_PATH="coverage/ddim_medskim$baseline_EEG.coverage" NAME="baseline_EEG Coverage Results" MODIFIED="1683761286782" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/models" />
-    <SUITE FILE_PATH="coverage/ddim_medskim$arf_shock_mort_prediction.coverage" NAME="arf_shock_mort_prediction Coverage Results" MODIFIED="1706978535198" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ddim_medskim$arf_shock_mort_prediction.coverage" NAME="arf_shock_mort_prediction Coverage Results" MODIFIED="1718637325872" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>

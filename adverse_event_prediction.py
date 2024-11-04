@@ -410,7 +410,10 @@ if __name__ == '__main__':
     # main(10, 'void', 'MedDiffGa', 'breast', '', 10, 10, './saved_adverseEvents/', 'train', True, False)
     # main(10, 'void', 'promptEHR', 'breast', '', 10, 10, './saved_adverseEvents/', 'train', True, False)
 
-    main(10, 'void', 'HALO', 'breast', '', 10, 10, './saved_adverseEvents/', 'train', True, False)
+    # main(10, 'void', 'HALO', 'breast', '', 10, 10, './saved_adverseEvents/', 'train', True, False)
+    main(10, 'void', 'LSTM-Meddiff', 'breast', '', 10, 10, './saved_adverseEvents/', 'train', True, False)
+    # main(10, 'void', 'LSTM-ScoEHR', 'breast', '', 10, 10, './saved_adverseEvents/', 'train', True, False)
+
 
 
 

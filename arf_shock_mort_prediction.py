@@ -402,14 +402,14 @@ if __name__ == '__main__':
     toy = False
     seeds = [41,42,43]
     save_path = './saved_'
-    # baseline_names = ['F-LSTM', 'F-CNN', 'Raim', 'DCMN']
-    baseline_names = ['F-LSTM']
+    baseline_names = ['F-LSTM', 'F-CNN', 'Raim', 'DCMN']
+    # baseline_names = ['F-LSTM']
     # model_names = ['MedDiffGa', 'LSTM-MLP', 'LSTM-medGAN', 'synTEG', 'TWIN', 'none']
-    model_names = ['HALO','MedDiffGa']
+    model_names = ['LSTM-Meddiff', 'LSTM-ScoEHR']
     save_dirs = [save_path+name+'/' for name in model_names]
     datas = ['mimic']
-    # tasks = ['shock', 'mortality','arf']
-    tasks = ['mortality']
+    tasks = ['shock', 'arf']
+    # tasks = ['mortality']
     max_lens = [50]
     max_nums = [20]
     for mode in modes:

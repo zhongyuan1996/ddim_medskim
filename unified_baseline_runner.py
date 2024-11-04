@@ -54,7 +54,7 @@ def main(seed, name, model, data, max_len, max_num, sav_dir, mode, short_ICD, to
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
     parser.add_argument('--seed', default=seed, type=int, help='seed')
-    parser.add_argument('-bs', '--batch_size', default=128, type=int)
+    parser.add_argument('-bs', '--batch_size', default=32, type=int)
     parser.add_argument('-me', '--max_epochs_before_stop', default=4, type=int)
     parser.add_argument('--d_model', default=256, type=int, help='dimension of hidden layers')
     parser.add_argument('--h_model', default=256, type=int, help='dimension of hidden layers')
@@ -228,7 +228,7 @@ def gen(args):
             _, _, _, _, gen_diag_logits, gen_drug_logits, gen_lab_logits, gen_proc_logits, _, _ = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
         elif args.model == 'TWIN':
             gen_diag_logits, gen_drug_logits, gen_lab_logits, gen_proc_logits, _, _ = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
-        elif args.model == 'LSTM-TabDDPM':
+        elif args.model == 'LSTM-TabDDPM' or args.model == 'LSTM-Meddiff' or args.model == 'LSTM-ScoEHR':
             gen_diag_logits, gen_drug_logits, gen_lab_logits, gen_proc_logits, _, _, _, _, _, _, _ ,_ = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
         elif args.model == 'EVA':
             gen_diag_logits, gen_drug_logits, gen_lab_logits, gen_proc_logits, _, _ = model(diag_seq, drug_seq, lab_seq, proc_seq, diag_length)
@@ -260,7 +260,7 @@ def gen(args):
         topk_lab_indices = topk_lab_indices * lab_mask.unsqueeze(-1)
         topk_proc_indices = topk_proc_indices * proc_mask.unsqueeze(-1)
 
-        perscent = 0.35
+        perscent = 0.50
 
         diag_pd = Presence_Disclosure(model, diag_seq, topk_diag_indices, 'diag', diag_length, perscent)
         drug_pd = Presence_Disclosure(model, drug_seq, topk_drug_indices, 'drug', drug_length, perscent)
@@ -880,16 +880,16 @@ def train(args):
 
 if __name__ == '__main__':
 
-    modes = ['train']
+    modes = ['gen']
     short_ICD = True
     subset = False
     seeds = [111]
-    save_path = './saved_rebuttal_Q1_'
-    # model_names = ['LSTM-Meddiff', 'LSTM-ScoEHR']
-    model_names = ['TWIN']
+    save_path = './saved_breast_'
+    model_names = ['LSTM-Meddiff', 'LSTM-ScoEHR']
+    # model_names = ['LSTM-ScoEHR']
     # model_names = ['LSTM-MLP', 'LSTM-medGAN', 'synTEG', 'TWIN', 'LSTM-TabDDPM', 'EVA']
     save_dirs = [save_path+name+'/' for name in model_names]
-    datas = ['mimic']
+    datas = ['breast']
     max_lens = [20]
     max_nums = [10]
     for mode in modes:

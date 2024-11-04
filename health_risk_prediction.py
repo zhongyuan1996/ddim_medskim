@@ -440,10 +440,10 @@ if __name__ == '__main__':
     toy = False
     seeds = [111, 222, 333]
     save_path = './saved_'
-    # baseline_names = ['hita', 'lstm', 'gruself', 'retain', 'adacare']
-    baseline_names = ['retain']
+    baseline_names = ['hita', 'lstm', 'gruself', 'retain', 'adacare']
+    # baseline_names = ['retain']
     # model_names = ['MedDiffGa', 'none', 'LSTM-MLP', 'LSTM-medGAN', 'synTEG', 'TWIN']
-    model_names = ['none']
+    model_names = ['LSTM-Meddiff', 'LSTM-ScoEHR']
     save_dirs = [save_path+name+'/' for name in model_names]
     datas = ['mimic']
     modality = ['diag']

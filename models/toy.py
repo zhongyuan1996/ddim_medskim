@@ -551,5 +551,225 @@ class MedDiffGa(nn.Module):
 
         return logits, top_codes, Delta_ts
 
+class MedDiffGaB(nn.Module):
+    def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, demo_len, device, num_heads  = 4, channel_list = [256,512,1024], num_resnet_blocks = 2):
+        super().__init__()
+        self.name = 'MedDiffGa'
+        self.device = device
+        self.demo_len = demo_len
+        self.d_model = d_model
+        self.demoMLP = nn.Sequential(nn.Linear(self.demo_len, 64), nn.ReLU(), nn.Linear(64, d_model))
+        self.diag_embedding = nn.Embedding(vocab_size[0]+1, d_model, padding_idx=-1)
+        self.drug_embedding = nn.Embedding(vocab_size[1]+1, d_model, padding_idx=-1)
+        self.lab_embedding = nn.Embedding(vocab_size[2]+1, d_model, padding_idx=-1)
+        self.proc_embedding = nn.Embedding(vocab_size[3]+1, d_model, padding_idx=-1)
+        # self.embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
+        self.diag_ff = nn.Linear(d_model, d_model)
+        self.drug_ff = nn.Linear(d_model, d_model)
+        self.lab_ff = nn.Linear(d_model, d_model)
+        self.proc_ff = nn.Linear(d_model, d_model)
+        self.modaltiy_att = nn.Linear(4 * d_model, 4)
+        self.dropout = nn.Dropout(dropout)
+        self.emb_dropout = nn.Dropout(dropout_emb)
+        # self.output_mlp = nn.Sequential(nn.Linear(d_model, vocab_size))
+        # self.diag_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.1), nn.Linear(d_model, vocab_size[0]))
+        # self.drug_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.1), nn.Linear(d_model, vocab_size[1]))
+        # self.lab_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.5), nn.Linear(d_model, vocab_size[2]))
+        # self.proc_output_mlp = nn.Sequential(nn.Linear(d_model,d_model), nn.ReLU(), nn.Dropout(0.1), nn.Linear(d_model, vocab_size[3]))
+        self.diag_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_size[0]))
+        self.drug_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_size[1]))
+        self.lab_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_size[2]))
+        self.proc_output_mlp = nn.Sequential(nn.Linear(d_model, vocab_size[3]))
+        self.pooler = MaxPoolLayer()
+        self.rnns = nn.LSTM(d_model, d_model, num_layers, bidirectional=False, batch_first=True, dropout=dropout)
+        self.positional_encoder = PositionalEncoder(d_model)
+        self.fc1 = nn.Linear(d_model, d_model // 2)
+        self.fc2 = nn.Linear(d_model // 2, d_model)
+        self.relu = nn.ReLU()
+        self.softmax = nn.Softmax(dim=-1)
+        self.ddto2 = nn.Linear(2 * d_model, 2)
+        self.dtod1 = nn.Linear(d_model, d_model)
+        self.dtod2 = nn.Linear(d_model, d_model)
+        self.ddtod = nn.Linear(2 * d_model, d_model)
+        self.timegap_predictor = timegap_predictor(d_model)
+        self.unet = unetSkip(channel_list, num_resnet_blocks, num_heads, dropout)
+        betas = get_beta_schedule(beta_schedule="linear",
+                                  beta_start=0.0001,
+                                  beta_end=0.02,
+                                  num_diffusion_timesteps=1000)
+        betas = self.betas = torch.from_numpy(betas).float().to(self.device)
+        self.diffusion_num_timesteps = betas.shape[0]
+
+    def encoder_time_vs_code(self, input_seqs, code_timegaps, embedding_layer):
+        if embedding_layer == 'diag':
+            c = self.diag_embedding(input_seqs)
+        elif embedding_layer == 'drug':
+            c = self.drug_embedding(input_seqs)
+        elif embedding_layer == 'lab':
+            c = self.lab_embedding(input_seqs)
+        elif embedding_layer == 'proc':
+            c = self.proc_embedding(input_seqs)
+        else:
+            raise ValueError('Wrong embedding layer')
+        code_gap_emb = self.positional_encoder(code_timegaps)
+        delta_t = self.fc2(self.relu(self.fc1(code_gap_emb)))
+        concat_embeddings = torch.cat([c, delta_t], dim=-1)
+        p = F.gumbel_softmax(torch.log_softmax(self.ddto2(concat_embeddings), -1), hard=True)
+        decision_to_modify = p[..., 0].unsqueeze(-1)
+        attn = self.softmax(torch.stack((self.dtod1(delta_t), self.dtod2(c)), dim=-1))
+        attn_c = attn[..., 0]
+        attn_delta_t = attn[..., 1]
+        eta = c * (1 - decision_to_modify) + decision_to_modify * (c * attn_c + delta_t * attn_delta_t)
+        return self.emb_dropout(eta)
+
+
+    # def modeling_time_vs_code(self, input_seqs, code_timegaps):
+    #     batch_size, seq_len, num_cui_per_visit = input_seqs.size()
+    #     c = self.embedding(input_seqs)
+    #
+    #     code_gap_emb = self.positional_encoder(code_timegaps)
+    #     delta_t = self.fc2(self.relu(self.fc1(code_gap_emb)))
+    #
+    #     concat_embeddings = torch.cat([c, delta_t.clone()], dim=-1)
+    #     p = F.gumbel_softmax(torch.log_softmax(self.ddto2(concat_embeddings), -1), hard=True)
+    #
+    #     decision_to_modify = p[..., 0].unsqueeze(-1)
+    #
+    #     attn =self.softmax(torch.stack((self.dtod1(delta_t), self.dtod2(c)),dim = -1))
+    #
+    #     attn_c = attn[..., 0]
+    #     attn_delta_t = attn[..., 1]
+    #
+    #     eta = c * (1-decision_to_modify) + decision_to_modify * (c*attn_c + delta_t*attn_delta_t)
+    #
+    #     return eta
+
+    # def forward(self, input_seqs, masks, lengths, seq_time_step, code_masks, code_timegaps, visit_timegaps, demo):
+    def forward(self, diag_seq, drug_seq, lab_seq, proc_seq, time_step, visit_timegap, diag_timegaps, drug_timegaps, lab_timegaps, proc_timegaps,\
+                        diag_mask, drug_mask, lab_mask, proc_mask, diag_length, drug_length, lab_length, proc_length, demo):
+
+        batch_size, seq_len, num_cui_per_visit = diag_seq.size()
+        diag_eta = self.encoder_time_vs_code(diag_seq, diag_timegaps, 'diag')
+        drug_eta = self.encoder_time_vs_code(drug_seq, drug_timegaps, 'drug')
+        lab_eta = self.encoder_time_vs_code(lab_seq, lab_timegaps, 'lab')
+        proc_eta = self.encoder_time_vs_code(proc_seq, proc_timegaps, 'proc')
+
+        diag_s = diag_eta.sum(dim=-2)
+        drug_s = drug_eta.sum(dim=-2)
+        lab_s = lab_eta.sum(dim=-2)
+        proc_s = proc_eta.sum(dim=-2)
+
+        diag_z = self.relu(self.diag_ff(diag_s))
+        drug_z = self.relu(self.drug_ff(drug_s))
+        lab_z = self.relu(self.lab_ff(lab_s))
+        proc_z = self.relu(self.proc_ff(proc_s))
+
+        #with each modality, we want to calculate the difference between the current and previous visit
+        diag_z_diff = diag_z[:, :-1, :] - diag_z[:, 1:, :]
+        drug_z_diff = drug_z[:, :-1, :] - drug_z[:, 1:, :]
+        lab_z_diff = lab_z[:, :-1, :] - lab_z[:, 1:, :]
+        proc_z_diff = proc_z[:, :-1, :] - proc_z[:, 1:, :]
+        # ensure the shape is the same by adding a zero vector at the end of the 2nd dimension
+        diag_z_diff = torch.cat((diag_z_diff, torch.zeros(batch_size, 1, self.d_model).to(self.device)), dim=1)
+        drug_z_diff = torch.cat((drug_z_diff, torch.zeros(batch_size, 1, self.d_model).to(self.device)), dim=1)
+        lab_z_diff = torch.cat((lab_z_diff, torch.zeros(batch_size, 1, self.d_model).to(self.device)), dim=1)
+        proc_z_diff = torch.cat((proc_z_diff, torch.zeros(batch_size, 1, self.d_model).to(self.device)), dim=1)
+
+
+        #from here, we are learning the distribution of the difference between the current and previous visit, not the original value
+
+        z_concat = torch.cat((diag_z_diff, drug_z_diff, lab_z_diff, proc_z_diff), dim=-1)
+        # z_concat = torch.cat((diag_z, drug_z, lab_z, proc_z), dim=-1)
+        z_att = self.softmax(self.modaltiy_att(z_concat))
+        v = (z_att[:,:,:,None] * z_concat.view(batch_size, seq_len, 4, -1)).sum(dim=-2)
+
+        De = self.demoMLP(demo)
+        rnn_input = pack_padded_sequence(v, diag_length.cpu(), batch_first=True, enforce_sorted=False)
+        rnn_output, _ = self.rnns(rnn_input)
+        h, _ = pad_packed_sequence(rnn_output, batch_first=True, total_length=seq_len)
+
+        #ablation study 2:
+        Delta_ts, _ = self.timegap_predictor(h)
+        Delta_ts = Delta_ts.squeeze(-1)
+
+
+        # mask = (torch.arange(seq_len, device=lengths.device).expand(batch_size, seq_len) < lengths.unsqueeze(1))
+        # masked_Delta_ts = Delta_ts * mask
+        # masked_Delta_ts = masked_Delta_ts.unsqueeze(-1)
+
+        # eta = eta.view(batch_size * seq_len, num_cui_per_visit, -1)
+
+        #changing here to model the difference
+        eta = torch.cat((diag_eta, drug_eta, lab_eta, proc_eta), dim=-2)
+        # eta = torch.cat((diag))
+        eta = eta.view(batch_size * seq_len, num_cui_per_visit * 4, -1)
+
+        h = h.view(batch_size * seq_len, -1)
+        De = De.unsqueeze(1).expand(-1, seq_len, -1).reshape(batch_size * seq_len, -1)
+
+        #ablation study 2:
+        Delta_ts_emb = self.positional_encoder(Delta_ts.unsqueeze(-1))
+        Delta_ts_emb = self.fc2(self.relu(self.fc1(Delta_ts_emb))).squeeze(-2).view(batch_size * seq_len, -1)
+
+        # U = torch.randn_like(h)
+
+        H = torch.stack((h,De, Delta_ts_emb), dim=-2)
+        #ablation study 2:
+        # H = torch.stack((h,De), dim=-2)
+        #ablation study 3:
+        # H = torch.stack((h, Delta_ts_emb), dim=-2)
+        #ABLATION STUDY 4:
+        # H = torch.zeros_like(H)
+
+
+
+        diag_mask = diag_mask.view(batch_size * seq_len, num_cui_per_visit).unsqueeze(-1)
+        drug_mask = drug_mask.view(batch_size * seq_len, num_cui_per_visit).unsqueeze(-1)
+        lab_mask = lab_mask.view(batch_size * seq_len, num_cui_per_visit).unsqueeze(-1)
+        proc_mask = proc_mask.view(batch_size * seq_len, num_cui_per_visit).unsqueeze(-1)
+        code_masks = torch.cat((diag_mask, drug_mask, lab_mask, proc_mask), dim=-2)
+
+        diffusion_time_t = torch.randint(
+            low=0, high=1000, size=[eta.shape[0], ]).to(
+            self.device)
+        alpha = (1 - self.betas).cumprod(dim=0).index_select(0, diffusion_time_t).view(-1, 1, 1)
+        z = torch.randn_like(eta)
+        added_z = z * (1.0 - alpha).sqrt()
+        eta_hat = eta * alpha.sqrt() + added_z
+        eta_hat = eta_hat * code_masks
+
+        # z_H = torch.randn_like(H)
+        # added_z_H = z_H * (1.0 - alpha).sqrt()
+        # H_hat = H * alpha.sqrt() + added_z_H
+
+        eta_next = self.unet(eta_hat.transpose(1, 2), H.transpose(1, 2), None).transpose(1, 2).view(batch_size, seq_len, num_cui_per_visit * 4, -1)
+        # eta_next = self.unet(eta_hat.transpose(1, 2), H_hat.transpose(1, 2), None).transpose(1, 2).view(batch_size, seq_len, num_cui_per_visit * 4, -1)
+        # learned_z = eta_next - eta_hat.view(batch_size, seq_len, num_cui_per_visit * 4, -1)
+        # added_z = added_z.view(batch_size, seq_len, num_cui_per_visit * 4, -1)
+
+        eta_next_shifted = torch.cat(
+            [torch.zeros(batch_size, 1, num_cui_per_visit * 4, eta_next.size(-1), device=eta_next.device),
+             eta_next[:, :-1]], dim=1)
+
+        # Calculate learned_z based on the shifted eta_next
+        learned_z = eta_next_shifted - eta_hat.view(batch_size, seq_len, num_cui_per_visit * 4, -1)
+        added_z = added_z.view(batch_size, seq_len, num_cui_per_visit * 4, -1)
+
+        # v_next = eta_next.sum(dim=-2)
+        diag_s_next = eta_next[:, :, :num_cui_per_visit, :].sum(dim=-2)
+        drug_s_next = eta_next[:, :, num_cui_per_visit:2*num_cui_per_visit, :].sum(dim=-2)
+        lab_s_next = eta_next[:, :, 2*num_cui_per_visit:3*num_cui_per_visit, :].sum(dim=-2)
+        proc_s_next = eta_next[:, :, 3*num_cui_per_visit:, :].sum(dim=-2)
+
+        diag_logits = self.diag_output_mlp(diag_s_next)
+        drug_logits = self.drug_output_mlp(drug_s_next)
+        lab_logits = self.lab_output_mlp(lab_s_next)
+        proc_logits = self.proc_output_mlp(proc_s_next)
+
+        # length_mask = (torch.arange(seq_len, device=lengths.device).expand(batch_size, seq_len) < lengths.unsqueeze(1))
+        # logits = self.output_mlp(v_next)
+
+        return diag_logits, drug_logits, lab_logits, proc_logits, Delta_ts, added_z, learned_z
+
 
 

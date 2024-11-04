@@ -408,7 +408,13 @@ if __name__ == '__main__':
     # #
 
     # main(10, 'void', 'HALO', 'breast', '', 10, 10, './saved_severeOutcomePred/', 'train', True, False)
-    main(10, 'fakeOnly', 'HALO', 'breast', '', 10, 10, './saved_severeOutcomePred/', 'train', True, False)
+
+
+
+    # main(10, 'fakeOnly', 'HALO', 'breast', '', 10, 10, './saved_severeOutcomePred/', 'train', True, False)
+    # main(10, 'void', 'LSTM-Meddiff', 'breast', '', 10, 10, './saved_severeOutcomePred/', 'train', True, False)
+    main(10, 'void', 'LSTM-ScoEHR', 'breast', '', 10, 10, './saved_severeOutcomePred/', 'train', True, False)
+    # main(10, 'fakeonly', 'LSTM-ScoEHR', 'breast', '', 10, 10, './saved_severeOutcomePred/', 'train', True, False)
 
 
 
