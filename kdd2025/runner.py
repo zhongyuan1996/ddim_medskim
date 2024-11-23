@@ -21,6 +21,7 @@ from evaluator import InVisitEvaluator
 import math
 import os
 import argparse
+from typing import Union
 # os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 class FocalLoss(nn.Module):
@@ -36,7 +37,10 @@ class FocalLoss(nn.Module):
         return focal_loss.mean()
 
 class Runner:
-    def __init__(self, model_config: MIMIC3_ModelConfig or MIMIC4_icd9_ModelConfig, training_config:MIMIC3_TrainingConfig or MIMIC4_icd9_TrainingConfig, resume_from=None):
+    def __init__(self,
+                model_config: Union[MIMIC3_ModelConfig, MIMIC4_icd9_ModelConfig],
+                training_config: Union[MIMIC3_TrainingConfig, MIMIC4_icd9_TrainingConfig],
+                resume_from=None):
         self.model_config = model_config
         self.training_config = training_config
         self.current_step = 0
