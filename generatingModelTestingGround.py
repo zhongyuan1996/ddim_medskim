@@ -72,7 +72,7 @@ class FocalLoss(nn.Module):
 #     mean_loss = total_loss / total_samples
 #     return mean_loss
 
-def main(seed, name, data, max_len, max_num, sav_dir, mode, focal_alpha, focal_gamma, short_ICD, subset):
+def main(seed, name, data, max_len, max_num, save_dir, mode, focal_alpha, focal_gamma, short_ICD, subset, num_prompt):
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', default=True, type=bool_flag, nargs='?', const=True, help='use GPU')
     parser.add_argument('--seed', default=seed, type=int, help='seed')
@@ -97,11 +97,11 @@ def main(seed, name, data, max_len, max_num, sav_dir, mode, focal_alpha, focal_g
     parser.add_argument('--target_rate', default=0.3, type=float)
     parser.add_argument('--max_grad_norm', default=1.0, type=float, help='max grad norm (0 to disable)')
     parser.add_argument('--warmup_steps', default=200, type=int)
-    parser.add_argument('--n_epochs', default=10, type=int)
+    parser.add_argument('--n_epochs', default=30, type=int)
     parser.add_argument('--log_interval', default=100, type=int)
     parser.add_argument('--mode', default=mode)
     parser.add_argument('--model', default=name)
-    parser.add_argument('--save_dir', default=sav_dir)
+    parser.add_argument('--save_dir', default=save_dir)
     parser.add_argument('--lambda_timegap', default=0.000011, type=float)
     parser.add_argument('--lambda_diff', default=0.5, type=float)
     parser.add_argument('--lambda_ce', default=10000, type=float)
@@ -110,6 +110,7 @@ def main(seed, name, data, max_len, max_num, sav_dir, mode, focal_alpha, focal_g
     parser.add_argument('--short_ICD', default=short_ICD, type=bool_flag, nargs='?', const=True, help='use short ICD codes')
     parser.add_argument('--toy', default=subset, type=bool_flag, nargs='?', const=True, help='use toy dataset')
     parser.add_argument('--subtask', default='')
+    parser.add_argument('--num_prompt', default=num_prompt, type=int)
 
     args = parser.parse_args()
     if args.mode == 'train':
@@ -563,10 +564,14 @@ def train(args):
             pad_id = len(code2id)
             data_path = './data/pancreas/'
         elif args.target_disease == 'mimic' and args.short_ICD:
-            diag2id = pd.read_csv('./data/mimic/diagnosis_to_int_mapping_3dig.csv', header=None)
-            drug2id = pd.read_csv('./data/mimic/drug_to_int_mapping_3dig.csv', header=None)
-            lab2id = pd.read_csv('./data/mimic/lab_to_int_mapping_3dig.csv', header=None)
-            proc2id = pd.read_csv('./data/mimic/proc_to_int_mapping_3dig.csv', header=None)
+            # diag2id = pd.read_csv('./data/mimic/diagnosis_to_int_mapping_3dig.csv', header=None)
+            # drug2id = pd.read_csv('./data/mimic/drug_to_int_mapping_3dig.csv', header=None)
+            # lab2id = pd.read_csv('./data/mimic/lab_to_int_mapping_3dig.csv', header=None)
+            # proc2id = pd.read_csv('./data/mimic/proc_to_int_mapping_3dig.csv', header=None)
+            diag2id = pd.read_csv('data/mimic/diagnosis_to_int_mapping_3dig.csv', header=None)
+            drug2id = pd.read_csv('data/mimic/drug_to_int_mapping_3dig.csv', header=None)
+            lab2id = pd.read_csv('data/mimic/lab_to_int_mapping_3dig.csv', header=None)
+            proc2id = pd.read_csv('data/mimic/proc_to_int_mapping_3dig.csv', header=None)
             demo_len = 76
             diag_pad_id = len(diag2id)
             drug_pad_id = len(drug2id)
@@ -681,7 +686,7 @@ def train(args):
             dev_dataloader = DataLoader(dev_dataset, args.batch_size, shuffle=False, collate_fn=gen_collate_fn)
             test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, collate_fn=gen_collate_fn)
         if args.model == 'MedDiffGa':
-                model = MedDiffGa(pad_id_list, args.d_model, args.dropout, args.dropout_emb, args.num_layers, demo_len, device,channel_list=[args.d_model,int(args.d_model*2),int(args.d_model*4)])
+                model = MedDiffGa(pad_id_list, args.d_model, args.dropout, args.dropout_emb, args.num_layers, demo_len, device,num_prompts=args.num_prompt,channel_list=[args.d_model,int(args.d_model*2),int(args.d_model*4)])
         else:
                 raise ValueError('Invalid model')
         model.to(device)
@@ -871,29 +876,76 @@ def train(args):
 
 
 if __name__ == '__main__':
+    import sys
+    import os
+
+    # Modes and configurations
     modes = ['train']
     short_ICD = True
     subset = False
     seeds = [10]
-    # focal_alphas = [0.25, 0.5, 0.75, 1]
-    # focal_gammas = [0, 1, 2, 5]
-    focal_alphas = [0.75]
+    
+    # Parameter search on focal_alphas and focal_gammas
+    # focal_alphas = [0.5, 0.75, 1]
+    # focal_gammas = [5, 7, 10]
+    focal_alphas = [0.5]
     focal_gammas = [5]
-    # seeds = [11]
-    # names = ['toy','LSTM','Hitatime', 'Hita']
-    save_path = './saved_EHRPD_'
+    
+    # Model names and directories
+    save_path = './saved_EHRPD2025_'
     names = ['MedDiffGa']
-    save_dirs = [save_path+name+'/' for name in names]
-    datas = ['eicu']
-    max_lens = [20]
-    max_nums = [10]
+    save_dirs = [save_path + name + '/' for name in names]
+    
+    # Data configurations
+    datas = ['mimic']
+
+    gpu_index = 1
+    
+    # Different levels for max_lens and max_nums
+    # max_lens_list = [20, 40, 60, 80]  # 4 levels for max_len
+    # max_nums_list = [10, 20, 30, 40]   # 4 levels for max_num
+
+    # Get the GPU index or level index from command-line arguments
+    # if len(sys.argv) > 1:
+    #     gpu_index = int(sys.argv[1])
+    # else:
+    #     gpu_index = 0  # Default to 0 if not specified
+
+    # Set the CUDA device
+    os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_index)
+
+    # Select max_len and max_num based on the GPU index
+    # max_len = max_lens_list[gpu_index % 4]
+    # max_num = max_nums_list[gpu_index % 4]
+    max_len = 20
+    max_num = 10
+
+    num_prompts = [5, 16, 128, 512]
+
+    print(f"Running on GPU {gpu_index} with max_len={max_len}, max_num={max_num}")
+
     for mode in modes:
         for seed in seeds:
             for focal_alpha in focal_alphas:
                 for focal_gamma in focal_gammas:
-                    for name, save_dir in zip(names, save_dirs):
-                        for data, max_len, max_num in zip(datas, max_lens, max_nums):
-                            main(seed, name, data, max_len, max_num, save_dir, mode, focal_alpha, focal_gamma, short_ICD, subset)
+                    for name, dir in zip(names, save_dirs):
+                        for data in datas:
+                            for p in num_prompts:
+                                main(
+                                    seed=seed,
+                                    name=name,
+                                    data=data,
+                                    max_len=max_len,
+                                    max_num=max_num,
+                                    save_dir=dir+ 'pSize_' + str(p) + '_max_len_'+str(max_len)+'_max_num_'+str(max_num)+'/'+'focal_alpha_'+str(focal_alpha)+'_focal_gamma_'+str(focal_gamma)+'/',
+                                    mode=mode,
+                                    focal_alpha=focal_alpha,
+                                    focal_gamma=focal_gamma,
+                                    short_ICD=short_ICD,
+                                    subset=subset,
+                                    num_prompt=p
+                                )
+
 
     # csv_path = './saved_models/'
     #
